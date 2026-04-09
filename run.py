@@ -25,17 +25,20 @@ RESULTS = ROOT / "results"
 
 DEFAULT_TIMEOUT = 180
 
-_originals: dict[str, set[str]] = {}
+_originals: dict[str, dict[str, bytes]] = {}
 
 
 def snapshot(path):
     key = str(path)
     if key not in _originals:
-        _originals[key] = {str(p) for p in path.rglob("*") if p.is_file()}
+        _originals[key] = {
+            str(p): p.read_bytes() for p in path.rglob("*") if p.is_file()
+        }
 
 
-def clean(path):
-    original = _originals.get(str(path), set())
+def restore(path):
+    key = str(path)
+    original = _originals.get(key, {})
     for item in path.rglob("*"):
         if item.is_file() and str(item) not in original:
             item.unlink()
@@ -45,6 +48,11 @@ def clean(path):
                 item.rmdir()
             except OSError:
                 pass
+    for fpath, content in original.items():
+        p = Path(fpath)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        if not p.exists() or p.read_bytes() != content:
+            p.write_bytes(content)
 
 
 def load(args):
@@ -71,7 +79,7 @@ def run(sample, timeout):
         print(f"  SKIP #{sid} {name}: project {project}/ not found")
         return None
 
-    clean(cwd)
+    restore(cwd)
     print(f"  RUN  #{sid} {name} (project={project})", end="", flush=True)
     start = time.time()
 
