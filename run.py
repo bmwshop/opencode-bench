@@ -8,6 +8,7 @@ Usage:
     python run.py --id 1 --id 2      # run multiple samples
     python run.py --category tool_schema
     python run.py --category tool_schema --category subagent
+    python run.py --model provider/model-name
     python run.py --clean            # wipe results first
     python run.py --timeout 120      # custom timeout
 """
@@ -65,7 +66,7 @@ def restore(path):
             p.write_bytes(content)
 
 
-def run(sample, timeout):
+def run(sample, timeout, model=None):
     sid = sample["id"]
     name = sample.get("name", str(sid))
     project = sample.get("project", "default")
@@ -82,6 +83,7 @@ def run(sample, timeout):
     try:
         proc = subprocess.Popen(
             ["opencode", "run", "--format", "json"]
+            + (["--model", model] if model else [])
             + (["--agent", sample["agent"]] if "agent" in sample else [])
             + [sample["prompt"]],
             cwd=cwd,
@@ -122,6 +124,7 @@ def main():
     parser.add_argument("--id", action="append", help="Run specific sample(s) by ID")
     parser.add_argument("--category", action="append", help="Run all samples in a category")
     parser.add_argument("--clean", action="store_true", help="Wipe results first")
+    parser.add_argument("--model", "-m", help="Model in provider/model format (default: opencode config)")
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT)
     args = parser.parse_args()
 
@@ -140,12 +143,13 @@ def main():
         print("No matching samples found.")
         sys.exit(1)
 
-    print(f"Running {len(samples)} sample(s) (timeout={args.timeout}s)...\n")
+    label = f"model={args.model}, " if args.model else ""
+    print(f"Running {len(samples)} sample(s) ({label}timeout={args.timeout}s)...\n")
 
     ran = 0
     skipped = 0
     for sample in samples:
-        if run(sample, args.timeout):
+        if run(sample, args.timeout, model=args.model):
             ran += 1
         else:
             skipped += 1
