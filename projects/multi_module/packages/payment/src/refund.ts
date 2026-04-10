@@ -3,7 +3,7 @@ import { getInvoice, updateInvoice } from './billing'
 export async function refund(invoiceId: string, reason: string) {
   const invoice = await getInvoice(invoiceId)
   if (!invoice) throw new PaymentError("INVOICE_NOT_FOUND")
-  if (invoice.status === "refunded") throw new PaymentError("ALREADY_REFUNDED")
+  if (invoice.status === 'refunded') throw new PaymentError('ALREADY_REFUNDED')
 
   const result = await stripe.refunds.create({
     charge: invoice.chargeId,

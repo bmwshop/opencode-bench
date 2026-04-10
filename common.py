@@ -5,6 +5,7 @@ ROOT = Path(__file__).parent
 SAMPLES = ROOT / "data" / "samples.jsonl"
 PROJECTS = ROOT / "projects"
 RESULTS = ROOT / "results"
+CAPTURES = ROOT / "captures"
 
 
 def load(args):

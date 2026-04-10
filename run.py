@@ -9,10 +9,12 @@ Usage:
     python run.py --category tool_schema
     python run.py --category tool_schema --category subagent
     python run.py --model provider/model-name
+    python run.py --proxy http://localhost:4000/v1
     python run.py --clean            # wipe results first
     python run.py --timeout 120      # custom timeout
 """
 
+import json
 import subprocess
 import shutil
 import sys
@@ -66,7 +68,14 @@ def restore(path):
             p.write_bytes(content)
 
 
-def run(sample, timeout, model=None):
+def _inject_proxy(cwd, provider, url):
+    path = cwd / "opencode.json"
+    cfg = json.loads(path.read_text()) if path.exists() else {}
+    cfg.setdefault("provider", {}).setdefault(provider, {}).setdefault("options", {})["baseURL"] = url
+    path.write_text(json.dumps(cfg, indent=2))
+
+
+def run(sample, timeout, model=None, proxy=None, provider=None):
     sid = sample["id"]
     name = sample.get("name", str(sid))
     project = sample.get("project", "default")
@@ -77,6 +86,8 @@ def run(sample, timeout, model=None):
         return None
 
     restore(cwd)
+    if proxy:
+        _inject_proxy(cwd, provider, proxy)
     print(f"  RUN  #{sid} {name} (project={project})", end="", flush=True)
     start = time.time()
 
@@ -129,6 +140,16 @@ def main():
     parser.add_argument("--category", action="append", help="Run all samples in a category")
     parser.add_argument("--clean", action="store_true", help="Wipe results first")
     parser.add_argument("--model", "-m", help="Model in provider/model format (default: opencode config)")
+    parser.add_argument(
+        "--proxy",
+        help="Proxy URL (e.g. http://localhost:4000/v1). "
+             "Injects provider baseURL override into project configs.",
+    )
+    parser.add_argument(
+        "--proxy-provider",
+        default=None,
+        help="Provider ID to route through proxy (default: inferred from --model)",
+    )
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT)
     args = parser.parse_args()
 
@@ -151,13 +172,22 @@ def main():
         print("No matching samples found.")
         sys.exit(1)
 
-    label = f"model={args.model}, " if args.model else ""
+    provider = args.proxy_provider
+    if args.proxy and not provider:
+        provider = args.model.split("/")[0] if args.model else "nvidia"
+
+    parts = []
+    if args.model:
+        parts.append(f"model={args.model}")
+    if args.proxy:
+        parts.append(f"proxy={args.proxy} ({provider})")
+    label = f"{', '.join(parts)}, " if parts else ""
     print(f"Running {len(samples)} sample(s) ({label}timeout={args.timeout}s)...\n")
 
     ran = 0
     skipped = 0
     for sample in samples:
-        if run(sample, args.timeout, model=args.model):
+        if run(sample, args.timeout, model=args.model, proxy=args.proxy, provider=provider):
             ran += 1
         else:
             skipped += 1

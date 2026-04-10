@@ -29,6 +29,7 @@ python run.py --id 1 --id 2                                # run multiple sample
 python run.py --category tool_schema                       # run one category
 python run.py --category tool_schema --category subagent   # run multiple categories
 python run.py --model provider/model-name                  # override the default model
+python run.py --proxy http://localhost:4000/v1             # route through a logging proxy
 python run.py --clean                                      # wipe results/ before running
 python run.py --timeout 120                                # custom per-sample timeout (default: 180s)
 ```
@@ -63,6 +64,40 @@ Two scoring methods are used:
 
 Both scores are reported per-category and overall.
 
+## Proxy Mode (optional)
+
+The benchmark works without a proxy -- `run.py` talks to your configured model provider directly. Optionally, you can route traffic through [nemo-switchyard](https://gitlab-master.nvidia.com/aire/agents/nemo-switchyard) to capture the full API payloads (system prompt, tool schemas, messages) that opencode sends to the provider.
+
+### Terminal 1: Start the proxy
+
+```bash
+cd /path/to/nemo-switchyard
+source .venv/bin/activate
+
+export OPENAI_API_KEY="<your provider API key>"
+
+nemo-switchyard opencode \
+  --port 4000 \
+  --base-url https://integrate.api.nvidia.com/v1 \
+  --rl-log-dir /path/to/opencode-bench/captures
+```
+
+### Terminal 2: Run the benchmark through the proxy
+
+```bash
+python run.py --proxy http://localhost:4000/v1 --model nvidia/nvidia/nemotron-3-super-120b-a12b
+```
+
+The `--proxy` flag dynamically injects a `provider.{id}.options.baseURL` override into each project fixture's `opencode.json` before running the sample. The existing snapshot/restore mechanism cleans up the override after each run.
+
+By default, the provider ID is inferred from the first segment of `--model` (e.g. `nvidia`). Override it explicitly with `--proxy-provider`:
+
+```bash
+python run.py --proxy http://localhost:4000/v1 --proxy-provider anthropic --model anthropic/claude-opus-4-6
+```
+
+Captured request/response traces are written to `captures/` by switchyard (git-ignored).
+
 ## Project Structure
 
 ```
@@ -93,6 +128,7 @@ evaluators/              # check implementations (auto-registered)
   content/               # text and file content checks
   orchestration/         # tool ordering and parallelism checks
 results/                 # output traces (git-ignored)
+captures/                # proxy request/response logs (git-ignored)
 ```
 
 ## Sample Categories

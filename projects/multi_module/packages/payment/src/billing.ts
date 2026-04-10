@@ -18,7 +18,7 @@ export async function createInvoice(userId: string, total: number, items: any[])
     userId,
     total,
     items,
-    status: "pending",
+    status: 'pending',
     created: Date.now(),
   }
   INVOICES.set(id, invoice)

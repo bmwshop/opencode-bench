@@ -2,7 +2,7 @@ import { createInvoice } from './billing'
 
 export async function checkout(cart: CartItem[], userId: string) {
   const total = cart.reduce((sum, item) => sum + item.price * item.qty, 0)
-  if (total <= 0) throw new PaymentError("EMPTY_CART")
+  if (total <= 0) throw new PaymentError('EMPTY_CART')
 
   const invoice = await createInvoice(userId, total, cart)
   const charge = await stripe.charges.create({
@@ -13,7 +13,7 @@ export async function checkout(cart: CartItem[], userId: string) {
   })
 
   if (charge.status !== "succeeded") {
-    throw new PaymentError("CHARGE_FAILED")
+    throw new PaymentError('CHARGE_FAILED')
   }
   return { invoiceId: invoice.id, chargeId: charge.id, total }
 }
