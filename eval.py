@@ -100,7 +100,7 @@ def evaluate(sample):
         if ok:
             result.passed.append(desc)
         else:
-            result.failed.append(f"{desc}: {reason}")
+            result.failed.append(f"{desc}: {reason}" if reason and reason != desc else desc)
 
     return result
 
