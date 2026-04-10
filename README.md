@@ -28,9 +28,12 @@ python run.py --id 1                                       # run a single sample
 python run.py --id 1 --id 2                                # run multiple samples
 python run.py --category tool_schema                       # run one category
 python run.py --category tool_schema --category subagent   # run multiple categories
+python run.py --model provider/model-name                  # override the default model
 python run.py --clean                                      # wipe results/ before running
 python run.py --timeout 120                                # custom per-sample timeout (default: 180s)
 ```
+
+The `--model` flag is optional. When omitted, opencode uses its configured default. The format is `provider/model-id` (e.g. `anthropic/claude-opus-4-6`).
 
 ## Evaluating Results
 
@@ -42,9 +45,18 @@ python eval.py --id 1                                      # evaluate one sample
 python eval.py --id 1 --id 2                               # evaluate multiple samples
 python eval.py --category tool_schema                      # evaluate one category
 python eval.py --category tool_schema --category subagent  # evaluate multiple categories
+python eval.py --format json                               # machine-readable JSON output
+python eval.py --format json --output scores.json          # JSON output to stdout and file
+python eval.py --output scores.txt                         # text output to stdout and file
 ```
 
-Output shows pass/fail per sample grouped by category, with two aggregate scores:
+Output shows scores at three levels:
+
+- **Per sample**: checks passed / total checks, percentage score
+- **Per category**: strict count, partial average, aggregate check counts
+- **Overall**: strict score, partial score, total checks passed
+
+Two scoring methods are used:
 
 - **Strict score**: Fraction of samples where every check passed (all-or-nothing)
 - **Partial score**: Average fractional score across all samples (passed checks / total checks per sample)
@@ -143,7 +155,8 @@ Category and overall scores are averages of the per-sample scores.
 
 **Content checks** — verify output:
 - `text_contains` — agent response text matches a regex
-- `file_regex` — content written via `write`/`edit` tools matches (or doesn't match) a regex
+- `file_regex` — content written via `write`/`edit` tools (or existing on disk) matches a regex
+- `file_exists` — a file or directory exists in the project after the run
 
 **Orchestration checks** — verify ordering:
 - `tool_before` — one tool was called before another
