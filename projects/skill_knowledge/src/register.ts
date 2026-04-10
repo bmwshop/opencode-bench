@@ -1,16 +1,17 @@
-// API_HANDLER
-export function handleRegister(req: Request): { ok: boolean; data: any } {
-  // In a real implementation, you would:
-  // 1. Parse request body for user data
-  // 2. Validate the input
-  // 3. Check if user already exists
-  // 4. Hash password
-  // 5. Save user to database
-  // 6. Return appropriate response
+import { Request } from 'express';
+import { validate, registerUser } from '../services/auth';
 
-  // For now, return a placeholder response
-  return {
-    ok: true,
-    data: { message: "User registration endpoint" }
-  };
-}
+export const handleRegister = async (req: Request): Promise<{ ok: boolean; data: any }> => {
+  // API_HANDLER
+  try {
+    const { email, password } = req.body;
+    const validationError = await validate({ email, password });
+    if (validationError) {
+      return { ok: false, data: { error: validationError } };
+    }
+    const user = await registerUser(email, password);
+    return { ok: true, data: user };
+  } catch (error) {
+    return { ok: false, data: { error: error.message } };
+  }
+};

@@ -25,11 +25,12 @@ The file `src/app.ts` contains 2 TODO comments.
 
 > Review src/app.ts
 
-## Pass criteria (3 checks)
+## Pass criteria (4 checks)
 
 1. `any_tool_name` equals `skill` -- model invokes the skill tool
-2. `tool_before` `read` then `bash` -- reads the file before running the grep command
-3. `file_regex` `review.md` matches `# Review` -- output file has the required heading
+2. `any_tool_param_value` `skill.name` equals `review-flow` -- loads the correct skill
+3. `tool_before` `read` then `bash` -- reads the file before running the grep command
+4. `file_regex` `review.md` matches `# Review` -- output file has the required heading
 
 ## Fail modes
 
