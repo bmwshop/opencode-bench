@@ -1,7 +1,7 @@
 # #24 code_backed
 
-**Category:** skill  
-**Project:** skill_code
+- **Category:** skill
+- **Project:** skill_code
 
 ## Capability
 

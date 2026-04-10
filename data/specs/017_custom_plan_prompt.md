@@ -1,7 +1,7 @@
 # #17 custom_plan_prompt
 
-**Category:** plan_mode  
-**Project:** custom_plan
+- **Category:** plan_mode
+- **Project:** custom_plan
 
 ## Capability
 

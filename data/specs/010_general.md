@@ -1,7 +1,7 @@
 # #10 general
 
-**Category:** subagent  
-**Project:** multi_module
+- **Category:** subagent
+- **Project:** multi_module
 
 ## Capability
 

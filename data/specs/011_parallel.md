@@ -1,7 +1,7 @@
 # #11 parallel
 
-**Category:** subagent  
-**Project:** multi_module
+- **Category:** subagent
+- **Project:** multi_module
 
 ## Capability
 
