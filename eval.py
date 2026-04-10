@@ -5,6 +5,7 @@ Evaluate opencode benchmark traces against checks defined in samples.jsonl.
 Usage:
     python eval.py                # evaluate all
     python eval.py --id 1         # evaluate one sample
+    python eval.py --id 1 --id 2  # evaluate multiple samples
     python eval.py --category tool_schema
 """
 
@@ -52,7 +53,7 @@ def load(args):
             if not line:
                 continue
             sample = json.loads(line)
-            if args.id and str(sample["id"]) != str(args.id):
+            if args.id and str(sample["id"]) not in args.id:
                 continue
             if args.category and sample["category"] != args.category:
                 continue
@@ -121,7 +122,7 @@ def evaluate(sample):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--id", help="Evaluate a specific sample by ID")
+    parser.add_argument("--id", action="append", help="Evaluate specific sample(s) by ID")
     parser.add_argument("--category", help="Evaluate all samples in a category")
     args = parser.parse_args()
 

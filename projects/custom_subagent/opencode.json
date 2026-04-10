@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": { "*": "allow" },
+  "agent": {
+    "reviewer": {
+      "description": "Reviews code for bugs, security issues, and style violations. Use after writing or modifying significant code.",
+      "mode": "subagent"
+    }
+  }
+}

@@ -5,6 +5,7 @@ Submit samples from samples.jsonl to opencode CLI and save traces to results/.
 Usage:
     python run.py                    # run all samples
     python run.py --id 1             # run one sample
+    python run.py --id 1 --id 2      # run multiple samples
     python run.py --category tool_schema
     python run.py --clean            # wipe results first
     python run.py --timeout 120      # custom timeout
@@ -62,7 +63,7 @@ def load(args):
             if not line:
                 continue
             sample = json.loads(line)
-            if args.id and str(sample["id"]) != str(args.id):
+            if args.id and str(sample["id"]) not in args.id:
                 continue
             if args.category and sample["category"] != args.category:
                 continue
@@ -85,7 +86,9 @@ def run(sample, timeout):
 
     try:
         proc = subprocess.Popen(
-            ["opencode", "run", "--format", "json", sample["prompt"]],
+            ["opencode", "run", "--format", "json"]
+            + (["--agent", sample["agent"]] if "agent" in sample else [])
+            + [sample["prompt"]],
             cwd=cwd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -121,7 +124,7 @@ def run(sample, timeout):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--id", help="Run a specific sample by ID")
+    parser.add_argument("--id", action="append", help="Run specific sample(s) by ID")
     parser.add_argument("--category", help="Run all samples in a category")
     parser.add_argument("--clean", action="store_true", help="Wipe results first")
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT)
