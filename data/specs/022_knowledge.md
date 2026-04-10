@@ -1,6 +1,6 @@
 # #22 knowledge
 
-**Category:** skill
+**Category:** skill  
 **Project:** skill_knowledge
 
 ## Capability

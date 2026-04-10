@@ -1,6 +1,6 @@
 # #21 bash_strict
 
-**Category:** system_tool_restriction
+**Category:** system_tool_restriction  
 **Project:** bash_strict
 
 ## Capability

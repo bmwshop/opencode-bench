@@ -1,6 +1,6 @@
 # #16 creates_plan_file
 
-**Category:** plan_mode
+**Category:** plan_mode  
 **Project:** plan_default
 
 ## Capability

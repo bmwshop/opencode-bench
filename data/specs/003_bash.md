@@ -1,6 +1,6 @@
 # #3 bash
 
-**Category:** tool_schema
+**Category:** tool_schema  
 **Project:** default
 
 ## Capability

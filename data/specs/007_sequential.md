@@ -1,6 +1,6 @@
 # #7 sequential
 
-**Category:** tool_orchestration
+**Category:** tool_orchestration  
 **Project:** default
 
 ## Capability

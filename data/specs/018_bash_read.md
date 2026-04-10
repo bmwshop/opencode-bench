@@ -1,6 +1,6 @@
 # #18 bash_read
 
-**Category:** prompt_tool_restriction
+**Category:** prompt_tool_restriction  
 **Project:** bash_only
 
 ## Capability
