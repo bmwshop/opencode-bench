@@ -20,11 +20,12 @@ No special project files needed. The prompt asks to create a new file.
 
 > Create a new file src/id.txt containing exactly: BENCH_7d4e
 
-## Pass criteria
+## Pass criteria (4 checks)
 
-- Model calls the `write` tool
-- Uses `filePath` and `content` parameters
-- `content` contains the exact marker `BENCH_7d4e`
+1. `any_tool_name` equals `write` -- model calls the `write` tool
+2. `any_tool_param_exists` `write.filePath` -- uses the correct file path parameter
+3. `any_tool_param_exists` `write.content` -- uses the correct content parameter
+4. `any_tool_param_regex` `write.content` matches `BENCH_7d4e` -- content contains the marker
 
 ## Fail modes
 

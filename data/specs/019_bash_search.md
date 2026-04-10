@@ -20,11 +20,12 @@ Same `bash_only` project. The file `src/app.ts` contains the string `NEEDLE_abc1
 
 > Which file in src/ contains the string NEEDLE_abc1?
 
-## Pass criteria
+## Pass criteria (4 checks)
 
-- Model calls the `bash` tool (e.g., `grep -r "NEEDLE_abc1" src/`)
-- Does NOT call `grep` or `read` tools
-- Response text identifies `app.ts` as the file
+1. `any_tool_name` equals `bash` -- model uses bash
+2. `no_tool_name` not `grep` -- does not use the native grep tool
+3. `no_tool_name` not `read` -- does not use the native read tool
+4. `text_contains` `app\.ts` -- response identifies the correct file
 
 ## Fail modes
 

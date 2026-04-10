@@ -20,10 +20,10 @@ The `multi_module` project has two distinct packages: `packages/auth/` (authenti
 
 > I need two independent investigations done simultaneously: (1) explore the authentication system in packages/auth/, and (2) explore the payment processing pipeline in packages/payment/. Do both at the same time.
 
-## Pass criteria
+## Pass criteria (2 checks)
 
-- At least 2 `task` tool calls in the trace
-- Both `task` calls occur in the same step (same assistant turn)
+1. `min_tool_count` `task` >= 2 -- at least two task calls in the trace
+2. `tools_same_step` `task` >= 2 -- both tasks spawned in the same assistant turn
 
 ## Fail modes
 

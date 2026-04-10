@@ -20,12 +20,12 @@ Same `bash_only` project. The `src/` directory contains exactly 3 `.ts` files: `
 
 > Count how many .ts files exist in src/ and report the exact number.
 
-## Pass criteria
+## Pass criteria (4 checks)
 
-- Model calls the `bash` tool
-- Does NOT call `glob`
-- The bash `command` contains a pipe character (`|`)
-- Response text includes the number `3`
+1. `any_tool_name` equals `bash` -- model uses bash
+2. `no_tool_name` not `glob` -- does not use the native glob tool
+3. `any_tool_param_regex` `bash.command` matches `\|` -- command contains a pipe
+4. `text_contains` `3` -- response reports the correct count
 
 ## Fail modes
 

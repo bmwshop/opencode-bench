@@ -20,11 +20,12 @@ The project contains `src/index.ts` with marker `8f3a2b1c` and `src/auth.ts` wit
 
 > Read both src/index.ts and src/auth.ts at the same time and tell me both marker values.
 
-## Pass criteria
+## Pass criteria (4 checks)
 
-- At least 2 `read` tool calls in the trace
-- Both `read` calls occur in the same step (same assistant turn)
-- Response text includes both markers: `8f3a2b1c` and `b7e1d930`
+1. `min_tool_count` `read` >= 2 -- at least two read calls in the trace
+2. `tools_same_step` `read` >= 2 -- both reads occur in the same assistant turn
+3. `text_contains` `8f3a2b1c` -- response includes the index.ts marker
+4. `text_contains` `b7e1d930` -- response includes the auth.ts marker
 
 ## Fail modes
 

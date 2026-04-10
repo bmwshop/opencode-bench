@@ -44,7 +44,12 @@ python eval.py --category tool_schema                      # evaluate one catego
 python eval.py --category tool_schema --category subagent  # evaluate multiple categories
 ```
 
-Output shows pass/fail per sample, grouped by category, with a summary score.
+Output shows pass/fail per sample grouped by category, with two aggregate scores:
+
+- **Strict score**: Fraction of samples where every check passed (all-or-nothing)
+- **Partial score**: Average fractional score across all samples (passed checks / total checks per sample)
+
+Both scores are reported per-category and overall.
 
 ## Project Structure
 
@@ -115,6 +120,15 @@ Each sample has a detailed spec in `data/specs/` describing the capability under
 2. Create a matching spec at `data/specs/025_my_test.md`.
 
 3. If the test needs a custom project environment, create it under `projects/` with an `opencode.json` (at minimum `{"permission": {"*": "allow"}}` to auto-approve tool use).
+
+### Scoring
+
+Each sample has N checks. Two scores are computed:
+
+- **Strict**: 1 if all N checks pass, 0 otherwise
+- **Partial**: (number of passed checks) / N
+
+Category and overall scores are averages of the per-sample scores.
 
 ### Available Check Types
 

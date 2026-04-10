@@ -20,10 +20,10 @@ The `multi_module` project has `packages/payment/src/` with 4 files (checkout.ts
 
 > Every file in packages/payment/src/ uses double quotes for strings. Delegate a task to refactor all payment source files to use single quotes instead.
 
-## Pass criteria
+## Pass criteria (2 checks)
 
-- Model calls the `task` tool
-- Sets `subagent_type` to `"general"`
+1. `any_tool_name` equals `task` -- model delegates via the task tool
+2. `any_tool_param_value` `task.subagent_type` equals `general` -- selects the general subagent
 
 ## Fail modes
 

@@ -20,11 +20,12 @@ No special project files needed. The prompt asks for a simple echo command.
 
 > Run the command: echo BENCH_OK
 
-## Pass criteria
+## Pass criteria (4 checks)
 
-- Model calls the `bash` tool
-- Provides both `description` and `command` parameters
-- Output text contains `BENCH_OK`
+1. `any_tool_name` equals `bash` -- model calls the `bash` tool
+2. `any_tool_param_exists` `bash.description` -- provides the required description parameter
+3. `any_tool_param_exists` `bash.command` -- provides the required command parameter
+4. `text_contains` `BENCH_OK` -- output includes the command result
 
 ## Fail modes
 

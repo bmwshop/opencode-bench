@@ -20,11 +20,11 @@ The project contains `src/auth.ts` with the string `NEEDLE_f9c2` embedded as a c
 
 > Find which file contains the string NEEDLE_f9c2.
 
-## Pass criteria
+## Pass criteria (3 checks)
 
-- Model calls the `grep` tool
-- Does not use `bash` (e.g., `bash grep`, `bash rg`)
-- Response text identifies `auth.ts` as the file containing the needle
+1. `any_tool_name` equals `grep` -- model calls the `grep` tool
+2. `no_tool_name` not `bash` -- does not fall back to shell commands
+3. `text_contains` `auth\.ts` -- response identifies the correct file
 
 ## Fail modes
 

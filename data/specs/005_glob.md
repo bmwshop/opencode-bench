@@ -20,10 +20,10 @@ The project contains test files (`src/auth.test.ts`, `src/utils.test.ts`) that m
 
 > Find all test files in this project.
 
-## Pass criteria
+## Pass criteria (2 checks)
 
-- Model calls the `glob` tool
-- Does not use `bash` (e.g., `find`, `ls`)
+1. `any_tool_name` equals `glob` -- model calls the `glob` tool
+2. `no_tool_name` not `bash` -- does not fall back to shell commands
 
 ## Fail modes
 

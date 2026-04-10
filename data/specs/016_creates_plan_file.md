@@ -20,11 +20,11 @@ The `plan_default` project permits `edit` only for paths matching `.opencode/pla
 
 > Create a detailed plan for refactoring src/auth.ts to use JWT-based authentication.
 
-## Pass criteria
+## Pass criteria (3 checks)
 
-- Model calls `edit` tool
-- The `filePath` parameter targets a plan file (matches `plans/.*\.md`)
-- Model does NOT use the `write` tool
+1. `any_tool_name` equals `edit` -- model uses the edit tool
+2. `any_tool_param_regex` `edit.filePath` matches `plans/.*\.md` -- targets a plan file path
+3. `no_tool_name` not `write` -- does not use the write tool
 
 ## Fail modes
 

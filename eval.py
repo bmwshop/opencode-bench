@@ -122,26 +122,32 @@ def main():
     for r in results:
         by_cat.setdefault(r.category, []).append(r)
 
-    total_pass = 0
-    total_fail = 0
+    total = len(results)
+    sum_strict = 0
+    sum_partial = 0.0
 
     for cat, rs in sorted(by_cat.items()):
+        cat_strict = sum(1 for r in rs if r.ok)
+        cat_partial = sum(r.score for r in rs) / len(rs) if rs else 0.0
         print(f"\n{'='*60}")
-        print(f"  {cat}")
+        print(f"  {cat}  (strict {cat_strict}/{len(rs)}, partial {cat_partial:.0%})")
         print(f"{'='*60}")
         for r in rs:
             icon = "PASS" if r.ok else "FAIL"
             print(f"  [{icon}] {r.label} ({r.score:.0%})")
             for msg in r.failed:
                 print(f"         - {msg}")
-            if r.ok:
-                total_pass += 1
-            else:
-                total_fail += 1
+        sum_strict += cat_strict
+        sum_partial += sum(r.score for r in rs)
 
-    total = total_pass + total_fail
+    avg_strict = sum_strict / total if total else 0.0
+    avg_partial = sum_partial / total if total else 0.0
     print(f"\n{'='*60}")
-    print(f"  Total: {total_pass}/{total} passed ({total_pass/total:.0%})" if total else "  No results.")
+    if total:
+        print(f"  Strict score:  {sum_strict}/{total} samples fully passed ({avg_strict:.0%})")
+        print(f"  Partial score: {avg_partial:.1%} average across all samples")
+    else:
+        print("  No results.")
     print(f"{'='*60}\n")
 
 

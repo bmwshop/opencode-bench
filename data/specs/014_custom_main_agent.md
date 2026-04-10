@@ -20,9 +20,9 @@ The project's `opencode.json` defines a primary agent named `"auditor"` with pro
 
 > Review src/app.ts for security issues.
 
-## Pass criteria
+## Pass criteria (1 check)
 
-- Response text contains the `[AUDITOR]` prefix
+1. `text_contains` `\[AUDITOR\]` -- response includes the `[AUDITOR]` prefix
 
 ## Fail modes
 

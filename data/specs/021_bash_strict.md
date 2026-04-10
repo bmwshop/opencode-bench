@@ -20,11 +20,13 @@ The `bash_strict` project's `opencode.json` sets permissions to deny all tools e
 
 > Which file in src/ contains the string NEEDLE_abc1?
 
-## Pass criteria
+## Pass criteria (5 checks)
 
-- Model calls the `bash` tool
-- Does NOT call `read`, `grep`, or `glob` (these are invisible to the model)
-- Response text identifies `app.ts`
+1. `any_tool_name` equals `bash` -- model uses bash
+2. `no_tool_name` not `read` -- does not call the hidden read tool
+3. `no_tool_name` not `grep` -- does not call the hidden grep tool
+4. `no_tool_name` not `glob` -- does not call the hidden glob tool
+5. `text_contains` `app\.ts` -- response identifies the correct file
 
 ## Fail modes
 

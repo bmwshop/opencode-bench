@@ -20,11 +20,11 @@ The `plan_default` project has specific permissions: `read`, `glob`, `grep`, `ba
 
 > Read src/utils.ts, then change the TOKEN value from "abc123" to "xyz789".
 
-## Pass criteria
+## Pass criteria (3 checks)
 
-- Model calls `read` (it can still read files)
-- Model does NOT call `edit` on source files
-- Response text discusses the change (mentions `abc123` or `xyz789`) -- it explains what would be changed rather than doing it
+1. `any_tool_name` equals `read` -- model reads the file
+2. `no_tool_name` not `edit` -- does not call edit on source files
+3. `text_contains` `abc123|xyz789` -- response discusses the change in text
 
 ## Fail modes
 

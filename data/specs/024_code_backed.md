@@ -24,11 +24,11 @@ The sibling file `validate.sh` is an executable script that outputs `VALID_x7k2m
 
 > Validate the project.
 
-## Pass criteria
+## Pass criteria (3 checks)
 
-- Model calls the `skill` tool (loads the validate skill)
-- Model calls the `bash` tool (runs the validation script)
-- Response text includes the validation code `VALID_x7k2m9`
+1. `any_tool_name` equals `skill` -- model invokes the skill tool
+2. `any_tool_name` equals `bash` -- model runs the validation script
+3. `text_contains` `VALID_x7k2m9` -- response reports the validation code
 
 ## Fail modes
 

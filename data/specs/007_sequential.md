@@ -20,10 +20,10 @@ The project contains `src/utils.ts` with `export const TOKEN = "abc123"`.
 
 > Read src/utils.ts, then change the TOKEN value from "abc123" to "xyz789".
 
-## Pass criteria
+## Pass criteria (2 checks)
 
-- Model calls `read` before `edit` (by tool call index in the trace)
-- The `edit` call's `newString` contains `xyz789`
+1. `tool_before` `read` then `edit` -- read is called before edit in the trace
+2. `any_tool_param_regex` `edit.newString` matches `xyz789` -- replacement value is correct
 
 ## Fail modes
 

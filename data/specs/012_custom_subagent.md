@@ -20,10 +20,10 @@ The project's `opencode.json` defines a custom subagent named `"reviewer"` with 
 
 > I just rewrote src/payment.ts. Please review it for issues.
 
-## Pass criteria
+## Pass criteria (2 checks)
 
-- Model calls the `task` tool
-- Sets `subagent_type` to `"reviewer"` (the custom subagent name from opencode.json)
+1. `any_tool_name` equals `task` -- model delegates via the task tool
+2. `any_tool_param_value` `task.subagent_type` equals `reviewer` -- selects the custom reviewer subagent
 
 ## Fail modes
 

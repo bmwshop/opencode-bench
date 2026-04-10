@@ -20,9 +20,9 @@ The project's `opencode.json` sets `agent.plan.prompt` to: "You are a planning a
 
 > Analyze src/app.ts and suggest improvements.
 
-## Pass criteria
+## Pass criteria (1 check)
 
-- Response text contains the `[PLANNER]` prefix
+1. `text_contains` `\[PLANNER\]` -- response includes the `[PLANNER]` prefix
 
 ## Fail modes
 

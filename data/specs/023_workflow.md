@@ -25,11 +25,11 @@ The file `src/app.ts` contains 2 TODO comments.
 
 > Review src/app.ts
 
-## Pass criteria
+## Pass criteria (3 checks)
 
-- Model calls the `skill` tool (loads the review-flow skill)
-- `read` tool is called before `bash` (follows the prescribed step order)
-- An output file `review.md` is created with a `# Review` heading
+1. `any_tool_name` equals `skill` -- model invokes the skill tool
+2. `tool_before` `read` then `bash` -- reads the file before running the grep command
+3. `file_regex` `review.md` matches `# Review` -- output file has the required heading
 
 ## Fail modes
 

@@ -23,11 +23,12 @@ The project configures skills via `opencode.json`: `"skills": { "paths": [".open
 
 > Create an API handler for user registration in src/register.ts
 
-## Pass criteria
+## Pass criteria (4 checks)
 
-- Model calls the `skill` tool with `name: "api-style"`
-- Written file contains a function with `handle` prefix (e.g., `handleRegister`)
-- Written file contains the `API_HANDLER` marker comment
+1. `any_tool_name` equals `skill` -- model invokes the skill tool
+2. `any_tool_param_value` `skill.name` equals `api-style` -- loads the correct skill
+3. `file_regex` `register.ts` matches `handle[A-Z]` -- function has the required handle prefix
+4. `file_regex` `register.ts` matches `API_HANDLER` -- marker comment is present
 
 ## Fail modes
 

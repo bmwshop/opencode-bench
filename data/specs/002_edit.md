@@ -20,12 +20,15 @@ The project contains `src/utils.ts` with `export const TOKEN = "abc123"`.
 
 > In src/utils.ts, change the TOKEN value from "abc123" to "xyz789".
 
-## Pass criteria
+## Pass criteria (7 checks)
 
-- Model calls the `edit` tool
-- Uses `filePath`, `oldString`, `newString` parameters
-- Does not use `old_string` or `new_string`
-- `newString` value contains `xyz789`
+1. `any_tool_name` equals `edit` -- model calls the `edit` tool
+2. `any_tool_param_exists` `edit.filePath` -- uses correct file path parameter
+3. `any_tool_param_exists` `edit.oldString` -- uses correct old string parameter
+4. `any_tool_param_exists` `edit.newString` -- uses correct new string parameter
+5. `any_tool_param_absent` `edit.old_string` -- does not use snake_case variant
+6. `any_tool_param_absent` `edit.new_string` -- does not use snake_case variant
+7. `any_tool_param_regex` `edit.newString` matches `xyz789` -- replacement value is correct
 
 ## Fail modes
 
