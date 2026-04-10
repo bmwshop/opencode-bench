@@ -106,6 +106,10 @@ def run(sample, timeout, model=None):
         print(f"\n  ERROR: opencode not found in PATH")
         sys.exit(1)
 
+    if "Model not found" in stderr or "Invalid model" in stderr:
+        print(f"\n  ERROR: {stderr.strip()}")
+        sys.exit(1)
+
     out = RESULTS / f"{sid}_{name}.jsonl"
     out.write_text(stdout)
 
@@ -127,6 +131,10 @@ def main():
     parser.add_argument("--model", "-m", help="Model in provider/model format (default: opencode config)")
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT)
     args = parser.parse_args()
+
+    if args.model and "/" not in args.model:
+        print(f"ERROR: --model must be in provider/model format (got '{args.model}')")
+        sys.exit(1)
 
     if args.clean and RESULTS.exists():
         shutil.rmtree(RESULTS)

@@ -1,0 +1,721 @@
+{
+  "strict": 17,
+  "total": 24,
+  "partial": 0.7639,
+  "checks_passed": 55,
+  "checks_total": 75,
+  "samples": [
+    {
+      "label": "#1 read",
+      "pass": true,
+      "score": 1.0,
+      "checks_passed": 4,
+      "checks_total": 4,
+      "passed": [
+        "any_tool_name",
+        "any_tool_param_exists",
+        "any_tool_param_absent",
+        "response mentions the marker"
+      ],
+      "failed": []
+    },
+    {
+      "label": "#2 edit",
+      "pass": true,
+      "score": 1.0,
+      "checks_passed": 7,
+      "checks_total": 7,
+      "passed": [
+        "any_tool_name",
+        "any_tool_param_exists",
+        "any_tool_param_exists",
+        "any_tool_param_exists",
+        "any_tool_param_absent",
+        "any_tool_param_absent",
+        "newString contains xyz789"
+      ],
+      "failed": []
+    },
+    {
+      "label": "#3 bash",
+      "pass": true,
+      "score": 1.0,
+      "checks_passed": 4,
+      "checks_total": 4,
+      "passed": [
+        "any_tool_name",
+        "any_tool_param_exists",
+        "any_tool_param_exists",
+        "output contains BENCH_OK"
+      ],
+      "failed": []
+    },
+    {
+      "label": "#4 write",
+      "pass": false,
+      "score": 0.0,
+      "checks_passed": 0,
+      "checks_total": 4,
+      "passed": [],
+      "failed": [
+        "any_tool_name: no call to 'write' (got [])",
+        "any_tool_param_exists: no call to 'write'",
+        "any_tool_param_exists: no call to 'write'",
+        "content contains the marker: no call to 'write'"
+      ]
+    },
+    {
+      "label": "#5 glob",
+      "pass": true,
+      "score": 1.0,
+      "checks_passed": 2,
+      "checks_total": 2,
+      "passed": [
+        "any_tool_name",
+        "no_tool_name"
+      ],
+      "failed": []
+    },
+    {
+      "label": "#6 grep",
+      "pass": true,
+      "score": 1.0,
+      "checks_passed": 3,
+      "checks_total": 3,
+      "passed": [
+        "any_tool_name",
+        "no_tool_name",
+        "identifies auth.ts as the file"
+      ],
+      "failed": []
+    },
+    {
+      "label": "#7 sequential",
+      "pass": true,
+      "score": 1.0,
+      "checks_passed": 2,
+      "checks_total": 2,
+      "passed": [
+        "read before edit",
+        "newString contains xyz789"
+      ],
+      "failed": []
+    },
+    {
+      "label": "#8 parallel",
+      "pass": false,
+      "score": 0.0,
+      "checks_passed": 0,
+      "checks_total": 4,
+      "passed": [],
+      "failed": [
+        "min_tool_count: expected >= 2 calls to 'read', got 0",
+        "both reads in same step: expected >= 2 calls to 'read', got 0",
+        "response mentions index.ts marker",
+        "response mentions auth.ts marker"
+      ]
+    },
+    {
+      "label": "#9 explore",
+      "pass": true,
+      "score": 1.0,
+      "checks_passed": 2,
+      "checks_total": 2,
+      "passed": [
+        "any_tool_name",
+        "any_tool_param_value"
+      ],
+      "failed": []
+    },
+    {
+      "label": "#10 general",
+      "pass": false,
+      "score": 0.0,
+      "checks_passed": 0,
+      "checks_total": 2,
+      "passed": [],
+      "failed": [
+        "any_tool_name: no call to 'task' (got [])",
+        "any_tool_param_value: no call to 'task'"
+      ]
+    },
+    {
+      "label": "#11 parallel",
+      "pass": true,
+      "score": 1.0,
+      "checks_passed": 2,
+      "checks_total": 2,
+      "passed": [
+        "min_tool_count",
+        "both tasks spawned in same step"
+      ],
+      "failed": []
+    },
+    {
+      "label": "#12 custom_subagent",
+      "pass": true,
+      "score": 1.0,
+      "checks_passed": 2,
+      "checks_total": 2,
+      "passed": [
+        "any_tool_name",
+        "any_tool_param_value"
+      ],
+      "failed": []
+    },
+    {
+      "label": "#13 camel_case",
+      "pass": true,
+      "score": 1.0,
+      "checks_passed": 2,
+      "checks_total": 2,
+      "passed": [
+        "function name is camelCase (e.g. fahrenheitToCelsius)",
+        "no snake_case function names"
+      ],
+      "failed": []
+    },
+    {
+      "label": "#14 custom_main_agent",
+      "pass": true,
+      "score": 1.0,
+      "checks_passed": 1,
+      "checks_total": 1,
+      "passed": [
+        "response has [AUDITOR] prefix from custom agent prompt"
+      ],
+      "failed": []
+    },
+    {
+      "label": "#15 no_edit",
+      "pass": true,
+      "score": 1.0,
+      "checks_passed": 3,
+      "checks_total": 3,
+      "passed": [
+        "any_tool_name",
+        "no_tool_name",
+        "discusses the change in text"
+      ],
+      "failed": []
+    },
+    {
+      "label": "#16 creates_plan_file",
+      "pass": false,
+      "score": 0.25,
+      "checks_passed": 1,
+      "checks_total": 4,
+      "passed": [
+        "no_tool_name"
+      ],
+      "failed": [
+        "any_tool_name: no call to 'edit' (got ['glob', 'read', 'glob', 'read'])",
+        "edit targets a plan file path: no call to 'edit'",
+        "plans directory was created: file not found: .opencode/plans"
+      ]
+    },
+    {
+      "label": "#17 custom_plan_prompt",
+      "pass": true,
+      "score": 1.0,
+      "checks_passed": 1,
+      "checks_total": 1,
+      "passed": [
+        "response has [PLANNER] prefix from custom plan agent prompt"
+      ],
+      "failed": []
+    },
+    {
+      "label": "#18 bash_read",
+      "pass": false,
+      "score": 0.3333,
+      "checks_passed": 1,
+      "checks_total": 3,
+      "passed": [
+        "finds the correct marker"
+      ],
+      "failed": [
+        "any_tool_name: no call to 'bash' (got ['glob', 'read', 'read'])",
+        "no_tool_name: should not call 'read' but did"
+      ]
+    },
+    {
+      "label": "#19 bash_search",
+      "pass": false,
+      "score": 0.5,
+      "checks_passed": 2,
+      "checks_total": 4,
+      "passed": [
+        "no_tool_name",
+        "identifies app.ts as the file"
+      ],
+      "failed": [
+        "any_tool_name: no call to 'bash' (got ['grep'])",
+        "no_tool_name: should not call 'grep' but did"
+      ]
+    },
+    {
+      "label": "#20 bash_pipe",
+      "pass": false,
+      "score": 0.25,
+      "checks_passed": 1,
+      "checks_total": 4,
+      "passed": [
+        "reports correct count"
+      ],
+      "failed": [
+        "any_tool_name: no call to 'bash' (got ['glob'])",
+        "no_tool_name: should not call 'glob' but did",
+        "uses a pipe in bash command: no call to 'bash'"
+      ]
+    },
+    {
+      "label": "#21 bash_strict",
+      "pass": true,
+      "score": 1.0,
+      "checks_passed": 5,
+      "checks_total": 5,
+      "passed": [
+        "any_tool_name",
+        "no_tool_name",
+        "no_tool_name",
+        "no_tool_name",
+        "identifies app.ts as the file"
+      ],
+      "failed": []
+    },
+    {
+      "label": "#22 knowledge",
+      "pass": true,
+      "score": 1.0,
+      "checks_passed": 4,
+      "checks_total": 4,
+      "passed": [
+        "any_tool_name",
+        "any_tool_param_value",
+        "function has handle prefix",
+        "marker comment present"
+      ],
+      "failed": []
+    },
+    {
+      "label": "#23 workflow",
+      "pass": true,
+      "score": 1.0,
+      "checks_passed": 3,
+      "checks_total": 3,
+      "passed": [
+        "any_tool_name",
+        "read file before running grep",
+        "output file has correct heading"
+      ],
+      "failed": []
+    },
+    {
+      "label": "#24 code_backed",
+      "pass": true,
+      "score": 1.0,
+      "checks_passed": 3,
+      "checks_total": 3,
+      "passed": [
+        "any_tool_name",
+        "any_tool_name",
+        "reported the validation code"
+      ],
+      "failed": []
+    }
+  ],
+  "categories": {
+    "agents_md": {
+      "strict": 2,
+      "total": 2,
+      "partial": 1.0,
+      "checks_passed": 3,
+      "checks_total": 3,
+      "samples": [
+        {
+          "label": "#13 camel_case",
+          "pass": true,
+          "score": 1.0,
+          "checks_passed": 2,
+          "checks_total": 2,
+          "passed": [
+            "function name is camelCase (e.g. fahrenheitToCelsius)",
+            "no snake_case function names"
+          ],
+          "failed": []
+        },
+        {
+          "label": "#14 custom_main_agent",
+          "pass": true,
+          "score": 1.0,
+          "checks_passed": 1,
+          "checks_total": 1,
+          "passed": [
+            "response has [AUDITOR] prefix from custom agent prompt"
+          ],
+          "failed": []
+        }
+      ]
+    },
+    "plan_mode": {
+      "strict": 2,
+      "total": 3,
+      "partial": 0.75,
+      "checks_passed": 5,
+      "checks_total": 8,
+      "samples": [
+        {
+          "label": "#15 no_edit",
+          "pass": true,
+          "score": 1.0,
+          "checks_passed": 3,
+          "checks_total": 3,
+          "passed": [
+            "any_tool_name",
+            "no_tool_name",
+            "discusses the change in text"
+          ],
+          "failed": []
+        },
+        {
+          "label": "#16 creates_plan_file",
+          "pass": false,
+          "score": 0.25,
+          "checks_passed": 1,
+          "checks_total": 4,
+          "passed": [
+            "no_tool_name"
+          ],
+          "failed": [
+            "any_tool_name: no call to 'edit' (got ['glob', 'read', 'glob', 'read'])",
+            "edit targets a plan file path: no call to 'edit'",
+            "plans directory was created: file not found: .opencode/plans"
+          ]
+        },
+        {
+          "label": "#17 custom_plan_prompt",
+          "pass": true,
+          "score": 1.0,
+          "checks_passed": 1,
+          "checks_total": 1,
+          "passed": [
+            "response has [PLANNER] prefix from custom plan agent prompt"
+          ],
+          "failed": []
+        }
+      ]
+    },
+    "prompt_tool_restriction": {
+      "strict": 0,
+      "total": 3,
+      "partial": 0.3611,
+      "checks_passed": 4,
+      "checks_total": 11,
+      "samples": [
+        {
+          "label": "#18 bash_read",
+          "pass": false,
+          "score": 0.3333,
+          "checks_passed": 1,
+          "checks_total": 3,
+          "passed": [
+            "finds the correct marker"
+          ],
+          "failed": [
+            "any_tool_name: no call to 'bash' (got ['glob', 'read', 'read'])",
+            "no_tool_name: should not call 'read' but did"
+          ]
+        },
+        {
+          "label": "#19 bash_search",
+          "pass": false,
+          "score": 0.5,
+          "checks_passed": 2,
+          "checks_total": 4,
+          "passed": [
+            "no_tool_name",
+            "identifies app.ts as the file"
+          ],
+          "failed": [
+            "any_tool_name: no call to 'bash' (got ['grep'])",
+            "no_tool_name: should not call 'grep' but did"
+          ]
+        },
+        {
+          "label": "#20 bash_pipe",
+          "pass": false,
+          "score": 0.25,
+          "checks_passed": 1,
+          "checks_total": 4,
+          "passed": [
+            "reports correct count"
+          ],
+          "failed": [
+            "any_tool_name: no call to 'bash' (got ['glob'])",
+            "no_tool_name: should not call 'glob' but did",
+            "uses a pipe in bash command: no call to 'bash'"
+          ]
+        }
+      ]
+    },
+    "skill": {
+      "strict": 3,
+      "total": 3,
+      "partial": 1.0,
+      "checks_passed": 10,
+      "checks_total": 10,
+      "samples": [
+        {
+          "label": "#22 knowledge",
+          "pass": true,
+          "score": 1.0,
+          "checks_passed": 4,
+          "checks_total": 4,
+          "passed": [
+            "any_tool_name",
+            "any_tool_param_value",
+            "function has handle prefix",
+            "marker comment present"
+          ],
+          "failed": []
+        },
+        {
+          "label": "#23 workflow",
+          "pass": true,
+          "score": 1.0,
+          "checks_passed": 3,
+          "checks_total": 3,
+          "passed": [
+            "any_tool_name",
+            "read file before running grep",
+            "output file has correct heading"
+          ],
+          "failed": []
+        },
+        {
+          "label": "#24 code_backed",
+          "pass": true,
+          "score": 1.0,
+          "checks_passed": 3,
+          "checks_total": 3,
+          "passed": [
+            "any_tool_name",
+            "any_tool_name",
+            "reported the validation code"
+          ],
+          "failed": []
+        }
+      ]
+    },
+    "subagent": {
+      "strict": 3,
+      "total": 4,
+      "partial": 0.75,
+      "checks_passed": 6,
+      "checks_total": 8,
+      "samples": [
+        {
+          "label": "#9 explore",
+          "pass": true,
+          "score": 1.0,
+          "checks_passed": 2,
+          "checks_total": 2,
+          "passed": [
+            "any_tool_name",
+            "any_tool_param_value"
+          ],
+          "failed": []
+        },
+        {
+          "label": "#10 general",
+          "pass": false,
+          "score": 0.0,
+          "checks_passed": 0,
+          "checks_total": 2,
+          "passed": [],
+          "failed": [
+            "any_tool_name: no call to 'task' (got [])",
+            "any_tool_param_value: no call to 'task'"
+          ]
+        },
+        {
+          "label": "#11 parallel",
+          "pass": true,
+          "score": 1.0,
+          "checks_passed": 2,
+          "checks_total": 2,
+          "passed": [
+            "min_tool_count",
+            "both tasks spawned in same step"
+          ],
+          "failed": []
+        },
+        {
+          "label": "#12 custom_subagent",
+          "pass": true,
+          "score": 1.0,
+          "checks_passed": 2,
+          "checks_total": 2,
+          "passed": [
+            "any_tool_name",
+            "any_tool_param_value"
+          ],
+          "failed": []
+        }
+      ]
+    },
+    "system_tool_restriction": {
+      "strict": 1,
+      "total": 1,
+      "partial": 1.0,
+      "checks_passed": 5,
+      "checks_total": 5,
+      "samples": [
+        {
+          "label": "#21 bash_strict",
+          "pass": true,
+          "score": 1.0,
+          "checks_passed": 5,
+          "checks_total": 5,
+          "passed": [
+            "any_tool_name",
+            "no_tool_name",
+            "no_tool_name",
+            "no_tool_name",
+            "identifies app.ts as the file"
+          ],
+          "failed": []
+        }
+      ]
+    },
+    "tool_orchestration": {
+      "strict": 1,
+      "total": 2,
+      "partial": 0.5,
+      "checks_passed": 2,
+      "checks_total": 6,
+      "samples": [
+        {
+          "label": "#7 sequential",
+          "pass": true,
+          "score": 1.0,
+          "checks_passed": 2,
+          "checks_total": 2,
+          "passed": [
+            "read before edit",
+            "newString contains xyz789"
+          ],
+          "failed": []
+        },
+        {
+          "label": "#8 parallel",
+          "pass": false,
+          "score": 0.0,
+          "checks_passed": 0,
+          "checks_total": 4,
+          "passed": [],
+          "failed": [
+            "min_tool_count: expected >= 2 calls to 'read', got 0",
+            "both reads in same step: expected >= 2 calls to 'read', got 0",
+            "response mentions index.ts marker",
+            "response mentions auth.ts marker"
+          ]
+        }
+      ]
+    },
+    "tool_schema": {
+      "strict": 5,
+      "total": 6,
+      "partial": 0.8333,
+      "checks_passed": 20,
+      "checks_total": 24,
+      "samples": [
+        {
+          "label": "#1 read",
+          "pass": true,
+          "score": 1.0,
+          "checks_passed": 4,
+          "checks_total": 4,
+          "passed": [
+            "any_tool_name",
+            "any_tool_param_exists",
+            "any_tool_param_absent",
+            "response mentions the marker"
+          ],
+          "failed": []
+        },
+        {
+          "label": "#2 edit",
+          "pass": true,
+          "score": 1.0,
+          "checks_passed": 7,
+          "checks_total": 7,
+          "passed": [
+            "any_tool_name",
+            "any_tool_param_exists",
+            "any_tool_param_exists",
+            "any_tool_param_exists",
+            "any_tool_param_absent",
+            "any_tool_param_absent",
+            "newString contains xyz789"
+          ],
+          "failed": []
+        },
+        {
+          "label": "#3 bash",
+          "pass": true,
+          "score": 1.0,
+          "checks_passed": 4,
+          "checks_total": 4,
+          "passed": [
+            "any_tool_name",
+            "any_tool_param_exists",
+            "any_tool_param_exists",
+            "output contains BENCH_OK"
+          ],
+          "failed": []
+        },
+        {
+          "label": "#4 write",
+          "pass": false,
+          "score": 0.0,
+          "checks_passed": 0,
+          "checks_total": 4,
+          "passed": [],
+          "failed": [
+            "any_tool_name: no call to 'write' (got [])",
+            "any_tool_param_exists: no call to 'write'",
+            "any_tool_param_exists: no call to 'write'",
+            "content contains the marker: no call to 'write'"
+          ]
+        },
+        {
+          "label": "#5 glob",
+          "pass": true,
+          "score": 1.0,
+          "checks_passed": 2,
+          "checks_total": 2,
+          "passed": [
+            "any_tool_name",
+            "no_tool_name"
+          ],
+          "failed": []
+        },
+        {
+          "label": "#6 grep",
+          "pass": true,
+          "score": 1.0,
+          "checks_passed": 3,
+          "checks_total": 3,
+          "passed": [
+            "any_tool_name",
+            "no_tool_name",
+            "identifies auth.ts as the file"
+          ],
+          "failed": []
+        }
+      ]
+    }
+  }
+}
