@@ -11,39 +11,47 @@ Usage:
     python run.py --timeout 120      # custom timeout
 """
 
-import json
 import subprocess
 import shutil
 import sys
 import argparse
 import time
 from pathlib import Path
-
-ROOT = Path(__file__).parent
-SAMPLES = ROOT / "samples.jsonl"
-PROJECTS = ROOT / "projects"
-RESULTS = ROOT / "results"
+from common import ROOT, PROJECTS, RESULTS, load
 
 DEFAULT_TIMEOUT = 180
 
 _originals: dict[str, dict[str, bytes]] = {}
 
+SKIP_DIRS = {"node_modules", "__pycache__"}
+
+
+def _files(path):
+    for p in path.rglob("*"):
+        if any(part in SKIP_DIRS for part in p.parts):
+            continue
+        if p.is_file():
+            yield p
+
 
 def snapshot(path):
     key = str(path)
     if key not in _originals:
-        _originals[key] = {
-            str(p): p.read_bytes() for p in path.rglob("*") if p.is_file()
-        }
+        _originals[key] = {str(p): p.read_bytes() for p in _files(path)}
 
 
 def restore(path):
     key = str(path)
     original = _originals.get(key, {})
-    for item in path.rglob("*"):
-        if item.is_file() and str(item) not in original:
-            item.unlink()
+    for item in _files(path):
+        if str(item) not in original:
+            try:
+                item.unlink()
+            except OSError:
+                pass
     for item in sorted(path.rglob("*"), reverse=True):
+        if any(part in SKIP_DIRS for part in item.parts):
+            continue
         if item.is_dir() and not any(item.iterdir()):
             try:
                 item.rmdir()
@@ -54,20 +62,6 @@ def restore(path):
         p.parent.mkdir(parents=True, exist_ok=True)
         if not p.exists() or p.read_bytes() != content:
             p.write_bytes(content)
-
-
-def load(args):
-    with open(SAMPLES) as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            sample = json.loads(line)
-            if args.id and str(sample["id"]) not in args.id:
-                continue
-            if args.category and sample["category"] != args.category:
-                continue
-            yield sample
 
 
 def run(sample, timeout):

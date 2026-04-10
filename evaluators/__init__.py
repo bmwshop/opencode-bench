@@ -18,7 +18,3 @@ def register(name):
 
 def get(name):
     return _registry.get(name)
-
-
-def available():
-    return sorted(_registry.keys())

@@ -14,14 +14,10 @@ import sys
 import argparse
 import importlib
 import pkgutil
-from pathlib import Path
 from dataclasses import dataclass, field
 
 import evaluators
-
-ROOT = Path(__file__).parent
-SAMPLES = ROOT / "samples.jsonl"
-RESULTS = ROOT / "results"
+from common import RESULTS, load
 
 
 def load_evaluators():
@@ -44,20 +40,6 @@ class Result:
     def score(self):
         total = len(self.passed) + len(self.failed)
         return len(self.passed) / total if total else 0.0
-
-
-def load(args):
-    with open(SAMPLES) as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            sample = json.loads(line)
-            if args.id and str(sample["id"]) not in args.id:
-                continue
-            if args.category and sample["category"] != args.category:
-                continue
-            yield sample
 
 
 def extract(path):
