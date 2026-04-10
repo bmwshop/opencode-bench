@@ -1,0 +1,28 @@
+# #16 creates_plan_file
+
+**Category:** plan_mode
+**Project:** plan_default
+
+## Capability
+
+Plan mode file creation. In plan mode, the model should write plans to `.opencode/plans/*.md` using the `edit` tool (not `write`). This tests whether the model understands the plan mode convention: it can create/edit markdown plan files in the designated directory, and uses `edit` (the only write-capable tool allowed) rather than `write`.
+
+## Setup
+
+The `plan_default` project permits `edit` only for paths matching `.opencode/plans/*.md`. The `write` tool has no explicit allow, so it defaults to denied.
+
+## Prompt (run with `--agent plan`)
+
+> Create a detailed plan for refactoring src/auth.ts to use JWT-based authentication.
+
+## Pass criteria
+
+- Model calls `edit` tool
+- The `filePath` parameter targets a plan file (matches `plans/.*\.md`)
+- Model does NOT use the `write` tool
+
+## Fail modes
+
+- Uses `write` instead of `edit` (write is not permitted in this project's plan mode config)
+- Creates the plan file outside of `.opencode/plans/` directory
+- Outputs the plan only as response text without persisting it to a file

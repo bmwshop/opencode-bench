@@ -7,6 +7,7 @@ Usage:
     python eval.py --id 1         # evaluate one sample
     python eval.py --id 1 --id 2  # evaluate multiple samples
     python eval.py --category tool_schema
+    python eval.py --category tool_schema --category subagent
 """
 
 import json
@@ -105,7 +106,7 @@ def evaluate(sample):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--id", action="append", help="Evaluate specific sample(s) by ID")
-    parser.add_argument("--category", help="Evaluate all samples in a category")
+    parser.add_argument("--category", action="append", help="Evaluate all samples in a category")
     args = parser.parse_args()
 
     load_evaluators()

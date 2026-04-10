@@ -7,6 +7,7 @@ Usage:
     python run.py --id 1             # run one sample
     python run.py --id 1 --id 2      # run multiple samples
     python run.py --category tool_schema
+    python run.py --category tool_schema --category subagent
     python run.py --clean            # wipe results first
     python run.py --timeout 120      # custom timeout
 """
@@ -119,7 +120,7 @@ def run(sample, timeout):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--id", action="append", help="Run specific sample(s) by ID")
-    parser.add_argument("--category", help="Run all samples in a category")
+    parser.add_argument("--category", action="append", help="Run all samples in a category")
     parser.add_argument("--clean", action="store_true", help="Wipe results first")
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT)
     args = parser.parse_args()

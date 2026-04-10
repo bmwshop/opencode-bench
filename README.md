@@ -1,11 +1,12 @@
 # opencode-bench
 
-A benchmark suite for evaluating the [opencode](https://github.com/nichochar/opencode) CLI agent. It tests whether the agent uses the right tools, passes correct parameters, orchestrates multi-step tasks properly, delegates to subagents, and follows project-specific instructions.
+A benchmark suite for evaluating LLM compatibility with the [opencode](https://github.com/nichochar/opencode) CLI agent. It tests whether a model uses the right tools, passes correct parameters, orchestrates multi-step tasks, delegates to subagents, follows project-specific instructions, respects mode constraints, obeys tool restrictions, and invokes skills.
 
 ## Prerequisites
 
 - Python 3.10+
 - `opencode` CLI installed and available in `PATH`
+- A configured model provider (the model under test)
 
 ## Quick Start
 
@@ -19,14 +20,16 @@ python eval.py
 
 ## Running Samples
 
-`run.py` sends prompts from `samples.jsonl` to `opencode run --format json` and saves the JSON traces to `results/`.
+`run.py` sends prompts from `data/samples.jsonl` to `opencode run --format json` and saves JSON traces to `results/`.
 
 ```bash
-python run.py                          # run all samples
-python run.py --id 1                   # run a single sample by ID
-python run.py --category tool_schema   # run all samples in a category
-python run.py --clean                  # wipe results/ before running
-python run.py --timeout 120            # custom per-sample timeout (default: 180s)
+python run.py                                              # run all samples
+python run.py --id 1                                       # run a single sample
+python run.py --id 1 --id 2                                # run multiple samples
+python run.py --category tool_schema                       # run one category
+python run.py --category tool_schema --category subagent   # run multiple categories
+python run.py --clean                                      # wipe results/ before running
+python run.py --timeout 120                                # custom per-sample timeout (default: 180s)
 ```
 
 ## Evaluating Results
@@ -34,9 +37,11 @@ python run.py --timeout 120            # custom per-sample timeout (default: 180
 `eval.py` replays the saved traces and checks them against the assertions defined in each sample.
 
 ```bash
-python eval.py                         # evaluate all
-python eval.py --id 1                  # evaluate one sample
-python eval.py --category tool_schema  # evaluate a category
+python eval.py                                             # evaluate all
+python eval.py --id 1                                      # evaluate one sample
+python eval.py --id 1 --id 2                               # evaluate multiple samples
+python eval.py --category tool_schema                      # evaluate one category
+python eval.py --category tool_schema --category subagent  # evaluate multiple categories
 ```
 
 Output shows pass/fail per sample, grouped by category, with a summary score.
@@ -44,35 +49,59 @@ Output shows pass/fail per sample, grouped by category, with a summary score.
 ## Project Structure
 
 ```
-samples.jsonl          # test definitions (prompts + checks)
-run.py                 # runner — executes samples via opencode CLI
-eval.py                # evaluator — scores traces against checks
-projects/              # working directories for each sample
-  default/             # shared project used by most samples
-  camel_case/          # project with AGENTS.md enforcing camelCase
-evaluators/            # check implementations (auto-registered)
-  tool/                # tool name and parameter checks
-  content/             # text and file content checks
-  orchestration/       # tool ordering and parallelism checks
-results/               # output traces (git-ignored)
+data/
+  samples.jsonl          # test definitions (prompts + checks)
+  specs/                 # per-sample documentation (capability, pass/fail criteria)
+    1_read.md
+    ...
+    24_code_backed.md
+run.py                   # runner — executes samples via opencode CLI
+eval.py                  # evaluator — scores traces against checks
+common.py                # shared constants and sample loader
+projects/                # working directories for each sample
+  default/               # shared project for tool_schema and tool_orchestration tests
+  multi_module/          # multi-package project for subagent delegation tests
+  camel_case/            # AGENTS.md enforcing camelCase naming
+  custom_subagent/       # custom reviewer subagent defined in opencode.json
+  custom_main_agent/     # custom primary agent with [AUDITOR] prefix
+  plan_default/          # plan mode with restricted edit permissions
+  custom_plan/           # custom plan agent prompt with [PLANNER] prefix
+  bash_only/             # prompt-based bash-only tool restriction
+  bash_strict/           # system-level tool restriction via permissions
+  skill_knowledge/       # knowledge-based skill (api-style conventions)
+  skill_workflow/        # workflow-based skill (review steps)
+  skill_code/            # code-backed skill (validate.sh script)
+evaluators/              # check implementations (auto-registered)
+  tool/                  # tool name and parameter checks
+  content/               # text and file content checks
+  orchestration/         # tool ordering and parallelism checks
+results/                 # output traces (git-ignored)
 ```
 
 ## Sample Categories
 
-| Category | What it tests |
-|---|---|
-| `tool_schema` | Correct tool names and parameter shapes (e.g. `filePath` not `path`) |
-| `tool_orchestration` | Sequential and parallel tool usage |
-| `subagent` | Delegation to explore/general subagents |
-| `agents_md` | Adherence to project-level `AGENTS.md` instructions |
+| Category | Samples | What it tests |
+|---|---|---|
+| `tool_schema` | #1-6 | Correct tool names and parameter shapes (e.g., `filePath` not `path`, `oldString` not `old_string`) |
+| `tool_orchestration` | #7-8 | Sequential tool chaining (read then edit) and parallel tool execution (two reads in one step) |
+| `subagent` | #9-12 | Delegation to built-in subagents (`explore`, `general`), parallel subagent spawning, and custom subagent invocation |
+| `agents_md` | #13-14 | Adherence to project-level `AGENTS.md` instructions and custom primary agent prompts |
+| `plan_mode` | #15-17 | Plan mode read-only enforcement, plan file creation in `.opencode/plans/`, and custom plan agent prompts |
+| `prompt_tool_restriction` | #18-20 | Obeying prompt-based instructions to use only `bash` when all tools are visible |
+| `system_tool_restriction` | #21 | Adapting to a reduced toolset when tools are hidden via permission config |
+| `skill` | #22-24 | Discovering and invoking skills: knowledge-based conventions, multi-step workflows, and code-backed scripts |
+
+## Per-Sample Documentation
+
+Each sample has a detailed spec in `data/specs/` describing the capability under test, project setup, exact prompt, pass criteria, and common failure modes. See any spec for the full format, e.g., `data/specs/1_read.md`.
 
 ## Adding a Sample
 
-Append a JSON line to `samples.jsonl`:
+1. Append a JSON line to `data/samples.jsonl`:
 
 ```json
 {
-  "id": 13,
+  "id": 25,
   "name": "my_test",
   "category": "tool_schema",
   "project": "default",
@@ -83,6 +112,10 @@ Append a JSON line to `samples.jsonl`:
 }
 ```
 
+2. Create a matching spec at `data/specs/25_my_test.md`.
+
+3. If the test needs a custom project environment, create it under `projects/` with an `opencode.json` (at minimum `{"permission": {"*": "allow"}}` to auto-approve tool use).
+
 ### Available Check Types
 
 **Tool checks** — verify tool usage:
@@ -90,14 +123,14 @@ Append a JSON line to `samples.jsonl`:
 - `no_tool_name` — no tool call matches `not_equals`
 - `any_tool_param_exists` — a tool call has the expected parameter
 - `any_tool_param_absent` — a tool call does *not* have a parameter
-- `any_tool_param_regex` — a tool parameter matches a regex
 - `any_tool_param_value` — a tool parameter equals an exact value
+- `any_tool_param_regex` — a tool parameter matches a regex
 - `min_tool_count` — at least N calls to a named tool
 
 **Content checks** — verify output:
-- `text_contains` — agent response contains a string
-- `file_regex` — a file written by the agent matches (or doesn't match) a regex
+- `text_contains` — agent response text matches a regex
+- `file_regex` — content written via `write`/`edit` tools matches (or doesn't match) a regex
 
 **Orchestration checks** — verify ordering:
 - `tool_before` — one tool was called before another
-- `tools_same_step` — multiple tool calls happened in the same step (parallel)
+- `tools_same_step` — multiple tool calls occurred in the same assistant turn (parallel execution)
