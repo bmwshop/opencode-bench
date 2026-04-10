@@ -17,7 +17,7 @@ The project's `opencode.json` sets `agent.plan.prompt` to: "You are a planning a
 
 ## Pass criteria
 
-- Response text contains the `[PLANNER]` prefix (regex `\[PLANNER\]`)
+- Response text contains the `[PLANNER]` prefix
 
 ## Fail modes
 

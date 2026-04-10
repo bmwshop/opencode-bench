@@ -52,9 +52,9 @@ Output shows pass/fail per sample, grouped by category, with a summary score.
 data/
   samples.jsonl          # test definitions (prompts + checks)
   specs/                 # per-sample documentation (capability, pass/fail criteria)
-    1_read.md
+    001_read.md
     ...
-    24_code_backed.md
+    024_code_backed.md
 run.py                   # runner — executes samples via opencode CLI
 eval.py                  # evaluator — scores traces against checks
 common.py                # shared constants and sample loader
@@ -93,7 +93,7 @@ results/                 # output traces (git-ignored)
 
 ## Per-Sample Documentation
 
-Each sample has a detailed spec in `data/specs/` describing the capability under test, project setup, exact prompt, pass criteria, and common failure modes. See any spec for the full format, e.g., `data/specs/1_read.md`.
+Each sample has a detailed spec in `data/specs/` describing the capability under test, project setup, exact prompt, pass criteria, and common failure modes. See any spec for the full format, e.g., `data/specs/001_read.md`.
 
 ## Adding a Sample
 
@@ -112,7 +112,7 @@ Each sample has a detailed spec in `data/specs/` describing the capability under
 }
 ```
 
-2. Create a matching spec at `data/specs/25_my_test.md`.
+2. Create a matching spec at `data/specs/025_my_test.md`.
 
 3. If the test needs a custom project environment, create it under `projects/` with an `opencode.json` (at minimum `{"permission": {"*": "allow"}}` to auto-approve tool use).
 

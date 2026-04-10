@@ -17,7 +17,7 @@ The project's `opencode.json` defines a primary agent named `"auditor"` with pro
 
 ## Pass criteria
 
-- Response text contains the `[AUDITOR]` prefix (regex `\[AUDITOR\]`)
+- Response text contains the `[AUDITOR]` prefix
 
 ## Fail modes
 
