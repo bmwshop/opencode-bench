@@ -1,7 +1,12 @@
 # #23 workflow
 
-- **Category:** skill
-- **Project:** skill_workflow
+## Category
+
+skill
+
+## Project
+
+skill_workflow
 
 ## Capability
 

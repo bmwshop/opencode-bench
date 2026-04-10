@@ -1,7 +1,12 @@
 # #9 explore
 
-- **Category:** subagent
-- **Project:** multi_module
+## Category
+
+subagent
+
+## Project
+
+multi_module
 
 ## Capability
 

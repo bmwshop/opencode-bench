@@ -1,7 +1,12 @@
 # #2 edit
 
-- **Category:** tool_schema
-- **Project:** default
+## Category
+
+tool_schema
+
+## Project
+
+default
 
 ## Capability
 

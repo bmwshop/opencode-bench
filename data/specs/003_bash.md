@@ -1,7 +1,12 @@
 # #3 bash
 
-- **Category:** tool_schema
-- **Project:** default
+## Category
+
+tool_schema
+
+## Project
+
+default
 
 ## Capability
 

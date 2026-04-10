@@ -1,7 +1,12 @@
 # #5 glob
 
-- **Category:** tool_schema
-- **Project:** default
+## Category
+
+tool_schema
+
+## Project
+
+default
 
 ## Capability
 

@@ -1,7 +1,12 @@
 # #1 read
 
-- **Category:** tool_schema
-- **Project:** default
+## Category
+
+tool_schema
+
+## Project
+
+default
 
 ## Capability
 

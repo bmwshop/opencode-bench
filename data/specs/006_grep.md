@@ -1,7 +1,12 @@
 # #6 grep
 
-- **Category:** tool_schema
-- **Project:** default
+## Category
+
+tool_schema
+
+## Project
+
+default
 
 ## Capability
 

@@ -1,7 +1,12 @@
 # #8 parallel
 
-- **Category:** tool_orchestration
-- **Project:** default
+## Category
+
+tool_orchestration
+
+## Project
+
+default
 
 ## Capability
 
