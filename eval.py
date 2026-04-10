@@ -18,7 +18,7 @@ import pkgutil
 from dataclasses import dataclass, field
 
 import evaluators
-from common import RESULTS, load
+from common import PROJECTS, RESULTS, load
 
 
 def load_evaluators():
@@ -87,12 +87,14 @@ def evaluate(sample):
     if not tools and not texts:
         return Result(label, sample["category"], failed=["empty trace"])
 
+    project = PROJECTS / sample.get("project", "default")
     result = Result(label, sample["category"])
     for chk in sample.get("checks", []):
         fn = evaluators.get(chk["type"])
         if not fn:
             result.failed.append(f"unknown check type: {chk['type']!r}")
             continue
+        chk["_project_dir"] = str(project)
         ok, reason = fn(tools, texts, chk)
         desc = chk.get("description", chk["type"])
         if ok:
