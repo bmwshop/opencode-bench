@@ -106,7 +106,7 @@ data/
   specs/                 # per-sample documentation (capability, pass/fail criteria)
     001_read.md
     ...
-    024_code_backed.md
+    025_todowrite.md
 run.py                   # runner — executes samples via opencode CLI
 eval.py                  # evaluator — scores traces against checks
 common.py                # shared constants and sample loader
@@ -135,7 +135,7 @@ captures/                # proxy request/response logs (git-ignored)
 
 | Category | Samples | What it tests |
 |---|---|---|
-| `tool_schema` | #1-6 | Correct tool names and parameter shapes (e.g., `filePath` not `path`, `oldString` not `old_string`) |
+| `tool_schema` | #1-6, 25 | Correct tool names and parameter shapes (e.g., `filePath` not `path`, `oldString` not `old_string`) |
 | `tool_orchestration` | #7-8 | Sequential tool chaining (read then edit) and parallel tool execution (two reads in one step) |
 | `subagent` | #9-12 | Delegation to built-in subagents (`explore`, `general`), parallel subagent spawning, and custom subagent invocation |
 | `agents_md` | #13-14 | Adherence to project-level `AGENTS.md` instructions and custom primary agent prompts |
@@ -154,7 +154,7 @@ Each sample has a detailed spec in `data/specs/` describing the capability under
 
 ```json
 {
-  "id": 25,
+  "id": 26,
   "name": "my_test",
   "category": "tool_schema",
   "project": "default",
@@ -165,7 +165,7 @@ Each sample has a detailed spec in `data/specs/` describing the capability under
 }
 ```
 
-2. Create a matching spec at `data/specs/025_my_test.md`.
+2. Create a matching spec at `data/specs/026_my_test.md`.
 
 3. If the test needs a custom project environment, create it under `projects/` with an `opencode.json` (at minimum `{"permission": {"*": "allow"}}` to auto-approve tool use).
 
@@ -188,6 +188,8 @@ Category and overall scores are averages of the per-sample scores.
 - `any_tool_param_value` — a tool parameter equals an exact value
 - `any_tool_param_regex` — a tool parameter matches a regex
 - `min_tool_count` — at least N calls to a named tool
+- `any_tool_param_array_min` — a tool parameter is an array with at least N items
+- `any_tool_param_array_item_fields` — every item in an array parameter has the required fields
 
 **Content checks** — verify output:
 - `text_contains` — agent response text matches a regex
