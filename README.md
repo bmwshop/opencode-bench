@@ -104,9 +104,9 @@ Captured request/response traces are written to `captures/` by switchyard (git-i
 data/
   samples.jsonl          # test definitions (prompts + checks)
   specs/                 # per-sample documentation (capability, pass/fail criteria)
-    001_read.md
+    001_camel_case.md
     ...
-    025_todowrite.md
+    025_write.md
 run.py                   # runner — executes samples via opencode CLI
 eval.py                  # evaluator — scores traces against checks
 common.py                # shared constants and sample loader
@@ -135,18 +135,18 @@ captures/                # proxy request/response logs (git-ignored)
 
 | Category | Samples | What it tests |
 |---|---|---|
-| `tool_schema` | #1-6, 25 | Correct tool names and parameter shapes (e.g., `filePath` not `path`, `oldString` not `old_string`) |
-| `tool_orchestration` | #7-8 | Sequential tool chaining (read then edit) and parallel tool execution (two reads in one step) |
-| `subagent` | #9-12 | Delegation to built-in subagents (`explore`, `general`), parallel subagent spawning, and custom subagent invocation |
-| `agents_md` | #13-14 | Adherence to project-level `AGENTS.md` instructions and custom primary agent prompts |
-| `plan_mode` | #15-17 | Plan mode read-only enforcement, plan file creation in `.opencode/plans/`, and custom plan agent prompts |
-| `prompt_tool_restriction` | #18-20 | Obeying prompt-based instructions to use only `bash` when all tools are visible |
-| `system_tool_restriction` | #21 | Adapting to a reduced toolset when tools are hidden via permission config |
-| `skill` | #22-24 | Discovering and invoking skills: knowledge-based conventions, multi-step workflows, and code-backed scripts |
+| `agents_md` | #1-2 | Adherence to project-level `AGENTS.md` instructions and custom primary agent prompts |
+| `plan_mode` | #3-5 | Plan mode read-only enforcement, plan file creation in `.opencode/plans/`, and custom plan agent prompts |
+| `prompt_tool_restriction` | #6-8 | Obeying prompt-based instructions to use only `bash` when all tools are visible |
+| `skill` | #9-11 | Discovering and invoking skills: knowledge-based conventions, multi-step workflows, and code-backed scripts |
+| `subagent` | #12-15 | Delegation to built-in subagents (`explore`, `general`), parallel subagent spawning, and custom subagent invocation |
+| `system_tool_restriction` | #16 | Adapting to a reduced toolset when tools are hidden via permission config |
+| `tool_orchestration` | #17-18 | Sequential tool chaining (read then edit) and parallel tool execution (two reads in one step) |
+| `tool_schema` | #19-25 | Correct tool names and parameter shapes (e.g., `filePath` not `path`, `oldString` not `old_string`) |
 
 ## Per-Sample Documentation
 
-Each sample has a detailed spec in `data/specs/` describing the capability under test, project setup, exact prompt, pass criteria, and common failure modes. See any spec for the full format, e.g., `data/specs/001_read.md`.
+Each sample has a detailed spec in `data/specs/` describing the capability under test, project setup, exact prompt, pass criteria, and common failure modes. See any spec for the full format, e.g., `data/specs/001_camel_case.md`.
 
 ## Adding a Sample
 

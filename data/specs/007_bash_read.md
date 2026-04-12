@@ -1,4 +1,4 @@
-# #18 bash_read
+# #7 bash_read
 
 ## Category
 
