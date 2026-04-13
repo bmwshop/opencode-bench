@@ -1,4 +1,4 @@
-# #6 bash_pipe
+# #12 bash_pipe
 
 ## Category
 

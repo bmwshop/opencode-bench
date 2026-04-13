@@ -1,4 +1,4 @@
-# #8 bash_search
+# #14 bash_search
 
 ## Category
 
@@ -10,7 +10,7 @@ bash_only
 
 ## Capability
 
-Prompt-based tool restriction -- content search via bash only. Similar to #7, but the task requires searching for a string across files. The model must use `bash grep` or `bash rg` instead of the native `grep` or `read` tools.
+Prompt-based tool restriction -- content search via bash only. Similar to #13, but the task requires searching for a string across files. The model must use `bash grep` or `bash rg` instead of the native `grep` or `read` tools.
 
 ## Setup
 

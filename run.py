@@ -2,6 +2,8 @@
 """
 Submit samples from samples.jsonl to opencode CLI and save traces to results/.
 
+Results are stored in results/{model_slug}/{timestamp}/ with a meta.json file.
+
 Usage:
     python run.py                    # run all samples
     python run.py --id 1             # run one sample
@@ -20,8 +22,9 @@ import shutil
 import sys
 import argparse
 import time
+from datetime import datetime, timezone
 from pathlib import Path
-from common import ROOT, PROJECTS, RESULTS, load
+from common import ROOT, PROJECTS, RESULTS, model_slug, load
 
 DEFAULT_TIMEOUT = 180
 
@@ -75,7 +78,7 @@ def _inject_proxy(cwd, provider, url):
     path.write_text(json.dumps(cfg, indent=2))
 
 
-def run(sample, timeout, model=None, proxy=None, provider=None):
+def run(sample, timeout, run_dir, model=None, proxy=None, provider=None):
     sid = sample["id"]
     name = sample.get("name", str(sid))
     project = sample.get("project", "default")
@@ -121,11 +124,11 @@ def run(sample, timeout, model=None, proxy=None, provider=None):
         print(f"\n  ERROR: {stderr.strip()}")
         sys.exit(1)
 
-    out = RESULTS / f"{sid}_{name}.jsonl"
+    out = run_dir / f"{sid}_{name}.jsonl"
     out.write_text(stdout)
 
     if stderr.strip():
-        (RESULTS / f"{sid}_{name}.err").write_text(stderr)
+        (run_dir / f"{sid}_{name}.err").write_text(stderr)
 
     lines = [l for l in stdout.strip().split("\n") if l.strip()]
     tools = sum(1 for l in lines if '"tool_use"' in l)
@@ -161,8 +164,6 @@ def main():
         shutil.rmtree(RESULTS)
         print("Cleaned results/\n")
 
-    RESULTS.mkdir(exist_ok=True)
-
     for d in PROJECTS.iterdir():
         if d.is_dir():
             snapshot(d)
@@ -172,9 +173,28 @@ def main():
         print("No matching samples found.")
         sys.exit(1)
 
+    now = datetime.now(timezone.utc)
+    slug = model_slug(args.model)
+    timestamp = now.strftime("%Y-%m-%dT%H-%M-%S")
+    run_dir = RESULTS / slug / timestamp
+    run_dir.mkdir(parents=True, exist_ok=True)
+
     provider = args.proxy_provider
     if args.proxy and not provider:
         provider = args.model.split("/")[0] if args.model else "nvidia"
+
+    meta = {
+        "model": args.model,
+        "model_slug": slug,
+        "date": now.strftime("%Y-%m-%dT%H:%M:%S"),
+        "timestamp": timestamp,
+        "timeout": args.timeout,
+        "samples": [s["id"] for s in samples],
+        "categories": sorted(set(s["category"] for s in samples)),
+        "proxy": args.proxy,
+        "argv": sys.argv,
+    }
+    (run_dir / "meta.json").write_text(json.dumps(meta, indent=2) + "\n")
 
     parts = []
     if args.model:
@@ -182,18 +202,19 @@ def main():
     if args.proxy:
         parts.append(f"proxy={args.proxy} ({provider})")
     label = f"{', '.join(parts)}, " if parts else ""
-    print(f"Running {len(samples)} sample(s) ({label}timeout={args.timeout}s)...\n")
+    print(f"Running {len(samples)} sample(s) ({label}timeout={args.timeout}s)")
+    print(f"Run dir: {run_dir}\n")
 
     ran = 0
     skipped = 0
     for sample in samples:
-        if run(sample, args.timeout, model=args.model, proxy=args.proxy, provider=provider):
+        if run(sample, args.timeout, run_dir, model=args.model, proxy=args.proxy, provider=provider):
             ran += 1
         else:
             skipped += 1
 
     print(f"\nDone. {ran} ran, {skipped} skipped")
-    print(f"Results in {RESULTS}/")
+    print(f"Results in {run_dir}/")
 
 
 if __name__ == "__main__":

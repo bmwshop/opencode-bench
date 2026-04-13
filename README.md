@@ -20,7 +20,9 @@ python eval.py
 
 ## Running Samples
 
-`run.py` sends prompts from `data/samples.jsonl` to `opencode run --format json` and saves JSON traces to `results/`.
+`run.py` sends prompts from `data/samples.jsonl` to `opencode run --format json` and saves JSON traces to `results/{model_slug}/{timestamp}/`.
+
+Each run creates an isolated directory with a `meta.json` file recording the model, date, timeout, sample IDs, and full command-line arguments. This lets you run the same benchmark against different models (or the same model multiple times) without overwriting previous results.
 
 ```bash
 python run.py                                              # run all samples
@@ -30,18 +32,22 @@ python run.py --category tool_schema                       # run one category
 python run.py --category tool_schema --category subagent   # run multiple categories
 python run.py --model provider/model-name                  # override the default model
 python run.py --proxy http://localhost:4000/v1             # route through a logging proxy
-python run.py --clean                                      # wipe results/ before running
+python run.py --clean                                      # wipe all results first
 python run.py --timeout 120                                # custom per-sample timeout (default: 180s)
 ```
 
-The `--model` flag is optional. When omitted, opencode uses its configured default. The format is `provider/model-id` (e.g. `anthropic/claude-opus-4-6`).
+The `--model` flag is optional. When omitted, opencode uses its configured default and traces go under `results/default/`. The format is `provider/model-id` (e.g. `anthropic/claude-opus-4-6`), which gets converted to a directory slug (`anthropic_claude-opus-4-6`).
 
 ## Evaluating Results
 
-`eval.py` replays the saved traces and checks them against the assertions defined in each sample.
+`eval.py` replays the saved traces and checks them against the assertions defined in each sample. It auto-discovers the latest run, or you can target a specific model or run.
 
 ```bash
-python eval.py                                             # evaluate all
+python eval.py                                             # evaluate latest run (any model)
+python eval.py --model nvidia/nemotron                     # evaluate latest run for a model
+python eval.py --model nvidia/nemotron --run 2026-04-12T18-30-00  # evaluate exact run
+python eval.py --list                                      # list all available runs
+python eval.py --list --model nvidia/nemotron              # list runs for a model
 python eval.py --id 1                                      # evaluate one sample
 python eval.py --id 1 --id 2                               # evaluate multiple samples
 python eval.py --category tool_schema                      # evaluate one category
@@ -50,6 +56,8 @@ python eval.py --format json                               # machine-readable JS
 python eval.py --format json --output scores.json          # JSON output to stdout and file
 python eval.py --output scores.txt                         # text output to stdout and file
 ```
+
+When using `--format json`, the output includes a `"run"` object with the model name, date, and timestamp from `meta.json`, making each score file self-describing.
 
 Output shows scores at three levels:
 
@@ -106,7 +114,7 @@ data/
   specs/                 # per-sample documentation (capability, pass/fail criteria)
     001_camel_case.md
     ...
-    025_write.md
+    033_write.md
 run.py                   # runner — executes samples via opencode CLI
 eval.py                  # evaluator — scores traces against checks
 common.py                # shared constants and sample loader
@@ -127,7 +135,12 @@ evaluators/              # check implementations (auto-registered)
   tool/                  # tool name and parameter checks
   content/               # text and file content checks
   orchestration/         # tool ordering and parallelism checks
-results/                 # output traces (git-ignored)
+results/                 # output traces, organized by model and timestamp (git-ignored)
+  {model_slug}/          #   e.g. nvidia_nemotron/
+    {timestamp}/         #     e.g. 2026-04-12T18-30-00/
+      meta.json          #       run metadata (model, date, args, etc.)
+      1_camel_case.jsonl #       per-sample trace files
+      ...
 captures/                # proxy request/response logs (git-ignored)
 ```
 
@@ -136,13 +149,15 @@ captures/                # proxy request/response logs (git-ignored)
 | Category | Samples | What it tests |
 |---|---|---|
 | `agents_md` | #1-2 | Adherence to project-level `AGENTS.md` instructions and custom primary agent prompts |
-| `plan_mode` | #3-5 | Plan mode read-only enforcement, plan file creation in `.opencode/plans/`, and custom plan agent prompts |
-| `prompt_tool_restriction` | #6-8 | Obeying prompt-based instructions to use only `bash` when all tools are visible |
-| `skill` | #9-11 | Discovering and invoking skills: knowledge-based conventions, multi-step workflows, and code-backed scripts |
-| `subagent` | #12-15 | Delegation to built-in subagents (`explore`, `general`), parallel subagent spawning, and custom subagent invocation |
-| `system_tool_restriction` | #16 | Adapting to a reduced toolset when tools are hidden via permission config |
-| `tool_orchestration` | #17-18 | Sequential tool chaining (read then edit) and parallel tool execution (two reads in one step) |
-| `tool_schema` | #19-25 | Correct tool names and parameter shapes (e.g., `filePath` not `path`, `oldString` not `old_string`) |
+| `distractor` | #3-5 | Precision under noise — file listing, verbose context, and misleading causal narratives |
+| `efficiency` | #6-8 | Minimal tool usage — batch edits, direct file creation, and editing without reading first |
+| `plan_mode` | #9-11 | Plan mode read-only enforcement, plan file creation in `.opencode/plans/`, and custom plan agent prompts |
+| `prompt_tool_restriction` | #12-14 | Obeying prompt-based instructions to use only `bash` when all tools are visible |
+| `skill` | #15-17 | Discovering and invoking skills: knowledge-based conventions, multi-step workflows, and code-backed scripts |
+| `subagent` | #18-21 | Delegation to built-in subagents (`explore`, `general`), parallel subagent spawning, and custom subagent invocation |
+| `system_tool_restriction` | #22 | Adapting to a reduced toolset when tools are hidden via permission config |
+| `tool_orchestration` | #23-24 | Sequential tool chaining (read then edit) and parallel tool execution (two reads in one step) |
+| `tool_schema` | #25-33 | Correct tool names and parameter shapes, and irrelevance detection (e.g., `filePath` not `path`, `oldString` not `old_string`) |
 
 ## Per-Sample Documentation
 
@@ -154,7 +169,7 @@ Each sample has a detailed spec in `data/specs/` describing the capability under
 
 ```json
 {
-  "id": 26,
+  "id": 34,
   "name": "my_test",
   "category": "tool_schema",
   "project": "default",
@@ -165,7 +180,7 @@ Each sample has a detailed spec in `data/specs/` describing the capability under
 }
 ```
 
-2. Create a matching spec at `data/specs/026_my_test.md`.
+2. Create a matching spec at `data/specs/034_my_test.md`.
 
 3. If the test needs a custom project environment, create it under `projects/` with an `opencode.json` (at minimum `{"permission": {"*": "allow"}}` to auto-approve tool use).
 
@@ -188,8 +203,11 @@ Category and overall scores are averages of the per-sample scores.
 - `any_tool_param_value` — a tool parameter equals an exact value
 - `any_tool_param_regex` — a tool parameter matches a regex
 - `min_tool_count` — at least N calls to a named tool
+- `max_tool_count` — at most N tool calls (optionally filtered by tool name)
+- `tool_count_score` — pass if total tool calls ≤ limit; reports optimal vs actual count
 - `any_tool_param_array_min` — a tool parameter is an array with at least N items
 - `any_tool_param_array_item_fields` — every item in an array parameter has the required fields
+- `no_tool_any` — no tool calls were made at all (irrelevance detection)
 
 **Content checks** — verify output:
 - `text_contains` — agent response text matches a regex

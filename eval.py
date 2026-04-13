@@ -3,7 +3,10 @@
 Evaluate opencode benchmark traces against checks defined in samples.jsonl.
 
 Usage:
-    python eval.py                        # evaluate all
+    python eval.py                        # evaluate latest run
+    python eval.py --model nvidia/nemotron          # latest run for model
+    python eval.py --model nvidia/nemotron --run 2026-04-12T18-30-00
+    python eval.py --list                 # show all available runs
     python eval.py --id 1                 # evaluate one sample
     python eval.py --id 1 --id 2          # evaluate multiple samples
     python eval.py --category tool_schema
@@ -20,7 +23,7 @@ import pkgutil
 from dataclasses import dataclass, field
 
 import evaluators
-from common import PROJECTS, RESULTS, load
+from common import PROJECTS, RESULTS, load, resolve_run, list_runs, model_slug
 
 
 def load_evaluators():
@@ -76,11 +79,11 @@ def extract(path):
     return tools, texts
 
 
-def evaluate(sample):
+def evaluate(sample, run_dir):
     sid = sample["id"]
     name = sample.get("name", str(sid))
     label = f"#{sid} {name}"
-    trace = RESULTS / f"{sid}_{name}.jsonl"
+    trace = run_dir / f"{sid}_{name}.jsonl"
 
     if not trace.exists():
         return Result(label, sample["category"], failed=["trace not found"])
@@ -111,7 +114,7 @@ def _checks(r):
     return len(r.passed) + len(r.failed)
 
 
-def build(results):
+def build(results, meta=None):
     by_cat = {}
     for r in results:
         by_cat.setdefault(r.category, []).append(r)
@@ -156,7 +159,7 @@ def build(results):
         key=lambda s: int(s["label"].split()[0].lstrip("#")),
     )
 
-    return {
+    data = {
         "strict": sum_strict,
         "total": total,
         "partial": round(sum_partial / total, 4) if total else 0.0,
@@ -166,9 +169,26 @@ def build(results):
         "categories": categories,
     }
 
+    if meta:
+        data["run"] = {
+            "model": meta.get("model"),
+            "date": meta.get("date"),
+            "timestamp": meta.get("timestamp"),
+            "model_slug": meta.get("model_slug"),
+        }
+
+    return data
+
 
 def format_text(data):
     lines = []
+
+    run_info = data.get("run")
+    if run_info:
+        model = run_info.get("model") or run_info.get("model_slug") or "unknown"
+        date = run_info.get("date", "unknown")
+        lines.append(f"  Run: {model}  ({date})")
+
     for cat, info in sorted(data["categories"].items()):
         lines.append(f"\n{'='*60}")
         lines.append(f"  {cat}  (strict {info['strict']}/{info['total']}, "
@@ -198,13 +218,69 @@ def format_json(data):
     return json.dumps(data, indent=2)
 
 
+def print_list(model_filter=None):
+    """Print available runs grouped by model."""
+    slug_filter = model_slug(model_filter) if model_filter else None
+
+    found = False
+    current_model = None
+    for ms, ts, meta in list_runs():
+        if slug_filter and ms != slug_filter:
+            continue
+        if ms != current_model:
+            if current_model is not None:
+                print()
+            print(f"  {ms}")
+            current_model = ms
+        n = len(meta.get("samples", []))
+        timeout = meta.get("timeout", "?")
+        print(f"    {ts}  ({n} samples, {timeout}s timeout)")
+        found = True
+
+    if not found:
+        print("No runs found.")
+        sys.exit(1)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--id", action="append", help="Evaluate specific sample(s) by ID")
     parser.add_argument("--category", action="append", help="Evaluate all samples in a category")
+    parser.add_argument("--model", "-m", help="Model in provider/model format (selects latest run for model)")
+    parser.add_argument("--run", help="Timestamp of a specific run (requires --model)")
+    parser.add_argument("--list", action="store_true", help="List available runs and exit")
     parser.add_argument("--format", choices=["text", "json"], default="text", help="Output format")
     parser.add_argument("--output", "-o", help="Write results to file (in addition to stdout)")
     args = parser.parse_args()
+
+    if args.list:
+        print_list(args.model)
+        return
+
+    if args.run and not args.model:
+        print("ERROR: --run requires --model to identify which model's run to use")
+        sys.exit(1)
+
+    run_dir = resolve_run(model=args.model, run=args.run)
+    if not run_dir:
+        if args.model:
+            print(f"No runs found for model {args.model!r}")
+        else:
+            print("No runs found. Run benchmarks first with: python run.py")
+        sys.exit(1)
+
+    meta_path = run_dir / "meta.json"
+    meta = {}
+    if meta_path.exists():
+        try:
+            meta = json.loads(meta_path.read_text())
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    model_label = meta.get("model") or run_dir.parent.name
+    date_label = meta.get("date") or run_dir.name
+    print(f"Evaluating: {model_label}  ({date_label})")
+    print(f"Run dir:    {run_dir}\n")
 
     load_evaluators()
 
@@ -213,15 +289,19 @@ def main():
         print("No matching samples found.")
         sys.exit(1)
 
-    results = [evaluate(s) for s in samples]
-    data = build(results)
+    results = [evaluate(s, run_dir) for s in samples]
+    data = build(results, meta=meta)
     output = format_json(data) if args.format == "json" else format_text(data)
     print(output)
+
+    scores_path = run_dir / "scores.json"
+    scores_path.write_text(json.dumps(data, indent=2) + "\n")
+    print(f"Scores saved to {scores_path}")
 
     if args.output:
         with open(args.output, "w") as f:
             f.write(output + "\n")
-        print(f"Results written to {args.output}")
+        print(f"Results also written to {args.output}")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-# #16 bash_strict
+# #22 bash_strict
 
 ## Category
 
@@ -10,7 +10,7 @@ bash_strict
 
 ## Capability
 
-System-level tool restriction via permissions. Unlike the prompt-based tests (#6-8), this test uses opencode's permission system to actually hide tools from the model's tool definitions. The `opencode.json` denies `read`, `edit`, `glob`, `grep`, `task`, and `todowrite` -- these tools are removed from the API call entirely. The model never sees them and must work with only `bash`. This tests the model's ability to adapt to a genuinely limited toolset.
+System-level tool restriction via permissions. Unlike the prompt-based tests (#12-14), this test uses opencode's permission system to actually hide tools from the model's tool definitions. The `opencode.json` denies `read`, `edit`, `glob`, `grep`, `task`, and `todowrite` -- these tools are removed from the API call entirely. The model never sees them and must work with only `bash`. This tests the model's ability to adapt to a genuinely limited toolset.
 
 ## Setup
 
@@ -34,6 +34,6 @@ The `bash_strict` project's `opencode.json` sets permissions to deny all tools e
 - Gives up without trying bash
 - Identifies the wrong file
 
-## Difference from #8
+## Difference from #14
 
-Sample #8 tests prompt-based restriction (tools are visible but the model is told not to use them). This sample tests system-level restriction (tools are genuinely removed from the model's context). A model that passes #16 but fails #8 has good tool adaptation but poor instruction following.
+Sample #14 tests prompt-based restriction (tools are visible but the model is told not to use them). This sample tests system-level restriction (tools are genuinely removed from the model's context). A model that passes #22 but fails #14 has good tool adaptation but poor instruction following.
