@@ -10,7 +10,7 @@ custom_subagent
 
 ## Capability
 
-Custom subagent invocation. Opencode allows projects to define custom subagents in `opencode.json` with specific names, descriptions, and modes. The model should recognize when a task matches a custom subagent's description and delegate to it using the correct `subagent_type` name. This tests the model's ability to discover and use project-specific agent configurations.
+Custom subagent routing (delegation choice only). Opencode allows projects to define custom subagents in `opencode.json` with specific names, descriptions, and modes. The model should recognize when a task matches a custom subagent's description and delegate to it using the correct `subagent_type` name. This sample tests **only** the delegation choice -- it verifies the model selects the correct custom subagent, not the outcome of the delegated task.
 
 ## Setup
 

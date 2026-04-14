@@ -119,7 +119,7 @@ run.py                   # runner — executes samples via opencode CLI
 eval.py                  # evaluator — scores traces against checks
 common.py                # shared constants and sample loader
 projects/                # working directories for each sample
-  default/               # shared project for tool_schema and tool_orchestration tests
+  default/               # shared project for distractor, efficiency, tool_orchestration, and tool_schema tests
   multi_module/          # multi-package project for subagent delegation tests
   camel_case/            # AGENTS.md enforcing camelCase naming
   custom_subagent/       # custom reviewer subagent defined in opencode.json

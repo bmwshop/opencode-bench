@@ -14,7 +14,7 @@ Tool schema adherence for the `write` tool. Opencode uses `write` (not `create` 
 
 ## Setup
 
-No special project files needed. The prompt asks to create a new file.
+The file `src/id.txt` does not exist in the fixture. The prompt asks to create it from scratch.
 
 ## Prompt
 
@@ -27,8 +27,8 @@ No special project files needed. The prompt asks to create a new file.
 3. `no_tool_name` not equals `edit` -- does not use edit for new file creation
 4. `any_tool_param_exists` `write.filePath` -- uses the correct file path parameter
 5. `any_tool_param_exists` `write.content` -- uses the correct content parameter
-6. `any_tool_param_regex` `write.content` matches `BENCH_7d4e` -- content contains the marker
-7. `file_regex` `src/id.txt` matches `BENCH_7d4e` -- file on disk contains the marker
+6. `any_tool_param_regex` `write.content` matches `^BENCH_7d4e\s*$` -- content is exactly `BENCH_7d4e`
+7. `file_regex` `src/id.txt` matches `^BENCH_7d4e\s*$` -- file contains exactly `BENCH_7d4e`
 
 ## Shortest path
 
@@ -39,4 +39,5 @@ No special project files needed. The prompt asks to create a new file.
 - Uses `bash echo >` instead of the native `write` tool
 - Uses `edit` tool (meant for modifying existing files, not creating new ones)
 - Hallucinated tool name like `create_file` or `touch`
+- Writes the marker with extra content (e.g., explanatory comments or newlines) -- fails anchored exact check
 - Calls write with correct params but the file is not created on disk

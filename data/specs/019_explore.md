@@ -10,7 +10,7 @@ multi_module
 
 ## Capability
 
-Subagent delegation -- using the `task` tool with `subagent_type: "explore"`. Opencode provides a built-in `explore` subagent optimized for read-only codebase exploration. When asked to investigate or summarize a subsystem, the model should delegate to this subagent rather than manually reading files one by one.
+Subagent routing (delegation choice only) -- using the `task` tool with `subagent_type: "explore"`. Opencode provides a built-in `explore` subagent optimized for read-only codebase exploration. When asked to investigate or summarize a subsystem, the model should delegate to this subagent rather than manually reading files one by one. This sample tests **only** the delegation choice -- it verifies the model selects the `explore` subagent, not the quality of the exploration output.
 
 ## Setup
 

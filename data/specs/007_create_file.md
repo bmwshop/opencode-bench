@@ -32,8 +32,8 @@ Uses the default project. The file `src/config.ts` does not exist. The prompt as
 2. `max_tool_count` max 1 -- exactly one tool call
 3. `no_tool_name` not `read` -- does not read any files
 4. `no_tool_name` not `glob` -- does not glob the directory
-5. `tool_count_score` optimal 1, limit 2 -- 1 call is optimal, 2 acceptable, 3+ fails
-6. `file_regex` `src/config.ts` matches `DEBUG` -- file on disk contains the constant
+5. `tool_count_score` optimal 1, limit 1 -- optimal and maximum is 1 tool call
+6. `file_regex` `src/config.ts` matches `^export const DEBUG = true\s*$` -- file contains exactly `export const DEBUG = true`
 
 ## Shortest path
 

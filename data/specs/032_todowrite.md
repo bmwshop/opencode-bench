@@ -25,7 +25,7 @@ No special project files needed beyond the default project. The prompt reference
 1. `any_tool_name` equals `todowrite` -- model calls the todowrite tool
 2. `no_tool_name` not equals `write` -- does not write a todo file instead of calling the tool
 3. `any_tool_param_exists` `todowrite.todos` -- provides the required todos parameter
-4. `any_tool_param_array_min` `todowrite.todos` min 3 -- array contains at least 3 items
+4. `any_tool_param_array_min` `todowrite.todos` min 4 -- array contains all 4 requested items
 5. `any_tool_param_array_item_fields` `todowrite.todos` fields `["content", "status", "priority"]` -- each item has the correct object shape
 
 ## Shortest path

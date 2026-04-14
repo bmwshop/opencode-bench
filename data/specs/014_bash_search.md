@@ -20,12 +20,13 @@ Same `bash_only` project. The file `src/app.ts` contains the string `NEEDLE_abc1
 
 > Which file in src/ contains the string NEEDLE_abc1?
 
-## Pass criteria (4 checks)
+## Pass criteria (5 checks)
 
 1. `any_tool_name` equals `bash` -- model uses bash
 2. `no_tool_name` not `grep` -- does not use the native grep tool
 3. `no_tool_name` not `read` -- does not use the native read tool
-4. `text_contains` `app\.ts` -- response identifies the correct file
+4. `any_tool_param_regex` `bash.command` matches `NEEDLE_abc1` -- bash command searches for the actual needle string
+5. `text_contains` `app\.ts` -- response identifies the correct file
 
 ## Shortest path
 
@@ -35,4 +36,5 @@ Same `bash_only` project. The file `src/app.ts` contains the string `NEEDLE_abc1
 
 - Uses the native `grep` tool -- ignores the bash-only restriction
 - Uses `read` to manually inspect files one by one
+- Runs a bash command that doesn't actually search for `NEEDLE_abc1` (e.g., hardcodes the answer)
 - Identifies the wrong file

@@ -25,16 +25,19 @@ The file `src/app.ts` contains 2 TODO comments.
 
 > Review src/app.ts
 
-## Pass criteria (4 checks)
+## Pass criteria (7 checks)
 
 1. `any_tool_name` equals `skill` -- model invokes the skill tool
 2. `any_tool_param_value` `skill.name` equals `review-flow` -- loads the correct skill
 3. `tool_before` `read` then `bash` -- reads the file before running the grep command
-4. `file_regex` `review.md` matches `# Review` -- output file has the required heading
+4. `any_tool_name` equals `write` -- model creates the output file
+5. `file_regex` `review.md` matches `# Review` -- output file has the required heading
+6. `file_regex` `review.md` matches `app\.ts` -- review mentions the target filename
+7. `file_regex` `review.md` matches `TODO Count.*2` -- review includes the correct TODO count
 
 ## Shortest path
 
-**3 tool calls**: `skill` (with `name: "review-flow"`), `read` src/app.ts, then `bash` (grep for TODOs). The `tool_before` check requires both `read` and `bash` with read first. The fixture already has `review.md` with the correct heading, so the `file_regex` check passes without the model writing it.
+**4 tool calls**: `skill` (with `name: "review-flow"`) → `read src/app.ts` → `bash grep -c "TODO" src/app.ts` → `write review.md` with the review findings. The `tool_before` check requires `read` before `bash`. The file `review.md` does not exist in the fixture, so the model must create it. No `max_tool_count` check constrains the upper bound.
 
 ## Fail modes
 
@@ -42,3 +45,5 @@ The file `src/app.ts` contains 2 TODO comments.
 - Loads the skill but doesn't follow the step order (e.g., runs grep before reading)
 - Doesn't create the `review.md` output file
 - Creates the output file but with wrong format (missing `# Review` heading)
+- Writes a generic review without the target filename in the heading
+- Omits or miscounts the TODO count (fixture has exactly 2)

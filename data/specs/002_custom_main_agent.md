@@ -20,9 +20,10 @@ The project's `opencode.json` defines a primary agent named `"auditor"` with pro
 
 > Review src/app.ts for security issues.
 
-## Pass criteria (1 check)
+## Pass criteria (2 checks)
 
-1. `text_contains` `\[AUDITOR\]` -- response includes the `[AUDITOR]` prefix
+1. `any_tool_name` equals `read` -- model reads the file before reviewing
+2. `text_contains` `\[AUDITOR\]` -- response includes the `[AUDITOR]` prefix
 
 ## Shortest path
 
@@ -32,3 +33,4 @@ The project's `opencode.json` defines a primary agent named `"auditor"` with pro
 
 - Responds without the `[AUDITOR]` prefix -- indicates the custom agent prompt was ignored
 - Prefixes with something else (e.g., `[SECURITY]`) -- misinterprets the instruction
+- Responds about security issues without reading `src/app.ts` first -- hallucinates instead of inspecting the code
