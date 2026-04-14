@@ -8,6 +8,14 @@ distractor
 
 default
 
+## Contract
+
+completion
+
+## Surface
+
+tools
+
 ## Capability
 
 Distractor resistance -- architectural noise. The prompt front-loads a detailed paragraph describing the project's authentication module, utilities module, test files, and entry point before stating the actual task: read the version string from the entry point. The model must filter signal from noise and avoid reading files mentioned only as context.

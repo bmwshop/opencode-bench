@@ -8,6 +8,14 @@ tool_schema
 
 default
 
+## Contract
+
+completion
+
+## Surface
+
+tools
+
 ## Capability
 
 Tool schema adherence for the `todowrite` tool. Opencode exposes a `todowrite` tool that accepts a `todos` parameter -- an array of objects each containing `content`, `status`, and `priority` fields. When explicitly asked to create a task list, the model should use `todowrite` rather than responding with plain text.

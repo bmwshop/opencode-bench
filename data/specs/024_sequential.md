@@ -8,6 +8,14 @@ tool_orchestration
 
 default
 
+## Contract
+
+completion
+
+## Surface
+
+tools
+
 ## Capability
 
 Sequential tool execution -- the model must chain tools in the correct order when the task has a natural dependency. Reading a file before editing it is a common pattern in coding agents. This test verifies the model calls `read` before `edit`, not the other way around or in parallel.

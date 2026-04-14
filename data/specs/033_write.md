@@ -8,6 +8,14 @@ tool_schema
 
 default
 
+## Contract
+
+completion
+
+## Surface
+
+tools
+
 ## Capability
 
 Tool schema adherence for the `write` tool. Opencode uses `write` (not `create` or `create_file`) with `filePath` and `content` parameters. This test verifies the model uses the correct tool and parameter names for file creation, and that the written content matches exactly.

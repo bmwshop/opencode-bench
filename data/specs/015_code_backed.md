@@ -8,6 +8,14 @@ skill
 
 skill_code
 
+## Contract
+
+completion
+
+## Surface
+
+skills
+
 ## Capability
 
 Code-backed skill execution. Skills in opencode can include sibling code files alongside the `SKILL.md`. This test verifies the model loads a skill that references an executable script (`validate.sh`), runs it via bash, and reports the output. The skill's instructions tell the model to run a validation script located in the skill's own directory.

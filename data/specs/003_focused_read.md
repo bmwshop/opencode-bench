@@ -8,6 +8,14 @@ distractor
 
 default
 
+## Contract
+
+completion
+
+## Surface
+
+tools
+
 ## Capability
 
 Distractor resistance -- precision under noise. The prompt mentions multiple source files and test files, but the task only requires reading one. The model must resist the temptation to read extra files, grep for markers, or delegate to a subagent. This tests whether the model can extract the precise action from a noisy prompt.

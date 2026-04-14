@@ -8,6 +8,14 @@ tool_schema
 
 default
 
+## Contract
+
+completion
+
+## Surface
+
+tools
+
 ## Capability
 
 Tool schema adherence for the `read` tool. Opencode exposes a `read` tool with the parameter `filePath` (camelCase). Models trained on other coding agents may hallucinate a `path` parameter instead. This test verifies the model uses the correct opencode-native parameter name and successfully retrieves file content.

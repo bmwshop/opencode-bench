@@ -8,6 +8,14 @@ agents_md
 
 custom_main_agent
 
+## Contract
+
+routing
+
+## Surface
+
+agents
+
 ## Capability
 
 Custom primary agent prompt adherence. Opencode allows projects to define custom primary agents in `opencode.json` with custom system prompts, selectable via `opencode run --agent <name>`. This test verifies the model follows instructions from a custom agent's prompt, specifically a formatting directive that should appear in every response.

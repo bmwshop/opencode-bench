@@ -8,6 +8,14 @@ subagent
 
 multi_module
 
+## Contract
+
+routing
+
+## Surface
+
+subagents
+
 ## Capability
 
 Subagent routing (delegation choice only) -- using the `task` tool with `subagent_type: "general"`. Opencode's `general` subagent has full read/write capabilities, suitable for refactoring tasks. When explicitly asked to "delegate" a write-heavy task, the model should spawn a general-purpose subagent rather than doing the work directly. This sample tests **only** the delegation choice -- it verifies the model selects the `general` subagent, not the outcome of the refactoring.

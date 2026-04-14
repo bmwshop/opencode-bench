@@ -8,6 +8,14 @@ prompt_tool_restriction
 
 bash_only
 
+## Contract
+
+completion
+
+## Surface
+
+permissions
+
 ## Capability
 
 Prompt-based tool restriction -- shell pipes. This extends the bash-only restriction to a task that naturally calls for `glob` (counting files by pattern). The model must accomplish this using bash with a pipe (e.g., `ls src/*.ts | wc -l` or `find src -name '*.ts' | wc -l`), testing both tool restriction adherence and shell proficiency.

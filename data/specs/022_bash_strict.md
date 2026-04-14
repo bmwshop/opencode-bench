@@ -8,6 +8,14 @@ system_tool_restriction
 
 bash_strict
 
+## Contract
+
+completion
+
+## Surface
+
+permissions
+
 ## Capability
 
 System-level tool restriction via permissions. Unlike the prompt-based tests (#12-14), this test uses opencode's permission system to actually hide tools from the model's tool definitions. The `opencode.json` denies `read`, `edit`, `glob`, `grep`, `task`, and `todowrite` -- these tools are removed from the API call entirely. The model never sees them and must work with only `bash`. This tests the model's ability to adapt to a genuinely limited toolset.

@@ -16,7 +16,9 @@ Usage:
     python run.py --timeout 120      # custom timeout
 """
 
+import atexit
 import json
+import signal
 import subprocess
 import shutil
 import sys
@@ -31,6 +33,16 @@ DEFAULT_TIMEOUT = 180
 _originals: dict[str, dict[str, bytes]] = {}
 
 SKIP_DIRS = {"node_modules", "__pycache__"}
+
+
+def _cleanup():
+    for key in list(_originals):
+        restore(Path(key))
+
+
+atexit.register(_cleanup)
+signal.signal(signal.SIGINT, lambda *_: sys.exit(1))
+signal.signal(signal.SIGTERM, lambda *_: sys.exit(1))
 
 
 def _files(path):
@@ -138,6 +150,13 @@ def run(sample, timeout, run_dir, model=None, proxy=None, provider=None):
 
 
 def main():
+    subprocess.run(
+        ["git", "checkout", "--", "projects/"],
+        cwd=ROOT,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--id", action="append", help="Run specific sample(s) by ID")
     parser.add_argument("--category", action="append", help="Run all samples in a category")

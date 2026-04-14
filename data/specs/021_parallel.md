@@ -8,6 +8,14 @@ subagent
 
 multi_module
 
+## Contract
+
+routing
+
+## Surface
+
+subagents
+
 ## Capability
 
 Parallel subagent delegation -- spawning multiple `task` calls in a single step. Opencode supports parallel tool calls, and this extends to subagent delegation. When two independent investigations are requested simultaneously, the model should spawn both subagents in the same turn rather than waiting for one to complete before starting the other.

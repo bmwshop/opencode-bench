@@ -8,6 +8,14 @@ tool_orchestration
 
 default
 
+## Contract
+
+completion
+
+## Surface
+
+tools
+
 ## Capability
 
 Parallel tool execution -- the model should issue multiple independent tool calls within a single step when explicitly asked. Opencode supports parallel tool use (multiple tool calls in the same assistant turn). This test verifies the model can read two files simultaneously rather than sequentially.

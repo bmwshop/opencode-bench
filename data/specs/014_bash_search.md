@@ -8,6 +8,14 @@ prompt_tool_restriction
 
 bash_only
 
+## Contract
+
+completion
+
+## Surface
+
+permissions
+
 ## Capability
 
 Prompt-based tool restriction -- content search via bash only. Similar to #13, but the task requires searching for a string across files. The model must use `bash grep` or `bash rg` instead of the native `grep` or `read` tools.

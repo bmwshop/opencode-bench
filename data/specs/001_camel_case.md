@@ -8,6 +8,14 @@ agents_md
 
 camel_case
 
+## Contract
+
+completion
+
+## Surface
+
+agents
+
 ## Capability
 
 AGENTS.md instruction following. Opencode automatically injects the contents of a project's `AGENTS.md` file into the model's system prompt. This test verifies the model reads and obeys project-specific style conventions defined in AGENTS.md, even when they contradict language defaults (Python's PEP 8 snake_case convention).

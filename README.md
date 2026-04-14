@@ -159,6 +159,32 @@ captures/                # proxy request/response logs (git-ignored)
 | `tool_orchestration` | #23-24 | Sequential tool chaining (read then edit) and parallel tool execution (two reads in one step) |
 | `tool_schema` | #25-33 | Correct tool names and parameter shapes, and irrelevance detection (e.g., `filePath` not `path`, `oldString` not `old_string`) |
 
+## Contract Types
+
+Each sample has a `contract` field that declares what the checks verify:
+
+| Contract | Count | Meaning |
+|---|---|---|
+| `completion` | 27 | Checks verify the actual task outcome — file content on disk, extracted values in response, correct tool arguments, or correct command execution |
+| `routing` | 6 | Checks verify only the delegation or prompt-adherence choice — correct tool/subagent selected, correct prefix in response — without validating the outcome of the delegated work |
+
+Routing samples: #2, #10, #18, #19, #20, #21. All other samples are completion.
+
+This distinction is useful for stratified scoring: routing tests measure whether the model *knows which tool to use*, while completion tests measure whether it *uses the tool correctly*.
+
+## Surface Types
+
+Each sample has a `surface` field identifying the opencode capability being tested:
+
+| Surface | Count | What it covers |
+|---|---|---|
+| `tools` | 17 | Core tool usage — correct tool selection, parameter schemas, parallel/sequential orchestration, distractor resistance, efficiency, and irrelevance detection |
+| `agents` | 2 | Project-level `AGENTS.md` instruction following and custom primary agent prompts |
+| `modes` | 3 | Plan mode constraints — file creation in `.opencode/plans/`, read-only enforcement, custom plan agent prompts |
+| `permissions` | 4 | Tool restriction adherence — prompt-based (`bash_only`) and system-level (permission config) |
+| `skills` | 3 | Skill discovery and invocation — knowledge-based conventions, multi-step workflows, code-backed scripts |
+| `subagents` | 4 | Delegation to subagents — built-in (`explore`, `general`), custom, and parallel spawning |
+
 ## Per-Sample Documentation
 
 Each sample has a detailed spec in `data/specs/` describing the capability under test, project setup, exact prompt, pass criteria, and common failure modes. See any spec for the full format, e.g., `data/specs/001_camel_case.md`.
@@ -173,6 +199,8 @@ Each sample has a detailed spec in `data/specs/` describing the capability under
   "name": "my_test",
   "category": "tool_schema",
   "project": "default",
+  "contract": "completion",
+  "surface": "tools",
   "prompt": "Read src/index.ts",
   "checks": [
     {"type": "any_tool_name", "equals": "read"}

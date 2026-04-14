@@ -8,6 +8,14 @@ tool_schema
 
 default
 
+## Contract
+
+completion
+
+## Surface
+
+tools
+
 ## Capability
 
 Irrelevance detection -- recognizing when no tool is needed. When the user asks a general knowledge question that doesn't require reading or modifying project files, the model should respond in text without invoking any tool. This tests restraint: all opencode tools are visible in the system prompt, but none are relevant to the query.

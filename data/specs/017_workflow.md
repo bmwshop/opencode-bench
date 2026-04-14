@@ -8,6 +8,14 @@ skill
 
 skill_workflow
 
+## Contract
+
+completion
+
+## Surface
+
+skills
+
 ## Capability
 
 Workflow-based skill execution. Some skills define multi-step procedures rather than just conventions. This test verifies the model loads a workflow skill and follows its prescribed sequence of steps: (1) read the target file, (2) run a bash command to count TODOs, (3) write findings to a specific output file with a required format.

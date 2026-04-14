@@ -8,6 +8,14 @@ plan_mode
 
 plan_default
 
+## Contract
+
+completion
+
+## Surface
+
+modes
+
 ## Capability
 
 Plan mode read-only enforcement. Opencode's built-in `plan` agent restricts the model to read-only operations -- it can read files and discuss changes, but cannot edit source files directly. Only plan markdown files under `.opencode/plans/*.md` are writable. This test verifies the model respects these restrictions even when the prompt explicitly asks for an edit.

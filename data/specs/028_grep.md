@@ -8,6 +8,14 @@ tool_schema
 
 default
 
+## Contract
+
+completion
+
+## Surface
+
+tools
+
 ## Capability
 
 Tool selection -- choosing the `grep` tool for content search. When asked to find a string inside files, the model should use opencode's native `grep` tool rather than `bash grep` or reading files one by one. This also tests that the model correctly identifies the file containing the needle.

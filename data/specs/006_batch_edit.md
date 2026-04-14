@@ -8,6 +8,14 @@ efficiency
 
 default
 
+## Contract
+
+completion
+
+## Surface
+
+tools
+
 ## Capability
 
 Tool call efficiency -- multi-edit without unnecessary steps. When the prompt provides exact old and new strings for multiple replacements in the same file, the model should minimise the total number of tool calls. This tests whether the model can identify the most concise approach to multi-step mutations.

@@ -8,6 +8,14 @@ tool_schema
 
 default
 
+## Contract
+
+completion
+
+## Surface
+
+tools
+
 ## Capability
 
 Tool schema adherence for the `edit` tool. Opencode's edit tool uses camelCase parameters (`filePath`, `oldString`, `newString`). Models may hallucinate snake_case variants (`old_string`, `new_string`) from other frameworks. This test verifies correct parameter naming and that the edit payload contains the intended replacement value.

@@ -8,6 +8,14 @@ tool_schema
 
 default
 
+## Contract
+
+completion
+
+## Surface
+
+tools
+
 ## Capability
 
 Targeted irrelevance detection -- resisting the temptation to call `read` when the question is about general concepts, not this project's files. This is a harder variant of #29 (`irrelevance`): the prompt names a function (`verify`) and module type (`auth module`) that both literally exist in the project's `src/auth.ts`, creating a strong false signal that the model should read that file.

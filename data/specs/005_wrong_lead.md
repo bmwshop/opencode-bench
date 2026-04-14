@@ -8,6 +8,14 @@ distractor
 
 default
 
+## Contract
+
+completion
+
+## Surface
+
+tools
+
 ## Capability
 
 Distractor resistance -- misleading causal narrative. The prompt describes a bug in `src/auth.ts` (verify returning false), mentions the user has already inspected the logic, and then asks about the TOKEN value in `src/utils.ts`. The phrase "before I dig into auth.ts further" subtly nudges the model toward reading auth.ts. The model must resist this pull and go straight to utils.ts.

@@ -8,6 +8,14 @@ efficiency
 
 default
 
+## Contract
+
+completion
+
+## Surface
+
+tools
+
 ## Capability
 
 Tool call efficiency -- direct file creation without exploration. When asked to create a new file with specified content, the model should call `write` once. There is no need to glob to "check the directory," read existing files to "match style," or use bash to verify the path. This tests whether the model can act directly on a creation request.

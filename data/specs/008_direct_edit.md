@@ -8,6 +8,14 @@ efficiency
 
 default
 
+## Contract
+
+completion
+
+## Surface
+
+tools
+
 ## Capability
 
 Tool call efficiency -- performing a text replacement when all information is provided. When the prompt gives the exact file path, old string, and new string, the model should complete the task in as few tool calls as possible. This tests whether the model can identify the most direct path to the result.

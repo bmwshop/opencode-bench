@@ -8,6 +8,14 @@ plan_mode
 
 plan_default
 
+## Contract
+
+completion
+
+## Surface
+
+modes
+
 ## Capability
 
 Plan mode file creation. When plan mode is active and no plan file exists yet, the opencode plan mode prompt instructs the model to create the plan using the `write` tool at the path `.opencode/plans/<timestamp>-<slug>.md`. This tests whether the model follows that instruction and writes to the correct directory.

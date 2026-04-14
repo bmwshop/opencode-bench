@@ -8,6 +8,14 @@ plan_mode
 
 custom_plan
 
+## Contract
+
+routing
+
+## Surface
+
+modes
+
 ## Capability
 
 Custom plan agent prompt adherence. Opencode allows overriding the plan agent's prompt in `opencode.json` via `agent.plan.prompt`. This test verifies the model follows the custom prompt's formatting directive while still operating in plan mode. The challenge is that the built-in plan mode system reminder (`plan.txt`) contains strong read-only instructions that may overshadow the custom prompt.

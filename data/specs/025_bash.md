@@ -8,6 +8,14 @@ tool_schema
 
 default
 
+## Contract
+
+completion
+
+## Surface
+
+tools
+
 ## Capability
 
 Tool schema adherence for the `bash` tool. Opencode's bash tool requires both a `command` parameter (the shell command to run) and a `description` parameter (a short human-readable summary of what the command does). This test verifies the model provides both required parameters.

@@ -8,6 +8,14 @@ skill
 
 skill_knowledge
 
+## Contract
+
+completion
+
+## Surface
+
+skills
+
 ## Capability
 
 Knowledge-based skill invocation. Opencode supports skills -- reusable instruction bundles defined as `SKILL.md` files with YAML frontmatter. Skill names and descriptions are injected into the system prompt, and the model uses the `skill` tool to load the full content on demand. This test verifies the model recognizes when a skill is relevant, loads it, and follows its conventions when generating code.

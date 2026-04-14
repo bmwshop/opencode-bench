@@ -8,6 +8,14 @@ tool_schema
 
 default
 
+## Contract
+
+completion
+
+## Surface
+
+tools
+
 ## Capability
 
 Tool selection -- choosing the `glob` tool for file-pattern discovery. When asked to find files matching a pattern, the model should use opencode's native `glob` tool rather than falling back to `bash` with `find` or `ls`. This tests whether the model understands which opencode tool fits the task.
