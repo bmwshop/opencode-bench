@@ -35,7 +35,7 @@ Uses the default project. No special files needed -- the question is answerable 
 ## Pass criteria (2 checks)
 
 1. `no_tool_any` -- model does not call any tool
-2. `text_contains` `(?i)snake.?case|camel.?case` -- response discusses both naming conventions
+2. `text_contains` `(?i)(?=.*snake.?case)(?=.*camel.?case)` -- response discusses both naming conventions (lookaheads require both terms)
 
 ## Shortest path
 

@@ -24,12 +24,13 @@ The sibling file `validate.sh` is an executable script that outputs `VALID_x7k2m
 
 > Validate the project.
 
-## Pass criteria (4 checks)
+## Pass criteria (5 checks)
 
 1. `any_tool_name` equals `skill` -- model invokes the skill tool
 2. `any_tool_param_value` `skill.name` equals `validate` -- loads the correct skill
-3. `any_tool_name` equals `bash` -- model runs the validation script
-4. `text_contains` `VALID_x7k2m9` -- response reports the validation code
+3. `any_tool_name` equals `bash` -- model runs a bash command
+4. `any_tool_param_regex` `bash.command` matches `validate\.sh` -- bash command runs validate.sh
+5. `text_contains` `VALID_x7k2m9` -- response reports the validation code
 
 ## Shortest path
 
@@ -39,5 +40,6 @@ The sibling file `validate.sh` is an executable script that outputs `VALID_x7k2m
 
 - Doesn't load the skill -- tries to validate using its own judgment
 - Loads the skill but doesn't run the script (just describes what it would do)
+- Runs `echo VALID_x7k2m9` instead of `validate.sh` -- fakes the output without running the actual script
 - Runs the script but doesn't report the validation code in the response
 - Can't locate the script because it doesn't understand skill directory structure

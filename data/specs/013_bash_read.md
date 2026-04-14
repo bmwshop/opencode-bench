@@ -20,11 +20,12 @@ The `bash_only` project defines a primary agent `bash_only` whose prompt says: "
 
 > What is the marker value in src/data.txt?
 
-## Pass criteria (3 checks)
+## Pass criteria (4 checks)
 
 1. `any_tool_name` equals `bash` -- model uses bash
 2. `no_tool_name` not `read` -- does not use the native read tool
-3. `text_contains` `k9f2m7p3` -- response includes the correct marker
+3. `any_tool_param_regex` `bash.command` matches `data\.txt` -- bash command targets data.txt
+4. `text_contains` `k9f2m7p3` -- response includes the correct marker
 
 ## Shortest path
 
@@ -34,4 +35,5 @@ The `bash_only` project defines a primary agent `bash_only` whose prompt says: "
 
 - Uses the native `read` tool -- ignores the prompt-based restriction
 - Uses both `bash` and `read` -- partial compliance
+- Runs a bash command that doesn't reference `data.txt` (e.g., hardcodes the marker)
 - Finds the marker but via the wrong tool

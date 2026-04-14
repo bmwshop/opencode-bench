@@ -25,7 +25,7 @@ Same `bash_only` project. The `src/` directory contains exactly 3 `.ts` files: `
 1. `any_tool_name` equals `bash` -- model uses bash
 2. `no_tool_name` not `glob` -- does not use the native glob tool
 3. `any_tool_param_regex` `bash.command` matches `\|` -- command contains a pipe
-4. `any_tool_param_regex` `bash.command` matches `src|\.ts` -- bash command targets `src/` or `.ts` files
+4. `any_tool_param_regex` `bash.command` matches `(?=.*src)(?=.*\.ts)` -- bash command references both `src/` and `.ts`
 5. `text_contains` `3` -- response reports the correct count
 
 ## Shortest path
@@ -36,5 +36,5 @@ Same `bash_only` project. The `src/` directory contains exactly 3 `.ts` files: `
 
 - Uses the native `glob` tool -- ignores the bash-only restriction
 - Uses bash but without a pipe (e.g., just `ls src/*.ts` and counts visually)
-- Runs a bash command that doesn't reference `src/` or `.ts` files (e.g., hardcodes the answer)
+- Runs a bash command that references only `src/` or only `.ts` but not both (e.g., `echo 3`)
 - Reports the wrong count
