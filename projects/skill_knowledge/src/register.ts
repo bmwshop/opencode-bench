@@ -1,8 +1,9 @@
 import { Request } from 'express';
 import { validate, registerUser } from '../services/auth';
 
+// API_HANDLER
 export const handleRegister = async (req: Request): Promise<{ ok: boolean; data: any }> => {
-  // API_HANDLER
+  
   try {
     const { email, password } = req.body;
     const validationError = await validate({ email, password });

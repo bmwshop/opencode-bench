@@ -25,6 +25,10 @@ The `multi_module` project has a realistic multi-package structure with `package
 1. `any_tool_name` equals `task` -- model delegates via the task tool
 2. `any_tool_param_value` `task.subagent_type` equals `explore` -- selects the explore subagent
 
+## Shortest path
+
+**1 tool call**: `task` with `subagent_type: "explore"`. No tool call checks constrain the upper bound.
+
 ## Fail modes
 
 - Manually reads files one by one instead of delegating to the explore subagent

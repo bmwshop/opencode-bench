@@ -31,6 +31,10 @@ The sibling file `validate.sh` is an executable script that outputs `VALID_x7k2m
 3. `any_tool_name` equals `bash` -- model runs the validation script
 4. `text_contains` `VALID_x7k2m9` -- response reports the validation code
 
+## Shortest path
+
+**2 tool calls**: `skill` (with `name: "validate"`), then `bash` to run `validate.sh`. Both are required by checks. No tool call checks constrain the upper bound.
+
 ## Fail modes
 
 - Doesn't load the skill -- tries to validate using its own judgment

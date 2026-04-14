@@ -27,6 +27,10 @@ The project contains `src/index.ts` with marker `8f3a2b1c` and `src/auth.ts` wit
 3. `text_contains` `8f3a2b1c` -- response includes the index.ts marker
 4. `text_contains` `b7e1d930` -- response includes the auth.ts marker
 
+## Shortest path
+
+**2 tool calls in 1 model turn**: two parallel `read` calls. The `tools_same_step` check requires both in the same turn. No tool call checks constrain the upper bound.
+
 ## Fail modes
 
 - Reads files sequentially in separate steps (ignores "at the same time")

@@ -35,6 +35,10 @@ Uses the default project. The file `src/config.ts` does not exist. The prompt as
 5. `tool_count_score` optimal 1, limit 2 -- 1 call is optimal, 2 acceptable, 3+ fails
 6. `file_regex` `src/config.ts` matches `DEBUG` -- file on disk contains the constant
 
+## Shortest path
+
+**1 tool call**: `write` to create `src/config.ts`. The file doesn't exist in the fixture, so `filetime.assert` is skipped. `max_tool_count` is set to 1.
+
 ## Fail modes
 
 - Globs `src/` to check directory contents before writing -- unnecessary exploration

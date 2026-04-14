@@ -31,6 +31,10 @@ The project contains `src/utils.ts` with `export const TOKEN = "abc123"`.
 7. `any_tool_param_regex` `edit.newString` matches `xyz789` -- replacement value is correct
 8. `file_regex` `src/utils.ts` matches `xyz789` -- file on disk contains the new token value
 
+## Shortest path
+
+**2 tool calls**: `read` src/utils.ts, then `edit`. The edit tool's `filetime.assert` enforces the read at runtime. No tool call checks constrain the upper bound.
+
 ## Fail modes
 
 - Uses snake_case parameter names (`old_string`, `new_string`) from other agent conventions

@@ -10,13 +10,19 @@ default
 
 ## Capability
 
-Tool call efficiency -- editing directly when all information is provided. When the prompt gives the exact file path, old string, and new string, the model should call `edit` once without reading the file first. This tests whether the model avoids procedural waste (unnecessary `read` before `edit`) when the prompt already supplies everything needed.
+Tool call efficiency -- performing a text replacement when all information is provided. When the prompt gives the exact file path, old string, and new string, the model should complete the task in as few tool calls as possible. This tests whether the model can identify the most direct path to the result.
 
 ## Design rationale
 
-Many models have a learned pattern of "read first, then edit" regardless of whether reading is necessary. This is often correct (you need to see the file to know what to change), but when the prompt provides the exact old and new strings verbatim, reading first is pure waste -- it adds latency, cost, and an extra round trip. The prompt explicitly says "don't read the file first" to remove any ambiguity.
+Many models have a learned "read first, then edit" pattern. This is often correct -- you need to see the file to know what to change. But when the prompt already supplies the exact old and new strings, a single `bash` call with `sed` accomplishes the task in one step. The `edit` tool, by contrast, requires a prior `read` (enforced at runtime by `filetime.assert`), making the minimum path with `edit` two calls.
 
-The `tool_count_score` check provides a graduated metric: 1 call is optimal, 2 is acceptable (model read first despite being told not to), 3+ fails. This allows distinguishing "slightly inefficient" from "wildly inefficient" in the output.
+The test is **tool-agnostic**: it does not require or forbid any specific tool. Instead it scores purely on call count via `tool_count_score`. This avoids conflicts with the `edit` tool's read-before-edit runtime enforcement -- the model can freely choose bash/sed (1 call, optimal) or read + edit (2 calls, acceptable).
+
+| Strategy | Calls | Score |
+|---|---|---|
+| 1 bash call with `sed` | 1 | optimal |
+| read + edit | 2 | acceptable (at limit) |
+| read + edit + verify | 3+ | fail |
 
 ## Setup
 
@@ -24,20 +30,21 @@ Uses the default project. The file `src/utils.ts` contains `export const TOKEN =
 
 ## Prompt
 
-> In src/utils.ts, replace the line `export const TOKEN = "abc123"` with `export const TOKEN = "xyz789"`. You have all the info you need -- don't read the file first.
+> In src/utils.ts, replace the exact string `abc123` with `xyz789`. Everything you need is in this message -- do it in a single step.
 
-## Pass criteria (6 checks)
+## Pass criteria (3 checks)
 
-1. `any_tool_name` equals `edit` -- uses the edit tool
-2. `any_tool_param_regex` `edit.newString` matches `xyz789` -- correct replacement value
-3. `no_tool_name` not `read` -- does not read the file first
-4. `max_tool_count` max 1 -- exactly one tool call
-5. `tool_count_score` optimal 1, limit 2 -- 1 call is optimal, 2 acceptable, 3+ fails
-6. `file_regex` `src/utils.ts` matches `xyz789` -- file on disk contains the new value
+1. `max_tool_count` max 2 -- at most 2 tool calls
+2. `tool_count_score` optimal 1, limit 2 -- 1 bash/sed call is optimal, 2 (read + edit) acceptable
+3. `file_regex` `src/utils.ts` matches `xyz789` -- file on disk contains the new value
+
+## Shortest path
+
+**1 tool call**: a single `bash` call with `sed` to replace `abc123` with `xyz789`. The `bash` tool has no prerequisites. `max_tool_count` allows up to 2.
 
 ## Fail modes
 
-- Calls `read` on `src/utils.ts` before editing -- procedural waste, ignores "don't read the file first"
-- Calls `edit` correctly but also calls `read` after to verify -- unnecessary verification
-- Calls `bash cat` to inspect the file first -- circumvents native tools and wastes a call
-- Uses `grep` to find the old value before editing -- the prompt already provides it
+- Uses 3+ tool calls (read + edit + verify, or grep + edit + read) -- excessive steps
+- Calls `edit` without reading first -- tool will error at runtime due to `filetime.assert`
+- Uses `grep` to find the old value before replacing -- the prompt already provides it
+- Replacement fails on disk (wrong `oldString`, wrong file path, etc.)

@@ -30,6 +30,10 @@ No special project files needed. The prompt asks to create a new file.
 6. `any_tool_param_regex` `write.content` matches `BENCH_7d4e` -- content contains the marker
 7. `file_regex` `src/id.txt` matches `BENCH_7d4e` -- file on disk contains the marker
 
+## Shortest path
+
+**1 tool call**: `write` with `filePath` and `content`. The file doesn't exist, so `filetime.assert` is skipped. No tool call checks constrain the upper bound.
+
 ## Fail modes
 
 - Uses `bash echo >` instead of the native `write` tool

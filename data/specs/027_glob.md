@@ -25,6 +25,10 @@ The project contains test files (`src/auth.test.ts`, `src/utils.test.ts`) that m
 1. `any_tool_name` equals `glob` -- model calls the `glob` tool
 2. `no_tool_name` not `bash` -- does not fall back to shell commands
 
+## Shortest path
+
+**1 tool call**: `glob` with a pattern like `**/*.test.ts`. No prerequisites. No tool call checks constrain the upper bound.
+
 ## Fail modes
 
 - Uses `bash find` or `bash ls` instead of the native `glob` tool

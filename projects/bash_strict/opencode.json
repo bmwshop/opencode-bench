@@ -2,11 +2,21 @@
   "$schema": "https://opencode.ai/config.json",
   "permission": {
     "bash": "allow",
-    "read": { "*": "deny" },
-    "edit": { "*": "deny" },
-    "glob": { "*": "deny" },
-    "grep": { "*": "deny" },
-    "task": { "*": "deny" },
+    "read": {
+      "*": "deny"
+    },
+    "edit": {
+      "*": "deny"
+    },
+    "glob": {
+      "*": "deny"
+    },
+    "grep": {
+      "*": "deny"
+    },
+    "task": {
+      "*": "deny"
+    },
     "todowrite": "deny"
   },
   "agent": {
@@ -14,6 +24,13 @@
       "mode": "primary",
       "description": "Agent with only bash tool available.",
       "prompt": "Accomplish tasks using the tools available to you."
+    }
+  },
+  "provider": {
+    "nvidia": {
+      "options": {
+        "baseURL": "http://localhost:4000/v1"
+      }
     }
   }
 }

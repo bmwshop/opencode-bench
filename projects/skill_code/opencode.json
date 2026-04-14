@@ -1,5 +1,18 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "permission": { "*": "allow" },
-  "skills": { "paths": [".opencode/skills"] }
+  "permission": {
+    "*": "allow"
+  },
+  "skills": {
+    "paths": [
+      ".opencode/skills"
+    ]
+  },
+  "provider": {
+    "nvidia": {
+      "options": {
+        "baseURL": "http://localhost:4000/v1"
+      }
+    }
+  }
 }

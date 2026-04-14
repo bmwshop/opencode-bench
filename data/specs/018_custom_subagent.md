@@ -25,6 +25,10 @@ The project's `opencode.json` defines a custom subagent named `"reviewer"` with 
 1. `any_tool_name` equals `task` -- model delegates via the task tool
 2. `any_tool_param_value` `task.subagent_type` equals `reviewer` -- selects the custom reviewer subagent
 
+## Shortest path
+
+**1 tool call**: `task` with `subagent_type: "reviewer"`. No tool call checks constrain the upper bound.
+
 ## Fail modes
 
 - Uses a built-in subagent type (`"explore"` or `"general"`) instead of the custom `"reviewer"`

@@ -24,6 +24,10 @@ The project's `opencode.json` sets `agent.plan.prompt` to: "You are a planning a
 
 1. `text_contains` `\[PLANNER\]` -- response includes the `[PLANNER]` prefix
 
+## Shortest path
+
+**1 tool call**: read `src/app.ts`, then respond with the `[PLANNER]` prefix. The `read` tool has no prerequisites. No tool call checks constrain the upper bound.
+
 ## Fail modes
 
 - Responds without `[PLANNER]` prefix -- the custom plan prompt was overshadowed by the built-in plan mode system reminder

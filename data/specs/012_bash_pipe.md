@@ -27,6 +27,10 @@ Same `bash_only` project. The `src/` directory contains exactly 3 `.ts` files: `
 3. `any_tool_param_regex` `bash.command` matches `\|` -- command contains a pipe
 4. `text_contains` `3` -- response reports the correct count
 
+## Shortest path
+
+**1 tool call**: a single `bash` call with a piped command (e.g. `ls src/*.ts | wc -l`). The `bash` tool has no prerequisites. No tool call checks constrain the upper bound.
+
 ## Fail modes
 
 - Uses the native `glob` tool -- ignores the bash-only restriction

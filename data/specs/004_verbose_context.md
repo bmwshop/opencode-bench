@@ -41,6 +41,10 @@ The prompt describes `src/auth.ts` (verify function, token verification), `src/u
 4. `no_tool_name` not `grep` -- does not grep when the target file is named
 5. `no_tool_name` not `task` -- does not delegate unnecessarily
 
+## Shortest path
+
+**1 tool call**: read `src/index.ts`, then report the version string. The `read` tool has no prerequisites. `max_tool_count` allows up to 2.
+
 ## Fail modes
 
 - Reads `src/auth.ts` or `src/utils.ts` to "understand the project" -- the prompt describes them but doesn't ask about them

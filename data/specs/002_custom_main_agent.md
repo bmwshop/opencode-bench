@@ -24,6 +24,10 @@ The project's `opencode.json` defines a primary agent named `"auditor"` with pro
 
 1. `text_contains` `\[AUDITOR\]` -- response includes the `[AUDITOR]` prefix
 
+## Shortest path
+
+**1 tool call**: read `src/app.ts`, then respond with the `[AUDITOR]` prefix. The prompt asks to review a specific file, so the model must read it. The `read` tool has no prerequisites. No tool call checks constrain the upper bound.
+
 ## Fail modes
 
 - Responds without the `[AUDITOR]` prefix -- indicates the custom agent prompt was ignored

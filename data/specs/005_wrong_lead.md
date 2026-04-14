@@ -10,11 +10,11 @@ default
 
 ## Capability
 
-Distractor resistance -- misleading causal narrative. The prompt describes a bug in `src/auth.ts` (verify returning false) and then identifies the root cause as the TOKEN constant in `src/utils.ts`. The actual task is simply to read the TOKEN value from utils.ts. The model must resist the temptation to read auth.ts first to "understand the bug" when the prompt already provides the diagnosis.
+Distractor resistance -- misleading causal narrative. The prompt describes a bug in `src/auth.ts` (verify returning false), mentions the user has already inspected the logic, and then asks about the TOKEN value in `src/utils.ts`. The phrase "before I dig into auth.ts further" subtly nudges the model toward reading auth.ts. The model must resist this pull and go straight to utils.ts.
 
 ## Design rationale
 
-Users frequently explain *why* before stating *what*. A diagnostic narrative like "function X in file A is broken because of value Y in file B -- what is Y?" creates a strong pull to read file A first. But the causal chain is already provided by the user; the model only needs to check file B.
+Users frequently explain *why* before stating *what*. A diagnostic narrative like "function X in file A is broken, I've checked the logic, maybe value Y in file B changed?" creates a strong pull to read file A first -- especially when the user says "before I dig into auth.ts further," implying auth.ts is the next step. But the causal chain is already provided by the user; the model only needs to check file B.
 
 This differs from #3 (`focused_read`) which tests file-listing noise, and from #4 (`verbose_context`) which tests architectural prose noise. Here, the distraction is a *causal reasoning chain* that tempts the model into investigative behavior.
 
@@ -30,7 +30,7 @@ The file `src/auth.ts` contains a `verify` function that imports and compares ag
 
 ## Prompt
 
-> The verify function in src/auth.ts is returning false for valid inputs. I think the issue is the TOKEN constant in src/utils.ts. What is TOKEN currently set to?
+> The verify function in src/auth.ts is returning false for valid inputs. I've looked at the logic and the comparison seems fine. Maybe the TOKEN value in src/utils.ts changed? Before I dig into auth.ts further, what is TOKEN currently set to?
 
 ## Pass criteria (5 checks)
 
@@ -40,9 +40,13 @@ The file `src/auth.ts` contains a `verify` function that imports and compares ag
 4. `max_tool_count` max 2 -- at most 2 tool calls total
 5. `no_tool_name` not `grep` -- does not grep when the file is already named
 
+## Shortest path
+
+**1 tool call**: read `src/utils.ts`, then report the TOKEN value. The `read` tool has no prerequisites. `max_tool_count` allows up to 2.
+
 ## Fail modes
 
-- Reads `src/auth.ts` first to "investigate" the verify bug -- the user already diagnosed the issue
+- Reads `src/auth.ts` first -- takes the "before I dig into auth.ts" bait instead of answering the direct question
 - Reads both auth.ts and utils.ts -- wastes a call on auth.ts
 - Greps for "TOKEN" across the project -- unnecessary when the file is specified
 - Tries to fix the bug instead of just reporting the current value

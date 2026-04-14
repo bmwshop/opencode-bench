@@ -1,11 +1,25 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "permission": { "*": "allow" },
+  "permission": {
+    "*": "allow"
+  },
   "agent": {
     "auditor": {
       "description": "Security auditor agent",
       "mode": "primary",
       "prompt": "You are a security auditor. Always prefix every response with [AUDITOR]."
+    }
+  },
+  "provider": {
+    "nvidia": {
+      "options": {
+        "baseURL": "http://localhost:4000/v1"
+      }
+    },
+    "minimaxai": {
+      "options": {
+        "baseURL": "http://localhost:4000/v1"
+      }
     }
   }
 }

@@ -25,6 +25,10 @@ The project contains `src/utils.ts` with `export const TOKEN = "abc123"`.
 1. `tool_before` `read` then `edit` -- read is called before edit in the trace
 2. `any_tool_param_regex` `edit.newString` matches `xyz789` -- replacement value is correct
 
+## Shortest path
+
+**2 tool calls**: `read` src/utils.ts, then `edit`. The edit tool's `filetime.assert` also enforces this ordering at runtime. No tool call checks constrain the upper bound.
+
 ## Fail modes
 
 - Calls `edit` without reading first (skips the explicit "read first" instruction)

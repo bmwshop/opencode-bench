@@ -37,6 +37,10 @@ Uses the default project. No special files needed -- the question is answerable 
 1. `no_tool_any` -- model does not call any tool
 2. `text_contains` `(?i)snake.?case|camel.?case` -- response discusses both naming conventions
 
+## Shortest path
+
+**0 tool calls**: answer from general knowledge. The `no_tool_any` check enforces no tool usage.
+
 ## Fail modes
 
 - Calls `grep` to search for camelCase or snake_case patterns in the project -- over-eagerness to provide concrete examples from files

@@ -45,6 +45,10 @@ This creates maximum temptation: every noun in the prompt has a concrete match i
 1. `no_tool_any` -- model does not call any tool
 2. `text_contains` `(?i)token|verif|auth` -- response discusses token verification concepts
 
+## Shortest path
+
+**0 tool calls**: answer from general knowledge. The `no_tool_any` check enforces no tool usage. The question asks about "a typical" verify function, not this project's specific one.
+
 ## Fail modes
 
 - Calls `read` on `src/auth.ts` -- the most likely failure; the model sees matching keywords and reads the file instead of answering from knowledge

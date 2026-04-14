@@ -28,6 +28,10 @@ The `bash_strict` project's `opencode.json` sets permissions to deny all tools e
 4. `no_tool_name` not `glob` -- does not call the hidden glob tool
 5. `text_contains` `app\.ts` -- response identifies the correct file
 
+## Shortest path
+
+**1 tool call**: a single `bash` call (e.g. `grep -r NEEDLE_abc1 src/`). Bash is the only tool available. No tool call checks constrain the upper bound.
+
 ## Fail modes
 
 - Attempts to call a denied tool (would result in an error or hallucination since the tool doesn't appear in the schema)

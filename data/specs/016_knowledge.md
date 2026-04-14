@@ -30,6 +30,10 @@ The project configures skills via `opencode.json`: `"skills": { "paths": [".open
 3. `file_regex` `register.ts` matches `handle[A-Z]` -- function has the required handle prefix
 4. `file_regex` `register.ts` matches `API_HANDLER` -- marker comment is present
 
+## Shortest path
+
+**1 tool call**: `skill` (with `name: "api-style"`). The fixture already has `src/register.ts` with correct content (`handleRegister` + `API_HANDLER`), so the `file_regex` checks pass without modification. The expected clean path is **2+ tool calls** (skill + write/edit), but the pre-existing file means the skill call alone satisfies all checks.
+
 ## Fail modes
 
 - Doesn't invoke the `skill` tool -- writes code without consulting the project's style conventions

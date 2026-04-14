@@ -32,6 +32,10 @@ The file `src/app.ts` contains 2 TODO comments.
 3. `tool_before` `read` then `bash` -- reads the file before running the grep command
 4. `file_regex` `review.md` matches `# Review` -- output file has the required heading
 
+## Shortest path
+
+**3 tool calls**: `skill` (with `name: "review-flow"`), `read` src/app.ts, then `bash` (grep for TODOs). The `tool_before` check requires both `read` and `bash` with read first. The fixture already has `review.md` with the correct heading, so the `file_regex` check passes without the model writing it.
+
 ## Fail modes
 
 - Doesn't load the skill -- reviews the file using its own judgment without the workflow

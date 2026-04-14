@@ -35,6 +35,10 @@ Uses the default project. The relevant files:
 4. `no_tool_name` not `grep` -- does not grep when the file is already known
 5. `no_tool_name` not `task` -- does not delegate unnecessarily
 
+## Shortest path
+
+**1 tool call**: read `src/index.ts`, then report the marker. The `read` tool has no prerequisites. `max_tool_count` allows up to 2.
+
 ## Fail modes
 
 - Reads all source files -- ignores "nothing else" and over-explores

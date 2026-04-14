@@ -25,6 +25,10 @@ The `multi_module` project has two distinct packages: `packages/auth/` (authenti
 1. `min_tool_count` `task` >= 2 -- at least two task calls in the trace
 2. `tools_same_step` `task` >= 2 -- both tasks spawned in the same assistant turn
 
+## Shortest path
+
+**2 tool calls in 1 model turn**: two `task` calls emitted in the same assistant message. The `tools_same_step` check requires both in the same turn. No tool call checks constrain the upper bound.
+
 ## Fail modes
 
 - Spawns subagents sequentially in different steps (ignores "simultaneously" / "at the same time")

@@ -27,6 +27,10 @@ Same `bash_only` project. The file `src/app.ts` contains the string `NEEDLE_abc1
 3. `no_tool_name` not `read` -- does not use the native read tool
 4. `text_contains` `app\.ts` -- response identifies the correct file
 
+## Shortest path
+
+**1 tool call**: a single `bash` call (e.g. `grep -r NEEDLE_abc1 src/`). The `bash` tool has no prerequisites. No tool call checks constrain the upper bound.
+
 ## Fail modes
 
 - Uses the native `grep` tool -- ignores the bash-only restriction

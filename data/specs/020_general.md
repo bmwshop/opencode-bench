@@ -25,6 +25,10 @@ The `multi_module` project has `packages/payment/src/` with 4 files (checkout.ts
 1. `any_tool_name` equals `task` -- model delegates via the task tool
 2. `any_tool_param_value` `task.subagent_type` equals `general` -- selects the general subagent
 
+## Shortest path
+
+**1 tool call**: `task` with `subagent_type: "general"`. No tool call checks constrain the upper bound.
+
 ## Fail modes
 
 - Performs the refactoring directly instead of delegating (ignores "delegate" instruction)

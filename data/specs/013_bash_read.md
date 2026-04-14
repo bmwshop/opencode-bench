@@ -14,7 +14,7 @@ Prompt-based tool restriction -- file reading via bash only. The model is given 
 
 ## Setup
 
-The `bash_only` project defines a primary agent `bash_only` whose prompt restricts tool use to bash only. All tools are still available (permissions: `"*": "allow"`). The file `src/data.txt` contains the marker `k9f2m7p3`.
+The `bash_only` project defines a primary agent `bash_only` whose prompt says: "You must only use the bash tool. Do not use read, edit, write, glob, grep, or any other tool." Critically, all tools remain visible and permitted at the config level (`"*": "allow"`) — the restriction is purely prompt-based. The model sees `read` in its tool list (which is purpose-built for this exact task) and must choose not to use it. The file `src/data.txt` contains the marker `k9f2m7p3`.
 
 ## Prompt (run with `--agent bash_only`)
 
@@ -25,6 +25,10 @@ The `bash_only` project defines a primary agent `bash_only` whose prompt restric
 1. `any_tool_name` equals `bash` -- model uses bash
 2. `no_tool_name` not `read` -- does not use the native read tool
 3. `text_contains` `k9f2m7p3` -- response includes the correct marker
+
+## Shortest path
+
+**1 tool call**: a single `bash` call (e.g. `cat src/data.txt`). The `bash` tool has no prerequisites. No tool call checks constrain the upper bound.
 
 ## Fail modes
 

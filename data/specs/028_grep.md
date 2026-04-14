@@ -26,6 +26,10 @@ The project contains `src/auth.ts` with the string `NEEDLE_f9c2` embedded as a c
 2. `no_tool_name` not `bash` -- does not fall back to shell commands
 3. `text_contains` `auth\.ts` -- response identifies the correct file
 
+## Shortest path
+
+**1 tool call**: `grep` with pattern `NEEDLE_f9c2`. No prerequisites. No tool call checks constrain the upper bound.
+
 ## Fail modes
 
 - Uses `bash grep` or `bash rg` instead of the native `grep` tool

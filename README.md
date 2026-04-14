@@ -150,7 +150,7 @@ captures/                # proxy request/response logs (git-ignored)
 |---|---|---|
 | `agents_md` | #1-2 | Adherence to project-level `AGENTS.md` instructions and custom primary agent prompts |
 | `distractor` | #3-5 | Precision under noise — file listing, verbose context, and misleading causal narratives |
-| `efficiency` | #6-8 | Minimal tool usage — batch edits, direct file creation, and editing without reading first |
+| `efficiency` | #6-8 | Minimal tool usage — batch replacements, direct file creation, and single-step text replacement |
 | `plan_mode` | #9-11 | Plan mode read-only enforcement, plan file creation in `.opencode/plans/`, and custom plan agent prompts |
 | `prompt_tool_restriction` | #12-14 | Obeying prompt-based instructions to use only `bash` when all tools are visible |
 | `skill` | #15-17 | Discovering and invoking skills: knowledge-based conventions, multi-step workflows, and code-backed scripts |

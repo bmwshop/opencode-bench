@@ -10,13 +10,20 @@ default
 
 ## Capability
 
-Tool call efficiency -- multi-edit without intermediate reads. When the prompt provides exact old and new strings for multiple replacements in the same file, the model should chain edit calls back-to-back without reading the file first or between edits. This tests whether the model avoids procedural waste on multi-step mutations.
+Tool call efficiency -- multi-edit without unnecessary steps. When the prompt provides exact old and new strings for multiple replacements in the same file, the model should minimise the total number of tool calls. This tests whether the model can identify the most concise approach to multi-step mutations.
 
 ## Design rationale
 
-A common pattern in agent sessions is making several changes to one file. An efficient model issues N edit calls. An inefficient one reads the file first ("to verify"), then edits, then reads again between edits ("to check"), inflating the tool call count from 2 to 4-5.
+A common pattern in agent sessions is making several changes to one file. The most efficient approach is a single `bash` call with `sed` performing both replacements. A less efficient but still acceptable approach is `read` + two `edit` calls (3 total), since the `edit` tool requires a prior read (enforced by `filetime.assert` at runtime). Anything beyond 3 calls (e.g. read-edit-read-edit or post-edit verification reads) is excessive.
 
-This differs from #8 (`direct_edit`) which tests a single edit. Here, the model must demonstrate that it can chain *two* edits without inserting reads between them. The `tool_count_score` with optimal=2 allows distinguishing "added one read" (3 calls, acceptable) from "read-edit-read-edit" (4+ calls, fail).
+The test is **tool-agnostic**: it does not prescribe which tool to use. Instead it scores purely on call count via `tool_count_score`. This avoids conflicts with the `edit` tool's read-before-edit runtime enforcement -- the model can freely choose the tool that best fits the efficiency goal.
+
+| Strategy | Calls | Score |
+|---|---|---|
+| 1 bash call with `sed` doing both replacements | 1 | optimal |
+| 2 bash calls (one per replacement) | 2 | acceptable |
+| read + 2 edits | 3 | acceptable (at limit) |
+| read + edit + read + edit | 4+ | fail |
 
 ## Setup
 
@@ -32,24 +39,26 @@ export function verify(input: string) {
 }
 ```
 
-Both `// NEEDLE_f9c2` and `// MARKER: b7e1d930` are exact strings the model can use as `oldString` values.
+Both `// NEEDLE_f9c2` and `// MARKER: b7e1d930` are exact strings the model can use directly.
 
 ## Prompt
 
-> In src/auth.ts, make two changes: (1) replace `// NEEDLE_f9c2` with `// NEEDLE_updated`, and (2) replace `// MARKER: b7e1d930` with `// MARKER: updated`. Both old strings are exact -- go ahead.
+> In src/auth.ts, make two changes: (1) replace `// NEEDLE_f9c2` with `// NEEDLE_updated`, and (2) replace `// MARKER: b7e1d930` with `// MARKER: updated`. Both old strings are exact -- do it as concisely as possible.
 
-## Pass criteria (6 checks)
+## Pass criteria (4 checks)
 
-1. `min_tool_count` `edit` >= 2 -- makes at least two edit calls
-2. `max_tool_count` max 2 -- exactly two tool calls total (no reads)
-3. `no_tool_name` not `read` -- does not read the file
-4. `tool_count_score` optimal 2, limit 3 -- 2 calls is optimal, 3 acceptable, 4+ fails
-5. `file_regex` `src/auth.ts` matches `NEEDLE_updated` -- first replacement applied on disk
-6. `file_regex` `src/auth.ts` matches `MARKER: updated` -- second replacement applied on disk
+1. `max_tool_count` max 3 -- at most 3 tool calls
+2. `tool_count_score` optimal 1, limit 3 -- 1 bash call is optimal, up to 3 acceptable
+3. `file_regex` `src/auth.ts` matches `NEEDLE_updated` -- first replacement applied on disk
+4. `file_regex` `src/auth.ts` matches `MARKER: updated` -- second replacement applied on disk
+
+## Shortest path
+
+**1 tool call**: a single `bash` call with `sed` performing both replacements. The `bash` tool has no prerequisites. `max_tool_count` allows up to 3.
 
 ## Fail modes
 
-- Reads auth.ts before editing -- the exact old strings are provided
-- Reads auth.ts between the two edits to "verify" the first change -- unnecessary intermediate check
-- Makes only one edit call and misses the second replacement
-- Uses `bash sed` instead of the native edit tool
+- Uses 4+ tool calls (read-edit-read-edit or similar) -- excessive procedural overhead
+- Makes only one replacement and misses the second
+- Calls read between the two edits to "verify" the first change
+- Fails to apply the replacements on disk (tool errors out)

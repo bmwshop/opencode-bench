@@ -27,6 +27,10 @@ The project contains `src/index.ts` with a known marker value `8f3a2b1c` on the 
 3. `any_tool_param_absent` `read.path` -- does not use the wrong parameter name
 4. `text_contains` `8f3a2b1c` -- response mentions the marker value
 
+## Shortest path
+
+**1 tool call**: `read` with `filePath` set to `src/index.ts`. No prerequisites. No tool call checks constrain the upper bound.
+
 ## Fail modes
 
 - Uses `bash` with `cat` instead of the native `read` tool

@@ -6,8 +6,18 @@
     "grep": "allow",
     "bash": "allow",
     "todowrite": "allow",
+    "write": {
+      ".opencode/plans/*.md": "allow"
+    },
     "edit": {
       ".opencode/plans/*.md": "allow"
+    }
+  },
+  "provider": {
+    "nvidia": {
+      "options": {
+        "baseURL": "http://localhost:4000/v1"
+      }
     }
   }
 }

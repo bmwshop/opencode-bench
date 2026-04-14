@@ -28,6 +28,10 @@ No special project files needed beyond the default project. The prompt reference
 4. `any_tool_param_array_min` `todowrite.todos` min 3 -- array contains at least 3 items
 5. `any_tool_param_array_item_fields` `todowrite.todos` fields `["content", "status", "priority"]` -- each item has the correct object shape
 
+## Shortest path
+
+**1 tool call**: `todowrite` with a `todos` array of 4 items. No prerequisites. No tool call checks constrain the upper bound.
+
 ## Fail modes
 
 - Responds with a text-based bullet list instead of calling the `todowrite` tool

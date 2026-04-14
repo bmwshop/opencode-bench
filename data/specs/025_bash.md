@@ -27,6 +27,10 @@ No special project files needed. The prompt asks for a simple echo command.
 3. `any_tool_param_exists` `bash.command` -- provides the required command parameter
 4. `text_contains` `BENCH_OK` -- output includes the command result
 
+## Shortest path
+
+**1 tool call**: `bash` with `command` and `description`. No tool call checks constrain the upper bound.
+
 ## Fail modes
 
 - Omits the `description` parameter (which is required by opencode's bash tool schema)
