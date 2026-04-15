@@ -2,6 +2,7 @@
 __pycache__/
 results/
 captures/
+traces/
 *.err
 node_modules/
 package-lock.json

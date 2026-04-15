@@ -165,10 +165,10 @@ Each sample has a `contract` field that declares what the checks verify:
 
 | Contract | Count | Meaning |
 |---|---|---|
-| `completion` | 27 | Checks verify the actual task outcome — file content on disk, extracted values in response, correct tool arguments, or correct command execution |
-| `routing` | 6 | Checks verify only the delegation or prompt-adherence choice — correct tool/subagent selected, correct prefix in response — without validating the outcome of the delegated work |
+| `completion` | 26 | Checks verify the actual task outcome — file content on disk, extracted values in response, correct tool arguments, or correct command execution |
+| `routing` | 7 | Checks verify only the delegation or prompt-adherence choice — correct tool/subagent selected, correct prefix in response — without validating the outcome of the delegated work |
 
-Routing samples: #2, #10, #18, #19, #20, #21. All other samples are completion.
+Routing samples: #2, #9, #10, #18, #19, #20, #21. All other samples are completion.
 
 This distinction is useful for stratified scoring: routing tests measure whether the model *knows which tool to use*, while completion tests measure whether it *uses the tool correctly*.
 
