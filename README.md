@@ -155,7 +155,7 @@ captures/                # proxy request/response logs (git-ignored)
 | `agents_md` | #1-2 | Adherence to project-level `AGENTS.md` instructions and custom primary agent prompts |
 | `distractor` | #3-5 | Precision under noise — file listing, verbose context, and misleading causal narratives |
 | `efficiency` | #6-8 | Minimal tool usage — batch replacements, direct file creation, and single-step text replacement |
-| `plan_mode` | #9-11 | Plan mode read-only enforcement, plan file creation in `.opencode/plans/`, and custom plan agent prompts |
+| `plan_mode` | #9-11 | Plan mode read-only enforcement, custom plan agent prompts, and refusal to edit when asked in plan mode |
 | `prompt_tool_restriction` | #12-14 | Obeying prompt-based instructions to use only `bash` when all tools are visible |
 | `skill` | #15-17 | Discovering and invoking skills: knowledge-based conventions, multi-step workflows, and code-backed scripts |
 | `subagent` | #18-21 | Delegation to built-in subagents (`explore`, `general`), parallel subagent spawning, and custom subagent invocation |
@@ -184,7 +184,7 @@ Each sample has a `surface` field identifying the opencode capability being test
 |---|---|---|
 | `tools` | 17 | Core tool usage — correct tool selection, parameter schemas, parallel/sequential orchestration, distractor resistance, efficiency, and irrelevance detection |
 | `agents` | 2 | Project-level `AGENTS.md` instruction following and custom primary agent prompts |
-| `modes` | 3 | Plan mode constraints — file creation in `.opencode/plans/`, read-only enforcement, custom plan agent prompts |
+| `modes` | 3 | Plan mode constraints — read-only enforcement, custom plan agent prompts, refusal to edit |
 | `permissions` | 4 | Tool restriction adherence — prompt-based (`bash_only`) and system-level (permission config) |
 | `skills` | 3 | Skill discovery and invocation — knowledge-based conventions, multi-step workflows, code-backed scripts |
 | `subagents` | 4 | Delegation to subagents — built-in (`explore`, `general`), custom, and parallel spawning |
@@ -205,12 +205,15 @@ Each sample has a detailed spec in `data/specs/` describing the capability under
   "project": "default",
   "contract": "completion",
   "surface": "tools",
+  "min_calls": 1,
   "prompt": "Read src/index.ts",
   "checks": [
     {"type": "any_tool_name", "equals": "read"}
   ]
 }
 ```
+
+The `min_calls` field is the minimum number of tool calls needed to pass all checks, respecting opencode's tool guidance (e.g. read-before-edit, prefer `edit` over `bash sed`). It is used by `stitch.py` to compute optimality of traced runs.
 
 2. Create a matching spec at `data/specs/034_my_test.md`.
 
