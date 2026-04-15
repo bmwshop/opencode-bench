@@ -25,12 +25,5 @@
       "description": "Agent with only bash tool available.",
       "prompt": "Accomplish tasks using the tools available to you."
     }
-  },
-  "provider": {
-    "nvidia": {
-      "options": {
-        "baseURL": "http://localhost:4000/v1"
-      }
-    }
   }
 }

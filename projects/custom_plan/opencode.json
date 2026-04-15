@@ -10,12 +10,5 @@
     "plan": {
       "prompt": "You are a planning assistant. Always prefix every response with [PLANNER]."
     }
-  },
-  "provider": {
-    "nvidia": {
-      "options": {
-        "baseURL": "http://localhost:4000/v1"
-      }
-    }
   }
 }

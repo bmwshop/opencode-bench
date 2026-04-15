@@ -1,2 +1,2 @@
-def fahrenheit_to_celsius(f):
-    pass
+def fahrenheitToCelsius(f):
+    return (f - 32) * 5 / 9

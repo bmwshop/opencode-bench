@@ -8,12 +8,5 @@
       "description": "Reviews code for bugs, security issues, and style violations. Use after writing or modifying significant code.",
       "mode": "subagent"
     }
-  },
-  "provider": {
-    "nvidia": {
-      "options": {
-        "baseURL": "http://localhost:4000/v1"
-      }
-    }
   }
 }
