@@ -36,7 +36,7 @@ The `multi_module` project has two distinct packages: `packages/auth/` (authenti
 
 ## Shortest path
 
-**2 tool calls in 1 model turn**: two `task` calls emitted in the same assistant message. The `tools_same_step` check requires both in the same turn. No tool call checks constrain the upper bound.
+**2 tool calls**: two `task` calls emitted in the same assistant message. The `tools_same_step` check requires both in the same turn. No tool call checks constrain the upper bound.
 
 ## Fail modes
 

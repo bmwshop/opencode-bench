@@ -17,7 +17,6 @@ Usage:
 """
 
 import json
-import re
 import sys
 import argparse
 from datetime import datetime
@@ -25,30 +24,9 @@ from pathlib import Path
 from common import ROOT, CAPTURES, RESULTS, load, resolve_run, model_slug
 
 TRACES = ROOT / "traces"
-SPECS = ROOT / "data" / "specs"
 
 
 _TITLE_SYSTEM = "You are a title generator"
-_SP_RE = re.compile(r"\*\*(\d+) tool calls?\*\*")
-
-
-def _load_shortest_paths():
-    """Parse shortest path tool-call counts from spec files."""
-    result = {}
-    if not SPECS.is_dir():
-        return result
-    for p in SPECS.iterdir():
-        if not p.suffix == ".md":
-            continue
-        sid = int(p.name.split("_")[0])
-        text = p.read_text()
-        m = re.search(r"## Shortest path\n\n(.*?)(?:\n\n##|\Z)", text, re.DOTALL)
-        if not m:
-            continue
-        cm = _SP_RE.search(m.group(1))
-        if cm:
-            result[sid] = int(cm.group(1))
-    return result
 
 
 def _is_title_call(cap):
@@ -162,7 +140,7 @@ def _extract_messages(ordered, caps):
     return messages
 
 
-def stitch(sample, run_dir, caps, tc_index, scores, shortest_paths):
+def stitch(sample, run_dir, caps, tc_index, scores):
     """Stitch captures for a single sample. Returns the trace dict or None."""
     sid = sample["id"]
     name = sample.get("name", str(sid))
@@ -206,8 +184,8 @@ def stitch(sample, run_dir, caps, tc_index, scores, shortest_paths):
     messages = _extract_messages(ordered, caps)
 
     score_entry = scores.get(sid, {})
-    tc = sum(1 for m in messages if m["role"] == "assistant" and m.get("tool_calls"))
-    sp = shortest_paths.get(sid)
+    tc = sum(len(m["tool_calls"]) for m in messages if m["role"] == "assistant" and m.get("tool_calls"))
+    sp = sample.get("min_calls")
     passed = score_entry.get("pass", False)
     optimal = passed and sp is not None and tc == sp
 
@@ -221,7 +199,7 @@ def stitch(sample, run_dir, caps, tc_index, scores, shortest_paths):
         "pass": score_entry.get("pass", None),
         "score": score_entry.get("score", None),
         "tool_calls": tc,
-        "shortest_path": sp,
+        "min_calls": sp,
         "optimal": optimal,
         "system": system,
         "tools": tools,
@@ -263,8 +241,6 @@ def main():
     caps, tc_index, title_skipped = _load_captures(cap_dir)
     print(f"  {len(caps)} captures, {len(tc_index)} tool_call entries indexed ({title_skipped} title calls filtered)")
 
-    shortest_paths = _load_shortest_paths()
-
     samples = list(load(args))
     if not samples:
         print("No matching samples found.")
@@ -288,7 +264,7 @@ def main():
                 skipped += 1
                 continue
 
-        result = stitch(sample, run_dir, caps, tc_index, scores, shortest_paths)
+        result = stitch(sample, run_dir, caps, tc_index, scores)
         if not result:
             print(f"  SKIP #{sid} {name}: no captures found")
             skipped += 1

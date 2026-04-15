@@ -37,7 +37,7 @@ The project contains `src/index.ts` with marker `8f3a2b1c` and `src/auth.ts` wit
 
 ## Shortest path
 
-**2 tool calls in 1 model turn**: two parallel `read` calls. The `tools_same_step` check requires both in the same turn. No tool call checks constrain the upper bound.
+**2 tool calls**: two parallel `read` calls. The `tools_same_step` check requires both in the same turn. No tool call checks constrain the upper bound.
 
 ## Fail modes
 
