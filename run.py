@@ -12,6 +12,7 @@ Usage:
     python run.py --category tool_schema --category subagent
     python run.py --model provider/model-name
     python run.py --proxy http://localhost:4000/v1
+    python run.py --proxy http://localhost:4000/v1 --capture-dir /tmp/sw
     python run.py --clean            # wipe results first
     python run.py --timeout 120      # custom timeout
 """
@@ -26,7 +27,7 @@ import argparse
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from common import ROOT, PROJECTS, RESULTS, model_slug, load
+from common import ROOT, PROJECTS, RESULTS, CAPTURES, model_slug, load
 
 DEFAULT_TIMEOUT = 180
 
@@ -173,6 +174,13 @@ def main():
         help="Provider ID to route through proxy (default: inferred from --model)",
     )
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT)
+    parser.add_argument(
+        "--capture-dir",
+        default=None,
+        help=        "Flat directory where switchyard writes captures. "
+             "New files are moved to captures/{slug}/{timestamp}/ after the run. "
+             "Defaults to captures/.",
+    )
     args = parser.parse_args()
 
     if args.model and "/" not in args.model:
@@ -215,6 +223,9 @@ def main():
     }
     (run_dir / "meta.json").write_text(json.dumps(meta, indent=2) + "\n")
 
+    cap_src = Path(args.capture_dir) if args.capture_dir else CAPTURES
+    existing = set(cap_src.glob("*.json")) if cap_src and cap_src.is_dir() else set()
+
     parts = []
     if args.model:
         parts.append(f"model={args.model}")
@@ -231,6 +242,17 @@ def main():
             ran += 1
         else:
             skipped += 1
+
+    if cap_src and cap_src.is_dir():
+        cap_dst = CAPTURES / slug / timestamp
+        cap_dst.mkdir(parents=True, exist_ok=True)
+        moved = 0
+        for f in sorted(cap_src.glob("*.json")):
+            if f not in existing:
+                shutil.move(str(f), str(cap_dst / f.name))
+                moved += 1
+        if moved:
+            print(f"\nMoved {moved} capture(s) to {cap_dst}/")
 
     print(f"\nDone. {ran} ran, {skipped} skipped")
     print(f"Results in {run_dir}/")

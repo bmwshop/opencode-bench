@@ -104,7 +104,11 @@ By default, the provider ID is inferred from the first segment of `--model` (e.g
 python run.py --proxy http://localhost:4000/v1 --proxy-provider anthropic --model anthropic/claude-opus-4-6
 ```
 
-Captured request/response traces are written to `captures/` by switchyard (git-ignored).
+When `--proxy` is set, `run.py` automatically moves new capture files from the switchyard output directory into `captures/{model_slug}/{timestamp}/`, matching the `results/` layout. By default it looks for new `.json` files in `captures/` (the `--rl-log-dir` passed to switchyard). Override with `--capture-dir` if switchyard writes elsewhere:
+
+```bash
+python run.py --proxy http://localhost:4000/v1 --capture-dir /tmp/switchyard-output --model nvidia/nvidia/nemotron-3-super-120b-a12b
+```
 
 ## Project Structure
 
