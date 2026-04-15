@@ -22,15 +22,11 @@ Tool call efficiency -- multi-edit without unnecessary steps. When the prompt pr
 
 ## Design rationale
 
-A common pattern in agent sessions is making several changes to one file. The most efficient approach is a single `bash` call with `sed` performing both replacements. A less efficient but still acceptable approach is `read` + two `edit` calls (3 total), since the `edit` tool requires a prior read (enforced by `filetime.assert` at runtime). Anything beyond 3 calls (e.g. read-edit-read-edit or post-edit verification reads) is excessive.
-
-The test is **tool-agnostic**: it does not prescribe which tool to use. Instead it scores purely on call count via `tool_count_score`. This avoids conflicts with the `edit` tool's read-before-edit runtime enforcement -- the model can freely choose the tool that best fits the efficiency goal.
+A common pattern in agent sessions is making several changes to one file. Opencode's bash tool guidance explicitly says "DO NOT use it for file operations (reading, writing, editing) - use the specialized tools instead" and "Edit files: Use Edit (NOT sed/awk)". Therefore the optimal path uses the `edit` tool, which requires a prior `read` (enforced by `filetime.assert` at runtime).
 
 | Strategy | Calls | Score |
 |---|---|---|
-| 1 bash call with `sed` doing both replacements | 1 | optimal |
-| 2 bash calls (one per replacement) | 2 | acceptable |
-| read + 2 edits | 3 | acceptable (at limit) |
+| read + 2 edits | 3 | optimal |
 | read + edit + read + edit | 4+ | fail |
 
 ## Setup
@@ -56,13 +52,13 @@ Both `// NEEDLE_f9c2` and `// MARKER: b7e1d930` are exact strings the model can 
 ## Pass criteria (4 checks)
 
 1. `max_tool_count` max 3 -- at most 3 tool calls
-2. `tool_count_score` optimal 1, limit 3 -- 1 bash call is optimal, up to 3 acceptable
+2. `tool_count_score` optimal 3, limit 3 -- read + 2 edits (opencode discourages bash for file edits)
 3. `file_regex` `src/auth.ts` matches `NEEDLE_updated` -- first replacement applied on disk
 4. `file_regex` `src/auth.ts` matches `MARKER: updated` -- second replacement applied on disk
 
 ## Shortest path
 
-**1 tool call**: a single `bash` call with `sed` performing both replacements. The `bash` tool has no prerequisites. `max_tool_count` allows up to 3.
+**3 tool calls**: `read src/auth.ts` then two `edit` calls (one per replacement). The `edit` tool requires a prior read (`filetime.assert`). Opencode discourages `bash` for file edits.
 
 ## Fail modes
 
