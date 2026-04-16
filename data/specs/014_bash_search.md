@@ -18,13 +18,13 @@ permissions
 
 ## Capability
 
-Prompt-based tool restriction -- content search via bash only. Similar to #13, but the task requires searching for a string across files. The model must use `bash grep` or `bash rg` instead of the native `grep` or `read` tools.
+AGENTS.md-based tool restriction -- content search via bash only. Similar to #13, but the task requires searching for a string across files. The model must use `bash grep` or `bash rg` instead of the native `grep` or `read` tools, following the `AGENTS.md` instruction over the system prompt's tool suggestions.
 
 ## Setup
 
-Same `bash_only` project. The file `src/app.ts` contains the string `NEEDLE_abc1` as a comment.
+Same `bash_only` project. The `AGENTS.md` instructs bash-only usage while all tools remain visible. The file `src/app.ts` contains the string `NEEDLE_abc1` as a comment.
 
-## Prompt (run with `--agent bash_only`)
+## Prompt
 
 > Which file in src/ contains the string NEEDLE_abc1?
 
