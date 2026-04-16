@@ -18,13 +18,13 @@ permissions
 
 ## Capability
 
-System-level tool restriction via permissions. Unlike the prompt-based tests (#12-14), this test uses opencode's permission system to actually hide tools from the model's tool definitions. The `opencode.json` denies `read`, `edit`, `glob`, `grep`, `task`, and `todowrite` -- these tools are removed from the API call entirely. The model never sees them and must work with only `bash`. This tests the model's ability to adapt to a genuinely limited toolset.
+System-level tool restriction via permissions. Unlike the prompt-based tests (#12-14), this test uses opencode's permission system to actually hide tools from the model's tool definitions. The `opencode.json` denies `read`, `edit`, `glob`, `grep`, `task`, and `todowrite` -- these tools are removed from the API call entirely. The model never sees them and must work with only `bash`. No custom agent is used -- the default `build` agent runs with the full standard system prompt but a reduced tool set. This tests the model's ability to adapt to a genuinely limited toolset.
 
 ## Setup
 
-The `bash_strict` project's `opencode.json` sets permissions to deny all tools except `bash`. The agent prompt is neutral: "Accomplish tasks using the tools available to you." The `src/app.ts` file contains `NEEDLE_abc1`.
+The `bash_strict` project's `opencode.json` sets root permissions to deny all tools except `bash`. The default `build` agent is used with the standard system prompt. The `src/app.ts` file contains `NEEDLE_abc1`.
 
-## Prompt (run with `--agent bash_strict`)
+## Prompt
 
 > Which file in src/ contains the string NEEDLE_abc1?
 
