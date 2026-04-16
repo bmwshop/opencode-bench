@@ -1,0 +1,43 @@
+executor: slurm
+
+ssh_tunnel:
+  host: login-eos.nvidia.com
+  # ------------------------------- Fill this up! -------------------------------
+  user: ${USER}  # your username; or resolved from ${USER} environment variable ; or can be null which resolved from ${USER} environment variable
+  job_dir: /lustre/fsw/llmservice_nemo_reasoning/${USER}/nemo-run/
+  identity: ${NEMO_SKILLS_EOS_SSH_IDENTITY}
+  # -----------------------------------------------------------------------------
+
+# if you're running directly from cluster, you only need to define job_dir and shouldn't use ssh_tunnel
+# job_dir: <some location on slurm cluster to keep job metadata, uploaded code and generated sbatch files>
+
+account: llmservice_nemo_reasoning
+partition: batch
+job_name_prefix: ""
+
+disable_gpus_per_node: True
+dependency_type: "afterany"
+
+# From https://gitlab-master.nvidia.com/igitman/nemo-skills-configs/-/blob/main/cluster_configs/v0.6.1/eos.yaml?ref_type=heads
+containers:
+  vllm: /lustre/share/llmservice_nemo_reasoning/images/nemo-skills-vllm-latest.sqsh
+  sandbox: /lustre/share/llmservice_nemo_reasoning/images/nemo-skills-sandbox-latest.sqsh
+  nemo-skills: /lustre/share/llmservice_nemo_reasoning/images/nemo-skills-latest.sqsh
+
+mounts:
+  - /lustre/fsw/llmservice_nemo_reasoning/hf_models:/hf_models
+  - /lustre/fsw/llmservice_nemo_reasoning/images/swe-bench:/swe-bench-images
+  - /lustre/fsw/llmservice_nemo_reasoning/smajumdar/hf:/hf
+
+  # you also need to mount your own workspace folder (or any other folder you need)
+  # - /lustre/fsw/llmservice_nemo_reasoning/users/igitman/:/workspace
+
+
+# optional env variables
+env_vars:
+  - "HF_HOME=/hf"
+
+timeouts:
+  batch: 04:00:00
+  interactive: 04:00:00
+
