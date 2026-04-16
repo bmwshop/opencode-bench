@@ -28,13 +28,11 @@ The `bash_strict` project's `opencode.json` sets root permissions to deny all to
 
 > Which file in src/ contains the string NEEDLE_abc1?
 
-## Pass criteria (5 checks)
+## Pass criteria (3 checks)
 
 1. `any_tool_name` equals `bash` -- model uses bash
-2. `no_tool_name` not `read` -- does not call the hidden read tool
-3. `no_tool_name` not `grep` -- does not call the hidden grep tool
-4. `no_tool_name` not `glob` -- does not call the hidden glob tool
-5. `text_contains` `app\.ts` -- response identifies the correct file
+2. `max_tool_count` max 1 -- exactly one tool call
+3. `text_contains` `app\.ts` -- response identifies the correct file
 
 ## Shortest path
 
