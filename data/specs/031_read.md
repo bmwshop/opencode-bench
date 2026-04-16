@@ -28,12 +28,13 @@ The project contains `src/index.ts` with a known marker value `8f3a2b1c` on the 
 
 > Read the file src/index.ts and tell me the marker value.
 
-## Pass criteria (4 checks)
+## Pass criteria (5 checks)
 
 1. `any_tool_name` equals `read` -- model calls the `read` tool
-2. `any_tool_param_exists` `read.filePath` -- uses the correct parameter name
-3. `any_tool_param_absent` `read.path` -- does not use the wrong parameter name
-4. `text_contains` `8f3a2b1c` -- response mentions the marker value
+2. `max_tool_count` max 1 -- exactly one tool call
+3. `any_tool_param_exists` `read.filePath` -- uses the correct parameter name
+4. `any_tool_param_absent` `read.path` -- does not use the wrong parameter name
+5. `text_contains` `8f3a2b1c` -- response mentions the marker value
 
 ## Shortest path
 

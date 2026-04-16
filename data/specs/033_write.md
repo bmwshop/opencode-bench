@@ -28,15 +28,14 @@ The file `src/id.txt` does not exist in the fixture. The prompt asks to create i
 
 > Create a new file src/id.txt containing exactly: BENCH_7d4e
 
-## Pass criteria (7 checks)
+## Pass criteria (6 checks)
 
 1. `any_tool_name` equals `write` -- model calls the `write` tool
-2. `no_tool_name` not equals `bash` -- does not use bash echo/redirect instead
-3. `no_tool_name` not equals `edit` -- does not use edit for new file creation
-4. `any_tool_param_exists` `write.filePath` -- uses the correct file path parameter
-5. `any_tool_param_exists` `write.content` -- uses the correct content parameter
-6. `any_tool_param_regex` `write.content` matches `^BENCH_7d4e\s*$` -- content is exactly `BENCH_7d4e`
-7. `file_regex` `src/id.txt` matches `^BENCH_7d4e\s*$` -- file contains exactly `BENCH_7d4e`
+2. `max_tool_count` max 1 -- exactly one tool call (no read, glob, bash, or other tools)
+3. `any_tool_param_exists` `write.filePath` -- uses the correct file path parameter
+4. `any_tool_param_exists` `write.content` -- uses the correct content parameter
+5. `any_tool_param_regex` `write.content` matches `^BENCH_7d4e\s*$` -- content is exactly `BENCH_7d4e`
+6. `file_regex` `src/id.txt` matches `^BENCH_7d4e\s*$` -- file contains exactly `BENCH_7d4e`
 
 ## Shortest path
 

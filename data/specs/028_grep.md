@@ -31,7 +31,7 @@ The project contains `src/auth.ts` with the string `NEEDLE_f9c2` embedded as a c
 ## Pass criteria (3 checks)
 
 1. `any_tool_name` equals `grep` -- model calls the `grep` tool
-2. `no_tool_name` not `bash` -- does not fall back to shell commands
+2. `max_tool_count` max 1 -- exactly one tool call
 3. `text_contains` `auth\.ts` -- response identifies the correct file
 
 ## Shortest path
