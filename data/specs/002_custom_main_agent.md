@@ -18,11 +18,11 @@ agents
 
 ## Capability
 
-Custom primary agent prompt adherence. Opencode allows projects to define custom primary agents in `opencode.json` with custom system prompts, selectable via `opencode run --agent <name>`. This test verifies the model follows instructions from a custom agent's prompt, specifically a formatting directive that should appear in every response.
+Custom primary agent prompt adherence. Opencode allows projects to define custom primary agents via `.opencode/agents/*.md` markdown files (recommended) or inline in `opencode.json`, selectable via `opencode run --agent <name>`. The filename becomes the agent name, YAML frontmatter provides metadata, and the markdown body becomes the agent's custom system prompt. This test verifies the model follows instructions from a custom agent's prompt, specifically a formatting directive that should appear in every response.
 
 ## Setup
 
-The project's `opencode.json` defines a primary agent named `"auditor"` with prompt: "You are a security auditor. Always prefix every response with [AUDITOR]." The file `src/app.ts` contains a simple login function with an obvious security issue (credentials in plain text).
+The project defines a primary agent via `.opencode/agents/auditor.md` with prompt: "You are a security auditor. Always prefix every response with [AUDITOR]." The file `src/app.ts` contains a simple login function with an obvious security issue (credentials in plain text).
 
 ## Prompt (run with `--agent auditor`)
 
