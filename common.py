@@ -1,11 +1,12 @@
 import json
+import os
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).parent
 SAMPLES = ROOT / "data" / "samples.jsonl"
 PROJECTS = ROOT / "projects"
-RESULTS = ROOT / "results"
+RESULTS = Path(os.environ["OPENCODE_BENCH_RESULTS"]) if "OPENCODE_BENCH_RESULTS" in os.environ else ROOT / "results"
 CAPTURES = ROOT / "captures"
 
 

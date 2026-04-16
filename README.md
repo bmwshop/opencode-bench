@@ -18,6 +18,10 @@ python run.py
 python eval.py
 ```
 
+## Running on a Cluster
+
+To run the benchmark on a Slurm cluster with a GPU-hosted vLLM server, see [CLUSTER_RUN.md](CLUSTER_RUN.md). The cluster launcher handles vLLM sidecar hosting, Node.js/opencode installation, and result persistence to cluster storage via NeMo-Skills.
+
 ## Running Samples
 
 `run.py` sends prompts from `data/samples.jsonl` to `opencode run --format json` and saves JSON traces to `results/{model_slug}/{timestamp}/`.

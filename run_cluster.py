@@ -43,14 +43,16 @@ except ImportError:
     )
     sys.exit(1)
 
+os.environ["NEMO_SKILLS_DISABLE_UNCOMMITTED_CHANGES_CHECK"] = "1"
 
 DEFAULT_INSTALL_CMD = (
     "curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && "
     "apt-get install -y nodejs && "
-    "npm install -g @anthropic/opencode"
+    "npm i -g opencode-ai"
 )
 
 DEFAULT_SERVER_PORT = 5000
+
 
 
 # ---------------------------------------------------------------------------
@@ -167,12 +169,15 @@ def build_benchmark_command(opencode_model, provider, server_url, timeout,
     """Build the in-container shell command that runs the benchmark."""
     parts = []
 
+    # Point RESULTS to the mounted /results directory
+    parts.append("export OPENCODE_BENCH_RESULTS=/results")
+
     # Inject vLLM server URL into project configs
     parts.append(build_config_inject_cmd(provider, server_url))
 
     # run.py  (no --proxy)
     run_args = [
-        "python run.py",
+        "cd /nemo_run/code/ && python run.py",
         f"--model {opencode_model}",
         f"--timeout {timeout}",
     ]
@@ -186,7 +191,7 @@ def build_benchmark_command(opencode_model, provider, server_url, timeout,
 
     # eval.py  (no proxy-related args)
     eval_args = [
-        "python eval.py",
+        "cd /nemo_run/code/ && python eval.py",
         f"--model {opencode_model}",
         "--format json",
     ]
@@ -227,10 +232,10 @@ def main():
         server_url = f"http://localhost:{DEFAULT_SERVER_PORT}/v1"
 
     # -- Mount handling --------------------------------------------------
-    # Always mount output_dir to /nemo_run/code/results so that
-    # common.py's  RESULTS = ROOT / "results"  writes directly to cluster
-    # storage.
-    output_mount = f"{args.output_dir}:/nemo_run/code/results"
+    # Mount output_dir to /results inside the container.  The benchmark
+    # command sets OPENCODE_BENCH_RESULTS=/results so that common.py
+    # writes directly to the mounted cluster storage.
+    output_mount = f"{args.output_dir}:/results"
     if args.mount_paths:
         mount_paths = f"{args.mount_paths},{output_mount}"
     else:
