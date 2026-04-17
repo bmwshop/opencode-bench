@@ -18,13 +18,13 @@ permissions
 
 ## Capability
 
-File reading via any tool. The model is given a custom agent prompt that suggests using bash, but opencode's own system prompt encourages purpose-built tools. This sample tests whether the model can read a file and report its contents -- the tool choice (bash or read) is not constrained.
+File reading via any tool. The project's `AGENTS.md` instructs the model to only use bash, but opencode's standard system prompt encourages purpose-built tools. This sample tests whether the model can read a file and report its contents -- the tool choice (bash or read) is not constrained.
 
 ## Setup
 
-The `bash_only` project defines a primary agent `bash_only` whose prompt says: "You must only use the bash tool. Do not use read, edit, write, glob, grep, or any other tool." Critically, all tools remain visible and permitted at the config level (`"*": "allow"`) — the restriction is purely prompt-based. The model sees `read` in its tool list (which is purpose-built for this exact task) and must choose not to use it. The file `src/data.txt` contains the marker `k9f2m7p3`.
+The `bash_only` project's `AGENTS.md` instructs: "You must only use the bash tool. Do not use read, edit, write, glob, grep, or any other tool." All tools remain visible and permitted at the config level (`"*": "allow"`) -- the restriction is purely via `AGENTS.md`. The model sees `read` in its tool list (which is purpose-built for this exact task) and must choose not to use it. The file `src/data.txt` contains the marker `k9f2m7p3`.
 
-## Prompt (run with `--agent bash_only`)
+## Prompt
 
 > What is the marker value in src/data.txt?
 
@@ -32,7 +32,7 @@ The `bash_only` project defines a primary agent `bash_only` whose prompt says: "
 
 1. `text_contains` `k9f2m7p3` -- response includes the correct marker
 
-Note: previous checks requiring `bash` and forbidding `read` were removed. The custom agent prompt suggests bash-only usage, but opencode's default system prompt actively encourages purpose-built tools like `read`. Models correctly follow opencode's guidance; the marker check validates the actual outcome.
+Note: previous checks requiring `bash` and forbidding `read` were removed. The `AGENTS.md` instruction suggests bash-only usage, but opencode's standard system prompt actively encourages purpose-built tools like `read`. Models may correctly follow either guidance; the marker check validates the actual outcome.
 
 ## Shortest path
 

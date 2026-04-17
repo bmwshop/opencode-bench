@@ -18,12 +18,5 @@
       "*": "deny"
     },
     "todowrite": "deny"
-  },
-  "agent": {
-    "bash_strict": {
-      "mode": "primary",
-      "description": "Agent with only bash tool available.",
-      "prompt": "Accomplish tasks using the tools available to you."
-    }
   }
 }
