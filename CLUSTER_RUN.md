@@ -18,8 +18,11 @@ python run_cluster.py \
   --cluster oci-iad \
   --model /hf_models/Qwen/Qwen2.5-32B-Instruct \
   --server-gpus 8 \
-  --output-dir /lustre/fsw/portfolios/llmservice/users/$USER/opencode-bench-results
+  --output-dir /lustre/fsw/portfolios/llmservice/users/$USER/opencode-bench-results \
+  --expname qwen-32b-eval
 ```
+
+Results will be written to `{output-dir}/{expname}/` (i.e. `.../opencode-bench-results/qwen-32b-eval/`).
 
 This will:
 1. Start a vLLM server with 8 GPUs serving the specified model
@@ -51,6 +54,7 @@ python run_cluster.py \
   --model /hf_models/Qwen/Qwen2.5-32B-Instruct \
   --server-gpus 8 \
   --output-dir /lustre/fsw/.../results \
+  --expname qwen-32b-samples \
   --benchmark-id 1 --benchmark-id 2 --benchmark-id 3
 ```
 
@@ -63,7 +67,8 @@ python run_cluster.py \
   --cluster oci-iad \
   --model /hf_models/Qwen/Qwen2.5-32B-Instruct \
   --server-address some-host:5000 \
-  --output-dir /lustre/fsw/.../results
+  --output-dir /lustre/fsw/.../results \
+  --expname qwen-32b-external
 ```
 
 ### Skip opencode installation
@@ -76,6 +81,7 @@ python run_cluster.py \
   --model /hf_models/Qwen/Qwen2.5-32B-Instruct \
   --server-gpus 8 \
   --output-dir /lustre/fsw/.../results \
+  --expname qwen-32b-eval \
   --skip-opencode-install
 ```
 
@@ -87,6 +93,7 @@ python run_cluster.py \
   --model /hf_models/custom/MyModel \
   --server-gpus 4 \
   --output-dir /lustre/fsw/.../results \
+  --expname mymodel-eval \
   --opencode-install-cmd "npm install -g @titu1994/opencode"
 ```
 
@@ -100,6 +107,7 @@ python run_cluster.py \
   --model /hf_models/Qwen/Qwen2.5-32B-Instruct \
   --server-gpus 8 \
   --output-dir /lustre/fsw/.../results \
+  --expname qwen-32b-nvidia \
   --opencode-model nvidia/Qwen2.5-32B-Instruct \
   --provider nvidia
 ```
@@ -112,6 +120,7 @@ python run_cluster.py \
   --model /hf_models/Qwen/Qwen2.5-32B-Instruct \
   --server-gpus 8 \
   --output-dir /tmp/test \
+  --expname dry-run-test \
   --dry-run
 ```
 
@@ -125,6 +134,7 @@ python run_cluster.py \
   --model /hf_models/Qwen/Qwen2.5-32B-Instruct \
   --server-gpus 8 \
   --output-dir /lustre/fsw/.../results \
+  --expname qwen-32b-eval \
   --mount-paths /lustre/fsw/.../data:/data,/lustre/fsw/.../configs:/configs
 ```
 
@@ -138,6 +148,7 @@ python run_cluster.py \
   --model /hf_models/Qwen/Qwen2.5-32B-Instruct \
   --server-gpus 8 \
   --output-dir /lustre/fsw/.../results \
+  --expname qwen-32b-long \
   --dependent-jobs 2 \
   --time-min 04:00:00
 ```
@@ -151,7 +162,7 @@ python run_cluster.py \
 | `--cluster` | *(required)* | Cluster config name (YAML in `cluster_configs/` or `NEMO_SKILLS_CONFIG_DIR`) |
 | `--config-dir` | `None` | Custom directory to search for cluster configs |
 | `--container` | `nemo-skills` | Container key from cluster config |
-| `--expname` | `opencode-bench` | NeMo-Run experiment name |
+| `--expname` | *(required)* | NeMo-Run experiment name (appended to `--output-dir` for the results path) |
 | `--num-nodes` | `1` | Number of nodes for the main task |
 | `--num-gpus` | `None` | Number of GPUs per node for the main task |
 | `--partition` | `None` | Slurm partition |
@@ -196,7 +207,7 @@ python run_cluster.py \
 
 ### Output directory mounting
 
-The `--output-dir` path is appended to the container mount list as `{output_dir}:/results`. The benchmark command sets `OPENCODE_BENCH_RESULTS=/results` so that `common.py` writes results directly to the mounted cluster storage instead of the default `results/` relative to the code root.
+The final results path is `{output_dir}/{expname}/`, which is mounted into the container as `/results`. The benchmark command sets `OPENCODE_BENCH_RESULTS=/results` so that `common.py` writes results directly to the mounted cluster storage instead of the default `results/` relative to the code root.
 
 ### Provider URL injection
 

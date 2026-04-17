@@ -73,7 +73,7 @@ def build_parser():
     )
     cluster.add_argument("--config-dir", default=None, help="Custom directory to search for cluster configs")
     cluster.add_argument("--container", default="nemo-skills", help="Container key from cluster config")
-    cluster.add_argument("--expname", default="opencode-bench", help="NeMo-Run experiment name")
+    cluster.add_argument("--expname", required=True, help="NeMo-Run experiment name (appended to --output-dir for the results path)")
     cluster.add_argument("--num-nodes", type=int, default=1, help="Number of nodes for the main task")
     cluster.add_argument("--num-gpus", type=int, default=None, help="Number of GPUs per node for the main task")
     cluster.add_argument("--partition", default=None, help="Slurm partition")
@@ -232,10 +232,12 @@ def main():
         server_url = f"http://localhost:{DEFAULT_SERVER_PORT}/v1"
 
     # -- Mount handling --------------------------------------------------
-    # Mount output_dir to /results inside the container.  The benchmark
+    # Append expname to output_dir (e.g. /lustre/.../results/my-exp)
+    # and mount that as /results inside the container.  The benchmark
     # command sets OPENCODE_BENCH_RESULTS=/results so that common.py
     # writes directly to the mounted cluster storage.
-    output_mount = f"{args.output_dir}:/results"
+    results_dir = os.path.join(args.output_dir.rstrip("/"), args.expname)
+    output_mount = f"{results_dir}:/results"
     if args.mount_paths:
         mount_paths = f"{args.mount_paths},{output_mount}"
     else:
@@ -265,6 +267,7 @@ def main():
     elif args.server_address:
         print(f"  Server addr:    {args.server_address} (external)")
     print(f"  Output dir:     {args.output_dir}")
+    print(f"  Results dir:    {results_dir}")
     print(f"  Mount paths:    {mount_paths}")
     print(f"  Timeout:        {args.timeout}s per sample")
     if args.benchmark_id:
