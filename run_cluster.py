@@ -47,9 +47,8 @@ except ImportError:
 os.environ["NEMO_SKILLS_DISABLE_UNCOMMITTED_CHANGES_CHECK"] = "1"
 
 DEFAULT_INSTALL_CMD = (
-    "curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && "
-    "apt-get install -y nodejs && "
-    "npm i -g opencode-ai"
+    "curl -fsSL https://opencode.ai/install | bash -s -- --no-modify-path && "
+    "ln -sf $HOME/.opencode/bin/opencode /usr/local/bin/opencode"
 )
 
 DEFAULT_SERVER_PORT = 5000

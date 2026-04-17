@@ -232,7 +232,7 @@ python run_cluster.py \
 | Flag | Default | Description |
 |---|---|---|
 | `--output-dir` | *(required)* | Cluster path for results (mounted to `/results` in container) |
-| `--opencode-install-cmd` | *Node.js + opencode* | Command to install Node.js and opencode CLI |
+| `--opencode-install-cmd` | *official install script* | Command to install the opencode CLI binary |
 | `--skip-opencode-install` | `false` | Skip installation (assumes opencode is pre-installed) |
 
 ## How It Works
@@ -245,15 +245,16 @@ The final results path is `{output_dir}/{expname}/`, which is mounted into the c
 
 Instead of using `run.py`'s `--proxy` flag (which requires the switchyard proxy codebase), `run_cluster.py` injects the vLLM server URL directly into each project's `opencode.json` before `run.py` takes file snapshots. This sets `provider.{provider}.options.baseURL` so that the opencode CLI connects to the vLLM server.
 
-### Node.js + opencode installation
+### opencode installation
 
-The default installation command is run on a single rank per node before the main job:
+The default installation command downloads the standalone opencode binary and is run on a single rank per node before the main job:
 
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
-apt-get install -y nodejs && \
-npm install -g @anthropic/opencode
+curl -fsSL https://opencode.ai/install | bash -s -- --no-modify-path && \
+ln -sf $HOME/.opencode/bin/opencode /usr/local/bin/opencode
 ```
+
+This uses the official install script which downloads a pre-built binary from GitHub releases — no Node.js, npm, or apt packages required (only `curl` and `tar`).
 
 Override with `--opencode-install-cmd` or skip entirely with `--skip-opencode-install`.
 
