@@ -314,8 +314,13 @@ def main():
     if not args.skip_opencode_install:
         run_cmd_kwargs["installation_command"] = args.opencode_install_cmd
 
+    # Always provide a log_dir so that check_mounts inside run_cmd does not
+    # receive None (which causes an AttributeError when check_mounted_paths
+    # is True).  Default to {results_dir}/logs, matching run_nemorl_sft.py.
+    run_cmd_kwargs["log_dir"] = args.log_dir if args.log_dir else f"{results_dir}/logs"
+
     # Optional kwargs (only pass when set to avoid overriding run_cmd defaults)
-    for attr in ("config_dir", "num_gpus", "partition", "qos", "log_dir", "time_min"):
+    for attr in ("config_dir", "num_gpus", "partition", "qos", "time_min"):
         val = getattr(args, attr.replace("-", "_"), None)
         if val is not None:
             run_cmd_kwargs[attr] = val
