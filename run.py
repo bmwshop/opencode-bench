@@ -15,6 +15,10 @@ Usage:
     python run.py --proxy http://localhost:4000/v1 --capture-dir /tmp/sw
     python run.py --clean            # wipe results first
     python run.py --timeout 120      # custom timeout
+
+    # Local vLLM server (vllm/ prefix is auto-injected)
+    python run.py --vllm http://localhost:8000/v1 --model Qwen/Qwen2.5-32B-Instruct
+    python run.py --vllm http://localhost:8000/v1 --model Qwen/Qwen2.5-32B-Instruct --vllm-api-key token123
 """
 
 import atexit
@@ -91,7 +95,32 @@ def _inject_proxy(cwd, provider, url):
     path.write_text(json.dumps(cfg, indent=2))
 
 
-def run(sample, timeout, run_dir, model=None, proxy=None, provider=None):
+def _inject_vllm_config(cwd, provider, model_id, server_url, api_key="EMPTY"):
+    """Inject a full vLLM provider config into a project's opencode.json.
+
+    Mirrors the logic in run_cluster.py's build_config_inject_cmd but operates
+    in-process. Registers the npm adapter, model entry, and baseURL so that
+    opencode can resolve provider/model at runtime.
+    """
+    path = cwd / "opencode.json"
+    cfg = json.loads(path.read_text()) if path.exists() else {}
+
+    provider_cfg = {
+        "npm": "@ai-sdk/openai-compatible",
+        "name": provider,
+        "api": server_url,
+        "env": [],
+        "options": {"baseURL": server_url, "apiKey": api_key},
+        "models": {model_id: {"name": model_id, "id": model_id}},
+    }
+
+    cfg["disabled_providers"] = ["opencode"]
+    cfg.setdefault("provider", {})[provider] = provider_cfg
+    path.write_text(json.dumps(cfg, indent=2))
+
+
+def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
+        vllm_url=None, vllm_model_id=None, vllm_api_key="EMPTY"):
     sid = sample["id"]
     name = sample.get("name", str(sid))
     project = sample.get("project", "default")
@@ -102,7 +131,9 @@ def run(sample, timeout, run_dir, model=None, proxy=None, provider=None):
         return None
 
     restore(cwd)
-    if proxy:
+    if vllm_url:
+        _inject_vllm_config(cwd, provider, vllm_model_id, vllm_url, vllm_api_key)
+    elif proxy:
         _inject_proxy(cwd, provider, proxy)
     print(f"  RUN  #{sid} {name} (project={project})", end="", flush=True)
     start = time.time()
@@ -177,11 +208,36 @@ def main():
     parser.add_argument(
         "--capture-dir",
         default=None,
-        help=        "Flat directory where switchyard writes captures. "
+        help="Flat directory where switchyard writes captures. "
              "New files are moved to captures/{slug}/{timestamp}/ after the run. "
              "Defaults to captures/.",
     )
+    parser.add_argument(
+        "--vllm",
+        default=None,
+        help="vLLM server URL (e.g. http://localhost:8000/v1). "
+             "Injects full provider config (npm adapter, model registration, baseURL) "
+             "into each project's opencode.json. Requires --model in provider/model format.",
+    )
+    parser.add_argument(
+        "--vllm-api-key",
+        default="EMPTY",
+        help="API key for the vLLM server (default: EMPTY)",
+    )
     args = parser.parse_args()
+
+    if args.vllm and args.proxy:
+        print("ERROR: --vllm and --proxy are mutually exclusive")
+        sys.exit(1)
+
+    if args.vllm and not args.model:
+        print("ERROR: --vllm requires --model")
+        sys.exit(1)
+
+    # Auto-prefix provider when --vllm is used and model doesn't have one.
+    # e.g. "Qwen/Qwen3.5-35B-A3B" -> "vllm/Qwen/Qwen3.5-35B-A3B"
+    if args.vllm and args.model and not args.model.startswith("vllm/"):
+        args.model = f"vllm/{args.model}"
 
     if args.model and "/" not in args.model:
         print(f"ERROR: --model must be in provider/model format (got '{args.model}')")
@@ -207,8 +263,16 @@ def main():
     run_dir.mkdir(parents=True, exist_ok=True)
 
     provider = args.proxy_provider
-    if args.proxy and not provider:
+    if args.vllm:
+        provider = args.model.split("/")[0]
+    elif args.proxy and not provider:
         provider = args.model.split("/")[0] if args.model else "nvidia"
+
+    # model_id is the part after the provider prefix (e.g. "Qwen2.5-32B-Instruct"
+    # from "vllm/Qwen2.5-32B-Instruct")
+    vllm_model_id = None
+    if args.vllm:
+        vllm_model_id = args.model.split("/", 1)[1]
 
     meta = {
         "model": args.model,
@@ -219,6 +283,7 @@ def main():
         "samples": [s["id"] for s in samples],
         "categories": sorted(set(s["category"] for s in samples)),
         "proxy": args.proxy,
+        "vllm": args.vllm,
         "argv": sys.argv,
     }
     (run_dir / "meta.json").write_text(json.dumps(meta, indent=2) + "\n")
@@ -229,7 +294,9 @@ def main():
     parts = []
     if args.model:
         parts.append(f"model={args.model}")
-    if args.proxy:
+    if args.vllm:
+        parts.append(f"vllm={args.vllm} (provider={provider}, model_id={vllm_model_id})")
+    elif args.proxy:
         parts.append(f"proxy={args.proxy} ({provider})")
     label = f"{', '.join(parts)}, " if parts else ""
     print(f"Running {len(samples)} sample(s) ({label}timeout={args.timeout}s)")
@@ -238,10 +305,18 @@ def main():
     ran = 0
     skipped = 0
     for sample in samples:
-        if run(sample, args.timeout, run_dir, model=args.model, proxy=args.proxy, provider=provider):
+        if run(sample, args.timeout, run_dir, model=args.model, proxy=args.proxy,
+               provider=provider, vllm_url=args.vllm, vllm_model_id=vllm_model_id,
+               vllm_api_key=args.vllm_api_key):
             ran += 1
         else:
             skipped += 1
+
+    # Restore all project directories to their original state so that
+    # injected provider configs (vllm, proxy) don't persist on disk.
+    for d in PROJECTS.iterdir():
+        if d.is_dir():
+            restore(d)
 
     if cap_src and cap_src.is_dir():
         cap_dst = CAPTURES / slug / timestamp
