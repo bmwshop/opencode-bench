@@ -292,6 +292,7 @@ def main():
         "dependent_jobs": args.dependent_jobs,
         "reuse_code": args.reuse_code,
         "mount_paths": mount_paths,
+        "check_mounted_paths": True,
     }
 
     # Server sidecar (only when hosting the model ourselves)
