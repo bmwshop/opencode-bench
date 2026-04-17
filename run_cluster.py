@@ -152,8 +152,14 @@ def build_parser():
 # Command construction
 # ---------------------------------------------------------------------------
 
-def build_config_inject_cmd(provider, server_url):
-    """Return a shell snippet that injects provider baseURL into every opencode.json.
+def build_config_inject_cmd(provider, model_id, server_url):
+    """Return a shell snippet that injects a full provider config into every opencode.json.
+
+    opencode-ai requires custom providers to declare ``npm`` (the AI SDK adapter),
+    ``models`` (with at least the model being used), and ``api``/``options`` so that
+    the CLI can resolve ``provider/model`` at runtime.  The previous implementation
+    only set ``options.baseURL``, which caused ``ProviderModelNotFoundError`` because
+    no models were registered under the provider.
 
     Uses ``python3 -c '...'`` instead of a heredoc because run_cmd's get_cmd()
     flattens the command into a single shell string, which breaks heredoc
@@ -162,9 +168,18 @@ def build_config_inject_cmd(provider, server_url):
     return (
         f"python3 -c '"
         f'import json, pathlib\n'
+        f'provider_cfg = {{\n'
+        f'    "npm": "@ai-sdk/openai-compatible",\n'
+        f'    "name": "{provider}",\n'
+        f'    "api": "{server_url}",\n'
+        f'    "env": [],\n'
+        f'    "options": {{"baseURL": "{server_url}", "apiKey": "EMPTY"}},\n'
+        f'    "models": {{"{model_id}": {{"name": "{model_id}", "id": "{model_id}"}}}}\n'
+        f'}}\n'
         f'for p in pathlib.Path("projects").rglob("opencode.json"):\n'
         f'    cfg = json.loads(p.read_text())\n'
-        f'    cfg.setdefault("provider", {{}}).setdefault("{provider}", {{}}).setdefault("options", {{}})["baseURL"] = "{server_url}"\n'
+        f'    cfg["disabled_providers"] = ["opencode"]\n'
+        f'    cfg.setdefault("provider", {{}})["{provider}"] = provider_cfg\n'
         f"    p.write_text(json.dumps(cfg, indent=2))'"
     )
 
@@ -177,8 +192,11 @@ def build_benchmark_command(opencode_model, provider, server_url, timeout,
     # Point RESULTS to the mounted /results directory
     parts.append("export OPENCODE_BENCH_RESULTS=/results")
 
-    # Inject vLLM server URL into project configs
-    parts.append(build_config_inject_cmd(provider, server_url))
+    # Extract model ID (part after provider/) for config registration
+    model_id = opencode_model.split("/", 1)[1] if "/" in opencode_model else opencode_model
+
+    # Inject full provider config (npm adapter, model registration, baseURL) into project configs
+    parts.append(build_config_inject_cmd(provider, model_id, server_url))
 
     # run.py  (no --proxy)
     run_args = [
@@ -230,6 +248,11 @@ def main():
     else:
         opencode_model = args.opencode_model
 
+    # model_id is the part after the provider prefix (e.g. "final_hf_model"
+    # from "vllm/final_hf_model").  It must match both the opencode config
+    # model registration and the vLLM --served-model-name.
+    model_id = opencode_model.split("/", 1)[1] if "/" in opencode_model else opencode_model
+
     # -- Determine vLLM server URL ---------------------------------------
     if args.server_address:
         server_url = f"http://{args.server_address}/v1"
@@ -280,6 +303,7 @@ def main():
     print(f"  Experiment:     {args.expname}")
     print(f"  Model (HF):     {args.model}")
     print(f"  Model (OC):     {opencode_model}")
+    print(f"  Model ID:       {model_id}")
     print(f"  Server URL:     {server_url}")
     if args.server_gpus:
         print(f"  Server GPUs:    {args.server_gpus} (x{args.server_nodes} node(s))")
@@ -317,12 +341,19 @@ def main():
 
     # Server sidecar (only when hosting the model ourselves)
     if args.server_gpus:
+        # NeMo-Skills' serve_vllm.py sets --served-model-name to the full
+        # filesystem path by default.  Override it with model_id so vLLM
+        # serves the model under the short name that opencode expects.
+        server_args = args.server_args or ""
+        if "--served-model-name" not in server_args:
+            server_args = f'{server_args} --served-model-name="{model_id}"'.strip()
+
         run_cmd_kwargs.update(
             model=args.model,
             server_gpus=args.server_gpus,
             server_nodes=args.server_nodes,
             server_type=args.server_type,
-            server_args=args.server_args,
+            server_args=server_args,
         )
     elif args.server_address:
         run_cmd_kwargs.update(

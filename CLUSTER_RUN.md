@@ -9,6 +9,38 @@
 - A cluster config YAML in `cluster_configs/` (e.g. `oci-iad.yaml`, `eos.yaml`)
 - A model accessible on the cluster filesystem (e.g. `/hf_models/Qwen/Qwen2.5-32B-Instruct`)
 
+### Environment Variables in `~/.bashrc`
+
+Cluster configs reference SSH identity paths and other secrets via `NEMO_SKILLS_*` environment variables (e.g. `NEMO_SKILLS_OCI_IAD_SSH_IDENTITY`). These must be exported in your `~/.bashrc` **above** the interactive shell guard, otherwise they will not be set in non-interactive shells (such as the SSH sessions that NeMo-Skills uses to connect to clusters).
+
+The interactive guard looks like this in a typical `~/.bashrc`:
+
+```bash
+# If not running interactively, don't do anything
+case $- in
+    *i*) ;;
+      *) return;;
+esac
+```
+
+Any `export` statement placed after this block will be silently skipped in non-interactive sessions. Place your `NEMO_SKILLS_*` exports **before** it:
+
+```bash
+# Required by cluster_configs/ (ssh_tunnel.identity and similar fields)
+export NEMO_SKILLS_OCI_IAD_SSH_IDENTITY="$HOME/.ssh/clusters/draco-oci"
+export NEMO_SKILLS_OCI_ORD_SSH_IDENTITY="$HOME/.ssh/clusters/draco-ord"
+export NEMO_SKILLS_CW_DFW_SSH_IDENTITY="$HOME/.ssh/clusters/cw-dfw"
+export NEMO_SKILLS_EOS_SSH_IDENTITY="$HOME/.ssh/clusters/eos"
+
+# If not running interactively, don't do anything
+case $- in
+    *i*) ;;
+      *) return;;
+esac
+```
+
+The exact variable names depend on the cluster configs you use. Check the relevant YAML in `cluster_configs/` for any `${NEMO_SKILLS_*}` references to know which variables you need to set.
+
 **Important:** NeMo-Skills packages only git-tracked files when staging code to the cluster. If you have local changes to samples, evaluators, project fixtures, or any other files, you must `git commit` them before running `run_cluster.py` -- uncommitted changes will not be present inside the container.
 
 ## Quick Start
