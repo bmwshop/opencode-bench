@@ -238,12 +238,13 @@ def main():
     # command sets OPENCODE_BENCH_RESULTS=/results so that common.py
     # writes directly to the mounted cluster storage.
     results_dir = os.path.join(args.output_dir.rstrip("/"), args.expname)
+    log_dir = args.log_dir if args.log_dir else os.path.join(results_dir, "logs")
 
-    # Create the results directory on the cluster before submitting so the
-    # mount source exists when Slurm starts the container.
+    # Create the results and log directories on the cluster before
+    # submitting so the mount sources exist when Slurm starts the container.
     if not args.dry_run:
         cluster_config = get_cluster_config(args.cluster, args.config_dir)
-        create_remote_directory(results_dir, cluster_config)
+        create_remote_directory([results_dir, log_dir], cluster_config)
 
     output_mount = f"{results_dir}:/results"
     if args.mount_paths:
@@ -276,6 +277,7 @@ def main():
         print(f"  Server addr:    {args.server_address} (external)")
     print(f"  Output dir:     {args.output_dir}")
     print(f"  Results dir:    {results_dir}")
+    print(f"  Log dir:        {log_dir}")
     print(f"  Mount paths:    {mount_paths}")
     print(f"  Timeout:        {args.timeout}s per sample")
     if args.benchmark_id:
@@ -300,6 +302,7 @@ def main():
         "dependent_jobs": args.dependent_jobs,
         "reuse_code": args.reuse_code,
         "mount_paths": mount_paths,
+        "log_dir": log_dir,
     }
 
     # Server sidecar (only when hosting the model ourselves)
@@ -322,7 +325,7 @@ def main():
         run_cmd_kwargs["installation_command"] = args.opencode_install_cmd
 
     # Optional kwargs (only pass when set to avoid overriding run_cmd defaults)
-    for attr in ("config_dir", "num_gpus", "partition", "qos", "log_dir", "time_min"):
+    for attr in ("config_dir", "num_gpus", "partition", "qos", "time_min"):
         val = getattr(args, attr.replace("-", "_"), None)
         if val is not None:
             run_cmd_kwargs[attr] = val
