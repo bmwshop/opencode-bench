@@ -35,6 +35,7 @@ import sys
 try:
     from nemo_skills.pipeline.run_cmd import run_cmd
     from nemo_skills.pipeline.cli import wrap_arguments
+    from nemo_skills.pipeline.utils import get_cluster_config, create_remote_directory
 except ImportError:
     print(
         "Error: NeMo-Skills is not installed or not in PYTHONPATH.\n"
@@ -237,6 +238,13 @@ def main():
     # command sets OPENCODE_BENCH_RESULTS=/results so that common.py
     # writes directly to the mounted cluster storage.
     results_dir = os.path.join(args.output_dir.rstrip("/"), args.expname)
+
+    # Create the results directory on the cluster before submitting so the
+    # mount source exists when Slurm starts the container.
+    if not args.dry_run:
+        cluster_config = get_cluster_config(args.cluster, args.config_dir)
+        create_remote_directory(results_dir, cluster_config)
+
     output_mount = f"{results_dir}:/results"
     if args.mount_paths:
         mount_paths = f"{args.mount_paths},{output_mount}"
@@ -292,7 +300,6 @@ def main():
         "dependent_jobs": args.dependent_jobs,
         "reuse_code": args.reuse_code,
         "mount_paths": mount_paths,
-        "check_mounted_paths": True,
     }
 
     # Server sidecar (only when hosting the model ourselves)
@@ -314,13 +321,8 @@ def main():
     if not args.skip_opencode_install:
         run_cmd_kwargs["installation_command"] = args.opencode_install_cmd
 
-    # Always provide a log_dir so that check_mounts inside run_cmd does not
-    # receive None (which causes an AttributeError when check_mounted_paths
-    # is True).  Default to {results_dir}/logs, matching run_nemorl_sft.py.
-    run_cmd_kwargs["log_dir"] = args.log_dir if args.log_dir else f"{results_dir}/logs"
-
     # Optional kwargs (only pass when set to avoid overriding run_cmd defaults)
-    for attr in ("config_dir", "num_gpus", "partition", "qos", "time_min"):
+    for attr in ("config_dir", "num_gpus", "partition", "qos", "log_dir", "time_min"):
         val = getattr(args, attr.replace("-", "_"), None)
         if val is not None:
             run_cmd_kwargs[attr] = val
