@@ -35,7 +35,7 @@ import sys
 try:
     from nemo_skills.pipeline.run_cmd import run_cmd
     from nemo_skills.pipeline.cli import wrap_arguments
-    from nemo_skills.pipeline.utils import get_cluster_config, create_remote_directory
+    from nemo_skills.pipeline.utils import get_cluster_config, create_remote_directory, get_mounted_path, resolve_mount_paths
 except ImportError:
     print(
         "Error: NeMo-Skills is not installed or not in PYTHONPATH.\n"
@@ -252,6 +252,12 @@ def main():
     else:
         mount_paths = output_mount
 
+    # Resolve log_dir to its container path (e.g. /results/logs) so that
+    # run_cmd writes Slurm logs to the mounted volume.
+    cluster_cfg = get_cluster_config(args.cluster, args.config_dir)
+    resolve_mount_paths(cluster_cfg, mount_paths)
+    mounted_log_dir = get_mounted_path(cluster_cfg, log_dir)
+
     # -- Build in-container command --------------------------------------
     bench_cmd = build_benchmark_command(
         opencode_model=opencode_model,
@@ -302,7 +308,7 @@ def main():
         "dependent_jobs": args.dependent_jobs,
         "reuse_code": args.reuse_code,
         "mount_paths": mount_paths,
-        "log_dir": log_dir,
+        "log_dir": mounted_log_dir,
     }
 
     # Server sidecar (only when hosting the model ourselves)
