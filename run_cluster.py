@@ -153,15 +153,19 @@ def build_parser():
 # ---------------------------------------------------------------------------
 
 def build_config_inject_cmd(provider, server_url):
-    """Return a shell snippet that injects provider baseURL into every opencode.json."""
+    """Return a shell snippet that injects provider baseURL into every opencode.json.
+
+    Uses ``python3 -c '...'`` instead of a heredoc because run_cmd's get_cmd()
+    flattens the command into a single shell string, which breaks heredoc
+    delimiter detection.
+    """
     return (
-        f"python3 << 'INJECT_EOF'\n"
-        f"import json, pathlib\n"
-        f"for p in pathlib.Path('projects').rglob('opencode.json'):\n"
-        f"    cfg = json.loads(p.read_text())\n"
-        f"    cfg.setdefault('provider', {{}}).setdefault('{provider}', {{}}).setdefault('options', {{}})['baseURL'] = '{server_url}'\n"
-        f"    p.write_text(json.dumps(cfg, indent=2))\n"
-        f"INJECT_EOF"
+        f"python3 -c '"
+        f'import json, pathlib\n'
+        f'for p in pathlib.Path("projects").rglob("opencode.json"):\n'
+        f'    cfg = json.loads(p.read_text())\n'
+        f'    cfg.setdefault("provider", {{}}).setdefault("{provider}", {{}}).setdefault("options", {{}})["baseURL"] = "{server_url}"\n'
+        f"    p.write_text(json.dumps(cfg, indent=2))'"
     )
 
 
