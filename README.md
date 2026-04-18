@@ -42,9 +42,12 @@ python run.py --model provider/model-name                  # override the defaul
 python run.py --proxy http://localhost:4000/v1             # route through a logging proxy
 python run.py --clean                                      # wipe runs/ first
 python run.py --timeout 120                                # custom per-sample timeout (default: 180s)
+python run.py -j 4                                         # run up to 4 samples in parallel
 ```
 
 The `--model` flag is optional. When omitted, opencode uses its configured default and traces go under `runs/default/`. The format is `provider/model-id` (e.g. `anthropic/claude-opus-4-6`), which gets converted to a directory slug (`anthropic_claude-opus-4-6`).
+
+`--workers` / `-j` (default 1) runs samples in parallel via a thread pool. Each sample already executes in its own `runs/{slug}/{ts}/projects/{id:03d}/` workspace copy, so parallelism is safe with no contention on disk. Combined with `--proxy`, the switchyard timestamp fallback used by `stitch.py` has a 3-second window, so attribution for zero-tool-call samples may be unreliable — `run.py` prints a warning but does not block it.
 
 ## Evaluating Results
 
