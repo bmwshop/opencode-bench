@@ -46,8 +46,40 @@ except ImportError:
 
 os.environ["NEMO_SKILLS_DISABLE_UNCOMMITTED_CHANGES_CHECK"] = "1"
 
+# ---------------------------------------------------------------------------
+# opencode CLI install command
+# ---------------------------------------------------------------------------
+#
+# The official opencode installer (https://opencode.ai/install) resolves the
+# latest release by calling the unauthenticated GitHub REST API
+# (https://api.github.com/repos/anomalyco/opencode/releases/latest). Compute
+# nodes on shared clusters typically egress through a single NAT IP, and that
+# IP frequently blows past GitHub's 60 req/hr/IP unauthenticated rate limit,
+# causing the installer to fail with a misleading:
+#
+#     Failed to fetch version information
+#
+# (the underlying response is actually HTTP 403 "API rate limit exceeded").
+#
+# To make installs robust, we first try the latest release, and if that
+# fails we fall back to a pinned version. Passing --version makes the
+# installer skip the api.github.com call entirely and fetch the release
+# asset directly from github.com/releases/download/..., which is not
+# subject to the REST API rate limit.
+#
+# Bump PINNED_OPENCODE_VERSION periodically; get the current value from
+# https://github.com/anomalyco/opencode/releases/latest.
+PINNED_OPENCODE_VERSION = "1.4.11"
+
 DEFAULT_INSTALL_CMD = (
-    "curl -fsSL https://opencode.ai/install | bash -s -- --no-modify-path && "
+    "("
+    "curl -fsSL https://opencode.ai/install | bash -s -- --no-modify-path"
+    ") || ("
+    "echo 'opencode latest install failed, falling back to pinned "
+    f"v{PINNED_OPENCODE_VERSION}' >&2 && "
+    "curl -fsSL https://opencode.ai/install | bash -s -- --no-modify-path "
+    f"--version {PINNED_OPENCODE_VERSION}"
+    ") && "
     "ln -sf $HOME/.opencode/bin/opencode /usr/local/bin/opencode"
 )
 
