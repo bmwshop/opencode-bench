@@ -161,13 +161,13 @@ def build_parser():
         help="Provider key for opencode config injection (default: vllm)",
     )
     bench.add_argument(
-        "--max-output-tokens", type=int, default=16384,
+        "--max-output-tokens", type=int, default=8192,
         help=(
             "Maximum output tokens per request (i.e. `max_tokens`). Injected "
             "into each opencode.json as `provider.<p>.models.<id>.limit.output`. "
             "Without this, opencode hardcodes `max_tokens=32000` for custom "
             "providers, which can exceed (context - input_tokens) and trigger "
-            "ContextOverflowError. Default: 16384."
+            "ContextOverflowError. Default: 8192."
         ),
     )
 

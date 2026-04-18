@@ -36,7 +36,7 @@ from pathlib import Path
 from common import ROOT, PROJECTS, RESULTS, CAPTURES, model_slug, load
 
 DEFAULT_TIMEOUT = 180
-DEFAULT_MAX_OUTPUT_TOKENS = 16384
+DEFAULT_MAX_OUTPUT_TOKENS = 8192
 # Fallback context window used when /v1/models doesn't expose max_model_len
 # (or the server is unreachable). Kept conservative so opencode still sends
 # a sane max_tokens rather than its hardcoded 32000 default, which routinely
@@ -340,7 +340,7 @@ def main():
             "project's opencode.json as `provider.<p>.models.<m>.limit.output`. "
             "Without this, opencode hardcodes 32000 for custom providers and "
             "raises ContextOverflowError when it exceeds "
-            "(max_model_len - input_tokens). Default: 16384."
+            "(max_model_len - input_tokens). Default: 8192."
         ),
     )
     args = parser.parse_args()

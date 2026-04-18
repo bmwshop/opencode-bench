@@ -20,7 +20,7 @@ dependency_type: "afterany"
 
 # From https://gitlab-master.nvidia.com/igitman/nemo-skills-configs/-/blob/main/cluster_configs/v0.6.1/eos.yaml?ref_type=heads
 containers:
-  vllm: /lustre/share/llmservice_nemo_reasoning/images/nemo-skills-vllm-latest.sqsh
+  vllm: /lustre/share/llmservice_nemo_reasoning/images/nemo-skills-vllm-v0.18.0.sqsh
   sandbox: /lustre/share/llmservice_nemo_reasoning/images/nemo-skills-sandbox-latest.sqsh
   nemo-skills: /lustre/share/llmservice_nemo_reasoning/images/nemo-skills-latest.sqsh
 

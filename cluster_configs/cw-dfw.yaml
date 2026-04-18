@@ -21,7 +21,7 @@ dependency_type: "afterany"
 
 # From https://gitlab-master.nvidia.com/igitman/nemo-skills-configs/-/blob/main/cluster_configs/v0.6.1/dfw.yaml?ref_type=heads
 containers:
-  vllm: /lustre/fsw/portfolios/llmservice/users/igitman/images/nemo-skills-vllm-latest.sqsh
+  vllm: /lustre/fsw/portfolios/llmservice/users/igitman/images/nemo-skills-vllm-v0.18.0.sqsh
   sandbox: /lustre/fsw/portfolios/llmservice/users/igitman/images/nemo-skills-sandbox-latest.sqsh
   nemo-skills: /lustre/fsw/portfolios/llmservice/users/igitman/images/nemo-skills-latest.sqsh
 
