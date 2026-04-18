@@ -160,6 +160,16 @@ def build_parser():
         "--provider", default="vllm",
         help="Provider key for opencode config injection (default: vllm)",
     )
+    bench.add_argument(
+        "--max-output-tokens", type=int, default=16384,
+        help=(
+            "Maximum output tokens per request (i.e. `max_tokens`). Injected "
+            "into each opencode.json as `provider.<p>.models.<id>.limit.output`. "
+            "Without this, opencode hardcodes `max_tokens=32000` for custom "
+            "providers, which can exceed (context - input_tokens) and trigger "
+            "ContextOverflowError. Default: 16384."
+        ),
+    )
 
     # -- Output & Installation -------------------------------------------
     output = parser.add_argument_group("Output & Installation")
@@ -192,6 +202,12 @@ def build_config_inject_cmd(provider, model_id, server_url):
     only set ``options.baseURL``, which caused ``ProviderModelNotFoundError`` because
     no models were registered under the provider.
 
+    The model entry is intentionally written without a ``limit`` block -
+    ``run.py`` fills that in at runtime after querying the vLLM server's
+    ``/v1/models`` endpoint for ``max_model_len`` (see ``_patch_model_limits``
+    in run.py). This avoids hardcoding a context length here that might
+    disagree with what the server actually serves.
+
     Uses ``python3 -c '...'`` instead of a heredoc because run_cmd's get_cmd()
     flattens the command into a single shell string, which breaks heredoc
     delimiter detection.
@@ -216,7 +232,8 @@ def build_config_inject_cmd(provider, model_id, server_url):
 
 
 def build_benchmark_command(opencode_model, provider, server_url, timeout,
-                            benchmark_ids, benchmark_categories):
+                            benchmark_ids, benchmark_categories,
+                            max_output_tokens):
     """Build the in-container shell command that runs the benchmark."""
     parts = []
 
@@ -226,14 +243,18 @@ def build_benchmark_command(opencode_model, provider, server_url, timeout,
     # Extract model ID (part after provider/) for config registration
     model_id = opencode_model.split("/", 1)[1] if "/" in opencode_model else opencode_model
 
-    # Inject full provider config (npm adapter, model registration, baseURL) into project configs
+    # Inject base provider config (npm adapter, model registration, baseURL)
+    # into project configs. The model's `limit` block is filled in by run.py
+    # at startup after querying the vLLM server for its actual max_model_len.
     parts.append(build_config_inject_cmd(provider, model_id, server_url))
 
-    # run.py  (no --proxy)
+    # run.py  (no --proxy; --max-output-tokens flows through to opencode's
+    # limit.output so it doesn't fall back to the hardcoded 32000 default)
     run_args = [
         "cd /nemo_run/code/ && python run.py",
         f"--model {opencode_model}",
         f"--timeout {timeout}",
+        f"--max-output-tokens {int(max_output_tokens)}",
     ]
     if benchmark_ids:
         for bid in benchmark_ids:
@@ -324,6 +345,7 @@ def main():
         timeout=args.timeout,
         benchmark_ids=args.benchmark_id,
         benchmark_categories=args.benchmark_category,
+        max_output_tokens=args.max_output_tokens,
     )
 
     # -- Print summary ---------------------------------------------------
@@ -345,6 +367,8 @@ def main():
     print(f"  Log dir:        {log_dir}")
     print(f"  Mount paths:    {mount_paths}")
     print(f"  Timeout:        {args.timeout}s per sample")
+    print(f"  Max output:     {args.max_output_tokens} tokens "
+          f"(context auto-detected from /v1/models at runtime)")
     if args.benchmark_id:
         print(f"  Sample IDs:     {args.benchmark_id}")
     if args.benchmark_category:
