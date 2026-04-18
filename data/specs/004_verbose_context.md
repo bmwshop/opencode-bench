@@ -4,10 +4,6 @@
 
 distractor
 
-## Project
-
-default
-
 ## Contract
 
 completion
@@ -28,7 +24,7 @@ This differs from #3 (`focused_read`) which lists files explicitly. Here, the di
 
 ## Setup
 
-Uses the default project. The file `src/index.ts` contains a MARKER UUID comment and exports a version string (a UUID). The prompt describes `src/auth.ts` (verify function, token verification), `src/utils.ts` (TOKEN constant), and test files -- all real files that a model could read but shouldn't.
+The file `src/index.ts` contains a MARKER UUID comment and exports a version string (a UUID). The prompt describes `src/auth.ts` (verify function, token verification), `src/utils.ts` (TOKEN constant), and test files -- all real files that a model could read but shouldn't.
 
 ## Prompt
 

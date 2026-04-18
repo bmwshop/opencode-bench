@@ -4,10 +4,6 @@
 
 prompt_tool_restriction
 
-## Project
-
-bash_only
-
 ## Contract
 
 completion
@@ -22,7 +18,7 @@ AGENTS.md-based tool restriction -- shell pipes. The project's `AGENTS.md` instr
 
 ## Setup
 
-The `bash_only` project's `AGENTS.md` instructs: "You must only use the bash tool. Do not use read, edit, write, glob, grep, or any other tool." All tools remain visible at the config level (`"*": "allow"`) -- the restriction is purely via `AGENTS.md`. The `src/` directory contains exactly 3 `.ts` files: `app.ts`, `config.ts`, `main.ts`.
+The project's `AGENTS.md` instructs: "You must only use the bash tool. Do not use read, edit, write, glob, grep, or any other tool." All tools remain visible at the config level (`"*": "allow"`) -- the restriction is purely via `AGENTS.md`. The `src/` directory contains exactly 3 `.ts` files: `app.ts`, `config.ts`, `main.ts`.
 
 ## Prompt
 

@@ -4,10 +4,6 @@
 
 system_tool_restriction
 
-## Project
-
-bash_strict
-
 ## Contract
 
 completion
@@ -22,7 +18,7 @@ System-level tool restriction via permissions. Unlike the prompt-based tests (#1
 
 ## Setup
 
-The `bash_strict` project's `opencode.json` sets root permissions to deny all tools except `bash`. The default `build` agent is used with the standard system prompt. The `src/app.ts` file contains a NEEDLE comment with a UUID suffix.
+The project's `opencode.json` sets root permissions to deny all tools except `bash`. The default `build` agent is used with the standard system prompt. The `src/app.ts` file contains a NEEDLE comment with a UUID suffix.
 
 ## Prompt
 

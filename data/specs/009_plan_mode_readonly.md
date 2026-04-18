@@ -4,10 +4,6 @@
 
 plan_mode
 
-## Project
-
-plan_default
-
 ## Contract
 
 routing
@@ -22,7 +18,7 @@ Plan mode read-only adherence. Plan mode's base prompt (`plan.txt`) states: "CRI
 
 ## Setup
 
-The `plan_default` project uses the default plan mode prompt. The plan mode system prompt forbids file modifications. The model has `src/auth.ts` available for reading if it chooses to explore context.
+The project uses the default plan mode prompt. The plan mode system prompt forbids file modifications. The model has `src/auth.ts` available for reading if it chooses to explore context.
 
 ## Prompt (run with `--agent plan`)
 

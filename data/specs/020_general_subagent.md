@@ -4,10 +4,6 @@
 
 subagent
 
-## Project
-
-multi_module
-
 ## Contract
 
 routing
@@ -24,7 +20,7 @@ The previous version of this sample asked the model to "delegate a task to refac
 
 ## Setup
 
-The `multi_module` project has `packages/auth/` and `packages/payment/` with multiple source files. Neither package has a `CHANGELOG.md`.
+The project has `packages/auth/` and `packages/payment/` with multiple source files. Neither package has a `CHANGELOG.md`.
 
 ## Prompt
 

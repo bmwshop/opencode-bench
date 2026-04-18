@@ -4,10 +4,6 @@
 
 plan_mode
 
-## Project
-
-plan_default
-
 ## Contract
 
 completion
@@ -22,7 +18,7 @@ Plan mode read-only enforcement. Opencode's built-in `plan` agent restricts the 
 
 ## Setup
 
-The `plan_default` project has specific permissions: `read`, `glob`, `grep`, `bash`, `todowrite` are allowed; `edit` is restricted to `.opencode/plans/*.md` only. The file `src/utils.ts` contains a TOKEN constant set to a UUID value.
+The project has specific permissions: `read`, `glob`, `grep`, `bash`, `todowrite` are allowed; `edit` is restricted to `.opencode/plans/*.md` only. The file `src/utils.ts` contains a TOKEN constant set to a UUID value.
 
 ## Prompt (run with `--agent plan`)
 

@@ -4,10 +4,6 @@
 
 distractor
 
-## Project
-
-default
-
 ## Contract
 
 completion
@@ -22,11 +18,11 @@ Distractor resistance -- precision under noise. The prompt mentions multiple sou
 
 ## Design rationale
 
-The default project has markers in multiple files: `src/index.ts` and `src/auth.ts` each contain a unique MARKER UUID. The prompt names both files (and more), creating a realistic temptation. A model that reads `auth.ts` in addition to `index.ts` wastes a tool call and might even report the wrong marker. The phrase "nothing else" is an explicit constraint that the model must respect.
+The project has markers in multiple files: `src/index.ts` and `src/auth.ts` each contain a unique MARKER UUID. The prompt names both files (and more), creating a realistic temptation. A model that reads `auth.ts` in addition to `index.ts` wastes a tool call and might even report the wrong marker. The phrase "nothing else" is an explicit constraint that the model must respect.
 
 ## Setup
 
-Uses the default project. The relevant files:
+The relevant files:
 - `src/index.ts` -- contains a MARKER UUID (the target)
 - `src/auth.ts` -- contains a different MARKER UUID (the distractor)
 - `src/utils.ts`, `src/auth.test.ts`, `src/utils.test.ts` -- additional distractors

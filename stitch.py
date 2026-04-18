@@ -2,12 +2,13 @@
 """
 Stitch proxy capture files into per-sample multi-turn traces.
 
-Joins captures/ (full API request/response pairs) with results/ (opencode
-event traces) using the callID linkage:
+Joins runs/{slug}/{ts}/captures/ (full API request/response pairs) with
+runs/{slug}/{ts}/{id}_{name}.jsonl (opencode event traces) using the callID
+linkage:
 
     trace tool_use.callID == capture response.tool_calls[].id
 
-Output goes to traces/{model_slug}/{timestamp}/ with one JSON file per sample.
+Output goes to runs/{slug}/{ts}/stitched/ with one JSON file per sample.
 
 Usage:
     python stitch.py                         # stitch latest run
@@ -20,10 +21,7 @@ import json
 import sys
 import argparse
 from datetime import datetime
-from pathlib import Path
-from common import ROOT, CAPTURES, RESULTS, load, resolve_run, model_slug
-
-TRACES = ROOT / "traces"
+from common import load, resolve_run
 
 
 _TITLE_SYSTEM = "You are a title generator"
@@ -221,9 +219,7 @@ def main():
         print(f"ERROR: no run found for model={args.model}")
         sys.exit(1)
 
-    slug = run_dir.parent.name
-    ts = run_dir.name
-    cap_dir = CAPTURES / slug / ts
+    cap_dir = run_dir / "captures"
     if not cap_dir.is_dir():
         print(f"ERROR: no captures at {cap_dir}")
         sys.exit(1)
@@ -246,7 +242,7 @@ def main():
         print("No matching samples found.")
         sys.exit(1)
 
-    out_dir = TRACES / slug / ts
+    out_dir = run_dir / "stitched"
     if out_dir.is_dir():
         for old in out_dir.glob("*.json"):
             old.unlink()

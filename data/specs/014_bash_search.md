@@ -4,10 +4,6 @@
 
 prompt_tool_restriction
 
-## Project
-
-bash_only
-
 ## Contract
 
 completion
@@ -22,7 +18,7 @@ AGENTS.md-based tool restriction -- content search via bash only. Similar to #13
 
 ## Setup
 
-Same `bash_only` project. The `AGENTS.md` instructs bash-only usage while all tools remain visible. The file `src/app.ts` contains a NEEDLE comment with a UUID suffix.
+Same project. The `AGENTS.md` instructs bash-only usage while all tools remain visible. The file `src/app.ts` contains a NEEDLE comment with a UUID suffix.
 
 ## Prompt
 

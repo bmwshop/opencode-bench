@@ -4,10 +4,6 @@
 
 efficiency
 
-## Project
-
-default
-
 ## Contract
 
 completion
@@ -31,7 +27,7 @@ When the prompt provides the exact old and new strings, the model should complet
 
 ## Setup
 
-Uses the default project. The file `src/utils.ts` contains a TOKEN constant set to a UUID value.
+The file `src/utils.ts` contains a TOKEN constant set to a UUID value.
 
 ## Prompt
 

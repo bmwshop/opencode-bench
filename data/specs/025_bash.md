@@ -4,10 +4,6 @@
 
 tool_schema
 
-## Project
-
-default
-
 ## Contract
 
 completion

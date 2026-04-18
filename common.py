@@ -5,8 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).parent
 SAMPLES = ROOT / "data" / "samples.jsonl"
 PROJECTS = ROOT / "projects"
-RESULTS = ROOT / "results"
-CAPTURES = ROOT / "captures"
+RUNS = ROOT / "runs"
 
 
 def model_slug(model):
@@ -17,27 +16,27 @@ def model_slug(model):
 
 
 def resolve_run(model=None, run=None):
-    """Locate a run directory under results/{model_slug}/{timestamp}/.
+    """Locate a run directory under runs/{model_slug}/{timestamp}/.
 
     Modes:
-        model + run  -> exact: results/{slug}/{run}/
-        model only   -> latest timestamp under results/{slug}/
-        neither      -> latest timestamp across all results/*/
+        model + run  -> exact: runs/{slug}/{run}/
+        model only   -> latest timestamp under runs/{slug}/
+        neither      -> latest timestamp across all runs/*/
     """
     if model and run:
-        d = RESULTS / model_slug(model) / run
+        d = RUNS / model_slug(model) / run
         if not d.is_dir():
             return None
         return d
 
     if model:
-        parent = RESULTS / model_slug(model)
+        parent = RUNS / model_slug(model)
         return _latest_subdir(parent)
 
-    if not RESULTS.is_dir():
+    if not RUNS.is_dir():
         return None
     best = None
-    for model_dir in sorted(RESULTS.iterdir()):
+    for model_dir in sorted(RUNS.iterdir()):
         if not model_dir.is_dir():
             continue
         candidate = _latest_subdir(model_dir)
@@ -59,9 +58,9 @@ def _latest_subdir(parent):
 
 def list_runs():
     """Yield (model_slug, timestamp, meta_dict) for every run found."""
-    if not RESULTS.is_dir():
+    if not RUNS.is_dir():
         return
-    for model_dir in sorted(RESULTS.iterdir()):
+    for model_dir in sorted(RUNS.iterdir()):
         if not model_dir.is_dir():
             continue
         for ts_dir in sorted(model_dir.iterdir()):

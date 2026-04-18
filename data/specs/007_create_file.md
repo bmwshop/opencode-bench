@@ -4,10 +4,6 @@
 
 efficiency
 
-## Project
-
-default
-
 ## Contract
 
 completion
@@ -28,7 +24,7 @@ This differs from #8 (`direct_edit`) which tests edit efficiency. Here, the mode
 
 ## Setup
 
-Uses the default project. The file `src/config.ts` does not exist. The prompt asks to create it with specific content.
+The file `src/config.ts` does not exist. The prompt asks to create it with specific content.
 
 ## Prompt
 

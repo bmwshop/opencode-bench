@@ -4,10 +4,6 @@
 
 plan_mode
 
-## Project
-
-custom_plan
-
 ## Contract
 
 routing

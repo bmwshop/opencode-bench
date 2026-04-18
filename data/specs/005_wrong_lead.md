@@ -4,10 +4,6 @@
 
 distractor
 
-## Project
-
-default
-
 ## Contract
 
 completion
@@ -28,7 +24,7 @@ This differs from #3 (`focused_read`) which tests file-listing noise, and from #
 
 ## Setup
 
-Uses the default project. The file `src/utils.ts` contains a TOKEN constant set to a UUID value. The file `src/auth.ts` contains a `verify` function that imports and compares against TOKEN. The prompt describes the auth.ts bug but the task only requires reading utils.ts.
+The file `src/utils.ts` contains a TOKEN constant set to a UUID value. The file `src/auth.ts` contains a `verify` function that imports and compares against TOKEN. The prompt describes the auth.ts bug but the task only requires reading utils.ts.
 
 ## Prompt
 

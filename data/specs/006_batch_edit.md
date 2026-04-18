@@ -4,10 +4,6 @@
 
 efficiency
 
-## Project
-
-default
-
 ## Contract
 
 completion
@@ -31,7 +27,7 @@ A common pattern in agent sessions is making several changes to one file. Openco
 
 ## Setup
 
-Uses the default project. The file `src/auth.ts` contains a NEEDLE comment and a MARKER comment (both with UUID values), along with the verify function. The prompt provides the exact old and new strings for both replacements.
+The file `src/auth.ts` contains a NEEDLE comment and a MARKER comment (both with UUID values), along with the verify function. The prompt provides the exact old and new strings for both replacements.
 
 ## Prompt
 

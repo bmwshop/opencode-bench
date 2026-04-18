@@ -4,10 +4,6 @@
 
 tool_orchestration
 
-## Project
-
-default
-
 ## Contract
 
 completion

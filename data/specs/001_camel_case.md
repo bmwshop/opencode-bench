@@ -4,10 +4,6 @@
 
 agents_md
 
-## Project
-
-camel_case
-
 ## Contract
 
 completion
