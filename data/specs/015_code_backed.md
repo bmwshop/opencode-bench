@@ -26,7 +26,7 @@ The project has a skill named `validate` at `.opencode/skills/validate/SKILL.md`
 1. Run the validation script at `scripts/validate.py`
 2. Report the validation code from the script output to the user
 
-The file `scripts/validate.py` is a Python script that outputs `VALID_x7k2m9`. The skill tool output provides the base directory and states "Relative paths in this skill (e.g., scripts/, reference/) are relative to this base directory."
+The file `scripts/validate.py` is a Python script that outputs a validation code (a `VALID_` prefixed UUID). The skill tool output provides the base directory and states "Relative paths in this skill (e.g., scripts/, reference/) are relative to this base directory."
 
 ## Prompt
 
@@ -38,7 +38,7 @@ The file `scripts/validate.py` is a Python script that outputs `VALID_x7k2m9`. T
 2. `any_tool_param_value` `skill.name` equals `validate` -- loads the correct skill
 3. `any_tool_name` equals `bash` -- model runs a bash command
 4. `any_tool_param_regex` `bash.command` matches `validate\.py` -- bash command runs validate.py
-5. `text_contains` `VALID_x7k2m9` -- response reports the validation code
+5. `text_contains_from_file` -- response reports the validation code from `validate.py` (derived at eval time)
 
 ## Shortest path
 
@@ -48,6 +48,6 @@ The file `scripts/validate.py` is a Python script that outputs `VALID_x7k2m9`. T
 
 - Doesn't load the skill -- tries to validate using its own judgment
 - Loads the skill but doesn't run the script (just describes what it would do)
-- Runs `echo VALID_x7k2m9` instead of `scripts/validate.py` -- fakes the output without running the actual script
+- Runs `echo` with the validation code instead of `scripts/validate.py` -- fakes the output without running the actual script
 - Runs the script but doesn't report the validation code in the response
 - Can't resolve the relative path `scripts/validate.py` from the skill's base directory

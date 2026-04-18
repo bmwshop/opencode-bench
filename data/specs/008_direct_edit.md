@@ -31,21 +31,21 @@ When the prompt provides the exact old and new strings, the model should complet
 
 ## Setup
 
-Uses the default project. The file `src/utils.ts` contains `export const TOKEN = "abc123"`.
+Uses the default project. The file `src/utils.ts` contains a TOKEN constant set to a UUID value.
 
 ## Prompt
 
-> In src/utils.ts, replace the exact string `abc123` with `xyz789`. Everything you need is in this message -- do it in a single step.
+> In src/utils.ts, replace the exact TOKEN UUID with a new value. Everything you need is in this message -- do it in a single step.
 
 ## Pass criteria (3 checks)
 
 1. `max_tool_count` max 2 -- at most 2 tool calls
 2. `tool_count_score` optimal 2, limit 2 -- read + edit (opencode discourages bash for file edits)
-3. `file_regex` `src/utils.ts` matches `xyz789` -- file on disk contains the new value
+3. `file_regex` `src/utils.ts` -- file on disk contains the new value from the prompt
 
 ## Shortest path
 
-**2 tool calls**: `read src/utils.ts` then `edit` to replace `abc123` with `xyz789`. The `edit` tool requires a prior read (`filetime.assert`). Opencode discourages `bash` for file edits.
+**2 tool calls**: `read src/utils.ts` then `edit` to replace the TOKEN UUID with the new value. The `edit` tool requires a prior read (`filetime.assert`). Opencode discourages `bash` for file edits.
 
 ## Fail modes
 

@@ -28,13 +28,7 @@ This differs from #3 (`focused_read`) which tests file-listing noise, and from #
 
 ## Setup
 
-Uses the default project. The file `src/utils.ts` contains:
-
-```ts
-export const TOKEN = "abc123"
-```
-
-The file `src/auth.ts` contains a `verify` function that imports and compares against TOKEN. The prompt describes the auth.ts bug but the task only requires reading utils.ts.
+Uses the default project. The file `src/utils.ts` contains a TOKEN constant set to a UUID value. The file `src/auth.ts` contains a `verify` function that imports and compares against TOKEN. The prompt describes the auth.ts bug but the task only requires reading utils.ts.
 
 ## Prompt
 
@@ -44,7 +38,7 @@ The file `src/auth.ts` contains a `verify` function that imports and compares ag
 
 1. `any_tool_name` equals `read` -- uses the read tool
 2. `any_tool_param_regex` `read.filePath` matches `utils` -- reads utils.ts (the target file)
-3. `text_contains` `abc123` -- reports the correct TOKEN value
+3. `text_contains_from_file` -- reports the correct TOKEN value from `src/utils.ts` (derived at eval time)
 4. `max_tool_count` max 2 -- at most 2 tool calls total
 5. `no_tool_name` not `grep` -- does not grep when the file is already named
 

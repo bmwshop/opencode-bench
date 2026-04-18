@@ -22,11 +22,11 @@ Tool selection -- choosing the `grep` tool for content search. When asked to fin
 
 ## Setup
 
-The project contains `src/auth.ts` with the string `NEEDLE_f9c2` embedded as a comment.
+The project contains `src/auth.ts` with a NEEDLE comment containing a UUID suffix.
 
 ## Prompt
 
-> Find which file contains the string NEEDLE_f9c2.
+> Find which file contains the NEEDLE string. (The exact NEEDLE value is provided in the prompt.)
 
 ## Pass criteria (3 checks)
 
@@ -36,7 +36,7 @@ The project contains `src/auth.ts` with the string `NEEDLE_f9c2` embedded as a c
 
 ## Shortest path
 
-**1 tool call**: `grep` with pattern `NEEDLE_f9c2`. No prerequisites. No tool call checks constrain the upper bound.
+**1 tool call**: `grep` with the NEEDLE pattern. No prerequisites. No tool call checks constrain the upper bound.
 
 ## Fail modes
 

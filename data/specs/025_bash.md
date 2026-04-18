@@ -26,14 +26,14 @@ No special project files needed. The prompt asks for a simple echo command.
 
 ## Prompt
 
-> Run the command: echo BENCH_OK
+> Run the command: echo \<UUID\>
 
 ## Pass criteria (4 checks)
 
 1. `any_tool_name` equals `bash` -- model calls the `bash` tool
 2. `any_tool_param_exists` `bash.description` -- provides the required description parameter
 3. `any_tool_param_exists` `bash.command` -- provides the required command parameter
-4. `text_contains` `BENCH_OK` -- output includes the command result
+4. `text_contains` -- output includes the echoed UUID from the prompt
 
 ## Shortest path
 
