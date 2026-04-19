@@ -24,13 +24,12 @@ The file `src/id.txt` does not exist in the fixture. The prompt asks to create i
 
 > Create a new file src/id.txt containing exactly: \<UUID\>
 
-## Pass criteria (5 checks)
+## Pass criteria (4 checks)
 
 1. `any_tool_name` equals `write` -- model calls the `write` tool
 2. `max_tool_count` max 1 -- exactly one tool call (no read, glob, bash, or other tools)
-3. `any_tool_param_regex` `write.content` -- content is exactly the UUID from the prompt
-4. `file_regex` `src/id.txt` -- file on disk contains exactly the UUID from the prompt
-5. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
+3. `file_regex` `src/id.txt` -- file on disk contains exactly the UUID from the prompt
+4. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 
@@ -40,6 +39,6 @@ The file `src/id.txt` does not exist in the fixture. The prompt asks to create i
 
 - Uses `bash echo >` instead of the native `write` tool
 - Uses `edit` tool (meant for modifying existing files, not creating new ones)
-- Hallucinated tool name like `create_file` or `touch`
-- Writes the UUID with extra content (e.g., explanatory comments or newlines) -- fails anchored exact check
+- Hallucinated tool name like `create_file` or `touch` -- rejected by `call_schema_valid`
+- Writes the UUID with extra content (e.g., explanatory comments or newlines) -- fails the anchored file check
 - Calls write with correct params but the file is not created on disk
