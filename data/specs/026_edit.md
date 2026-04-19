@@ -24,17 +24,15 @@ The project contains `src/utils.ts` with a TOKEN constant set to a UUID value.
 
 > In src/utils.ts, change the TOKEN value from the current UUID to a new UUID.
 
-## Pass criteria (9 checks)
+## Pass criteria (7 checks)
 
 1. `any_tool_name` equals `edit` -- model calls the `edit` tool
-2. `any_tool_param_exists` `edit.filePath` -- uses correct file path parameter
-3. `any_tool_param_exists` `edit.oldString` -- uses correct old string parameter
-4. `any_tool_param_exists` `edit.newString` -- uses correct new string parameter
-5. `any_tool_param_absent` `edit.old_string` -- does not use snake_case variant
-6. `any_tool_param_absent` `edit.new_string` -- does not use snake_case variant
-7. `any_tool_param_regex` `edit.newString` -- replacement value matches the new UUID from the prompt
-8. `tool_before` read → edit -- read before edit (filetime.assert enforced)
-9. `file_regex` `src/utils.ts` -- file on disk contains the new token value
+2. `any_tool_param_absent` `edit.old_string` -- does not use snake_case variant
+3. `any_tool_param_absent` `edit.new_string` -- does not use snake_case variant
+4. `any_tool_param_regex` `edit.newString` -- replacement value matches the new UUID from the prompt
+5. `tool_before` read → edit -- read before edit (filetime.assert enforced)
+6. `file_regex` `src/utils.ts` -- file on disk contains the new token value
+7. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 

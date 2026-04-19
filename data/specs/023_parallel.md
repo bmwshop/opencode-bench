@@ -24,12 +24,13 @@ The project contains `src/index.ts` with a MARKER UUID and `src/auth.ts` with a 
 
 > Read both src/index.ts and src/auth.ts at the same time and tell me both marker values.
 
-## Pass criteria (4 checks)
+## Pass criteria (5 checks)
 
 1. `min_tool_count` `read` >= 2 -- at least two read calls in the trace
 2. `tools_same_step` `read` >= 2 -- both reads occur in the same assistant turn
 3. `text_contains_from_file` -- response includes the MARKER value from `src/index.ts` (derived at eval time)
 4. `text_contains_from_file` -- response includes the MARKER value from `src/auth.ts` (derived at eval time)
+5. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 

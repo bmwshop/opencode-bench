@@ -33,12 +33,13 @@ The file `src/auth.ts` contains a NEEDLE comment and a MARKER comment (both with
 
 > In src/auth.ts, make two changes: (1) replace the NEEDLE comment with `// NEEDLE_updated`, and (2) replace the MARKER comment with `// MARKER: updated`. Both old strings are provided exactly in the prompt -- do it as concisely as possible.
 
-## Pass criteria (4 checks)
+## Pass criteria (5 checks)
 
 1. `max_tool_count` max 3 -- at most 3 tool calls
 2. `tool_count_score` optimal 3, limit 3 -- read + 2 edits (opencode discourages bash for file edits)
 3. `file_regex` `src/auth.ts` matches `NEEDLE_updated` -- first replacement applied on disk
 4. `file_regex` `src/auth.ts` matches `MARKER: updated` -- second replacement applied on disk
+5. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 

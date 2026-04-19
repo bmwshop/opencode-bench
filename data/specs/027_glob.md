@@ -24,13 +24,14 @@ The project contains test files (`src/auth.test.ts`, `src/utils.test.ts`) that m
 
 > Find all test files in this project.
 
-## Pass criteria (5 checks)
+## Pass criteria (6 checks)
 
 1. `any_tool_name` equals `glob` -- model calls the `glob` tool
 2. `no_tool_name` not `bash` -- does not fall back to shell commands
 3. `any_tool_param_regex` `glob.pattern` matches `test|spec` -- glob pattern targets test files
 4. `text_contains` `auth\.test\.ts` -- response mentions auth.test.ts
 5. `text_contains` `utils\.test\.ts` -- response mentions utils.test.ts
+6. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 

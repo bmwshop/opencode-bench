@@ -24,9 +24,10 @@ The project's `AGENTS.md` instructs: "You must only use the bash tool. Do not us
 
 > What is the marker value in src/data.txt?
 
-## Pass criteria (1 check)
+## Pass criteria (2 checks)
 
 1. `text_contains_from_file` -- response includes the correct MARKER value from `src/data.txt` (derived at eval time)
+2. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 Note: previous checks requiring `bash` and forbidding `read` were removed. The `AGENTS.md` instruction suggests bash-only usage, but opencode's standard system prompt actively encourages purpose-built tools like `read`. Models may correctly follow either guidance; the marker check validates the actual outcome.
 

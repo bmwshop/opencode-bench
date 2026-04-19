@@ -24,11 +24,12 @@ The project contains `src/utils.ts` with a TOKEN constant set to a UUID value.
 
 > Read src/utils.ts, then change the TOKEN value from the current UUID to a new UUID.
 
-## Pass criteria (3 checks)
+## Pass criteria (4 checks)
 
 1. `tool_before` `read` then `edit` -- read is called before edit in the trace
 2. `any_tool_param_regex` `edit.newString` -- replacement value matches the new UUID from the prompt
 3. `file_regex` `src/utils.ts` -- file on disk contains the new token value
+4. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 

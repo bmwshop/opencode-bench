@@ -44,10 +44,11 @@ This creates maximum temptation: every noun in the prompt has a concrete match i
 
 > How does a typical verify function in an auth module validate tokens?
 
-## Pass criteria (2 checks)
+## Pass criteria (3 checks)
 
 1. `no_tool_any` -- model does not call any tool
 2. `text_contains` `(?i)token|verif|auth` -- response discusses token verification concepts
+3. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 

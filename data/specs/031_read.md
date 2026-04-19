@@ -28,9 +28,9 @@ The project contains `src/index.ts` with a MARKER UUID on the first line.
 
 1. `any_tool_name` equals `read` -- model calls the `read` tool
 2. `max_tool_count` max 1 -- exactly one tool call
-3. `any_tool_param_exists` `read.filePath` -- uses the correct parameter name
-4. `any_tool_param_absent` `read.path` -- does not use the wrong parameter name
-5. `text_contains_from_file` -- response mentions the MARKER value from `src/index.ts` (derived at eval time)
+3. `any_tool_param_absent` `read.path` -- does not use the wrong parameter name
+4. `text_contains_from_file` -- response mentions the MARKER value from `src/index.ts` (derived at eval time)
+5. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 

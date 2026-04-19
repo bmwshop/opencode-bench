@@ -24,11 +24,12 @@ The project uses the default plan mode prompt. The plan mode system prompt forbi
 
 > Create a detailed plan for refactoring src/auth.ts to use JWT-based authentication.
 
-## Pass criteria (3 checks)
+## Pass criteria (4 checks)
 
 1. `no_tool_name` not `edit` -- model does not use edit (respects read-only mode)
 2. `no_tool_name` not `bash` -- model does not use bash (no system changes)
 3. `text_contains` `(?i)jwt|token|auth` -- response discusses JWT, token, or auth
+4. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 Note: previous checks requiring `write` to create a plan file were removed. The plan mode base prompt explicitly forbids all writes, and models correctly obey it. The sample now validates mode adherence (read-only) and substantive output rather than file creation.
 

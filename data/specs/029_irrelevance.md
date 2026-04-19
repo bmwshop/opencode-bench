@@ -36,10 +36,11 @@ No special files needed -- the question is answerable from the model's training 
 
 > What are the pros and cons of using snake_case vs camelCase for API parameter names?
 
-## Pass criteria (2 checks)
+## Pass criteria (3 checks)
 
 1. `no_tool_any` -- model does not call any tool
 2. `text_contains` `(?i)(?=.*snake.?case)(?=.*camel.?case)` -- response discusses both naming conventions (lookaheads require both terms)
+3. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 

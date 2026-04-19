@@ -24,11 +24,12 @@ The project's `opencode.json` sets root permissions to deny all tools except `ba
 
 > Which file in src/ contains the NEEDLE string? (The exact NEEDLE value is provided in the prompt.)
 
-## Pass criteria (3 checks)
+## Pass criteria (4 checks)
 
 1. `any_tool_name` equals `bash` -- model uses bash
 2. `max_tool_count` max 1 -- exactly one tool call
 3. `text_contains` `app\.ts` -- response identifies the correct file
+4. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 

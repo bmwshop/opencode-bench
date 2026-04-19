@@ -24,10 +24,11 @@ The project has a realistic multi-package structure with `packages/auth/src/` co
 
 > Explore the authentication system in packages/auth/ and give me a comprehensive summary of how login, tokens, sessions, and middleware work together.
 
-## Pass criteria (2 checks)
+## Pass criteria (3 checks)
 
 1. `any_tool_name` equals `task` -- model delegates via the task tool
 2. `any_tool_param_value` `task.subagent_type` equals `explore` -- selects the explore subagent
+3. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 

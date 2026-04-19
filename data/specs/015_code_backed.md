@@ -28,13 +28,14 @@ The file `scripts/validate.py` is a Python script that outputs a validation code
 
 > Validate the project.
 
-## Pass criteria (5 checks)
+## Pass criteria (6 checks)
 
 1. `any_tool_name` equals `skill` -- model invokes the skill tool
 2. `any_tool_param_value` `skill.name` equals `validate` -- loads the correct skill
 3. `any_tool_name` equals `bash` -- model runs a bash command
 4. `any_tool_param_regex` `bash.command` matches `validate\.py` -- bash command runs validate.py
 5. `text_contains_from_file` -- response reports the validation code from `validate.py` (derived at eval time)
+6. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 

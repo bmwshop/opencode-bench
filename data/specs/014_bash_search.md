@@ -24,13 +24,14 @@ Same project. The `AGENTS.md` instructs bash-only usage while all tools remain v
 
 > Which file in src/ contains the NEEDLE string? (The exact NEEDLE value is provided in the prompt.)
 
-## Pass criteria (5 checks)
+## Pass criteria (6 checks)
 
 1. `any_tool_name` equals `bash` -- model uses bash
 2. `no_tool_name` not `grep` -- does not use the native grep tool
 3. `no_tool_name` not `read` -- does not use the native read tool
 4. `any_tool_param_regex` `bash.command` matches the NEEDLE string -- bash command searches for the actual needle value
 5. `text_contains` `app\.ts` -- response identifies the correct file
+6. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 

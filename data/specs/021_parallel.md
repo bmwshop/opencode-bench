@@ -24,11 +24,12 @@ The project has two distinct packages: `packages/auth/` (authentication) and `pa
 
 > I need two independent investigations done simultaneously: (1) explore the authentication system in packages/auth/, and (2) explore the payment processing pipeline in packages/payment/. Do both at the same time.
 
-## Pass criteria (3 checks)
+## Pass criteria (4 checks)
 
 1. `min_tool_count` `task` >= 2 -- at least two task calls in the trace
 2. `tools_same_step` `task` >= 2 -- both tasks spawned in the same assistant turn
 3. `any_tool_param_value` `task.subagent_type` equals `explore` -- at least one task uses the explore subagent
+4. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 

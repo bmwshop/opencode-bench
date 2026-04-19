@@ -24,12 +24,11 @@ No special project files needed. The prompt asks for a simple echo command.
 
 > Run the command: echo \<UUID\>
 
-## Pass criteria (4 checks)
+## Pass criteria (3 checks)
 
 1. `any_tool_name` equals `bash` -- model calls the `bash` tool
-2. `any_tool_param_exists` `bash.description` -- provides the required description parameter
-3. `any_tool_param_exists` `bash.command` -- provides the required command parameter
-4. `text_contains` -- output includes the echoed UUID from the prompt
+2. `text_contains` -- output includes the echoed UUID from the prompt
+3. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 

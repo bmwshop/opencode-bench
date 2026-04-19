@@ -24,13 +24,14 @@ The project's `AGENTS.md` instructs: "You must only use the bash tool. Do not us
 
 > Count how many .ts files exist in src/ and report the exact number.
 
-## Pass criteria (5 checks)
+## Pass criteria (6 checks)
 
 1. `any_tool_name` equals `bash` -- model uses bash
 2. `no_tool_name` not `glob` -- does not use the native glob tool
 3. `any_tool_param_regex` `bash.command` matches `\|` -- command contains a pipe
 4. `any_tool_param_regex` `bash.command` matches `(?=.*src)(?=.*\.ts)` -- bash command references both `src/` and `.ts`
 5. `text_contains` `3` -- response reports the correct count
+6. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 

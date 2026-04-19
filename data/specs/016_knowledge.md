@@ -29,7 +29,7 @@ The fixture includes `src/register.ts` with a non-conforming stub (`register` in
 
 > Create an API handler for user registration in src/register.ts
 
-## Pass criteria (6 checks)
+## Pass criteria (7 checks)
 
 1. `any_tool_name` equals `skill` -- model invokes the skill tool
 2. `any_tool_param_value` `skill.name` equals `api-style` -- loads the correct skill
@@ -37,6 +37,7 @@ The fixture includes `src/register.ts` with a non-conforming stub (`register` in
 4. `file_regex` `register.ts` matches `API_HANDLER` -- marker comment is present
 5. `file_regex` `register.ts` matches `ok\s*:` -- return object includes `ok` field (matches both type annotations and runtime values)
 6. `tool_before` read → edit -- read before edit (filetime.assert enforced)
+7. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 

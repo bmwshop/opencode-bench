@@ -26,10 +26,11 @@ The project has `packages/auth/` and `packages/payment/` with multiple source fi
 
 > I need CHANGELOG.md files added to both packages/auth/ and packages/payment/. Each should summarize what the package does based on its source files. Delegate this.
 
-## Pass criteria (2 checks)
+## Pass criteria (3 checks)
 
 1. `any_tool_name` equals `task` -- model delegates via the task tool
 2. `any_tool_param_value` `task.subagent_type` equals `general` -- selects the general subagent
+3. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 
