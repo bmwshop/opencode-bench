@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 """
-Submit samples from samples.jsonl to opencode CLI and save traces to results/.
+Submit samples from samples.jsonl to opencode CLI and save traces to runs/.
 
-Results are stored in results/{model_slug}/{timestamp}/ with a meta.json file.
+Each invocation writes to runs/{model_slug}/{timestamp}/ with:
+    meta.json
+    {id}_{name}.jsonl           raw opencode trace
+    projects/{id:03d}/          post-run workspace (copied from projects/{id:03d}/)
+    captures/ (with --proxy)    proxy payloads moved from the staging dir
+
+The canonical projects/ tree is read-only at runtime.
 
 Usage:
     python run.py                    # run all samples
@@ -13,27 +19,29 @@ Usage:
     python run.py --model provider/model-name
     python run.py --proxy http://localhost:4000/v1
     python run.py --proxy http://localhost:4000/v1 --capture-dir /tmp/sw
-    python run.py --clean            # wipe results first
+    python run.py --clean            # wipe runs/ first
     python run.py --timeout 120      # custom timeout
+    python run.py --workers 4        # run up to 4 samples in parallel
 
     # Local vLLM server (vllm/ prefix is auto-injected)
     python run.py --vllm http://localhost:8000/v1 --model Qwen/Qwen2.5-32B-Instruct
     python run.py --vllm http://localhost:8000/v1 --model Qwen/Qwen2.5-32B-Instruct --vllm-api-key token123
 """
 
-import atexit
-import json
-import signal
-import subprocess
-import shutil
-import sys
 import argparse
+import json
+import shutil
+import subprocess
+import sys
+import threading
 import time
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
-from common import ROOT, PROJECTS, RESULTS, CAPTURES, model_slug, load
+
+from common import PROJECTS, ROOT, RUNS, load, model_slug
 
 DEFAULT_TIMEOUT = 180
 DEFAULT_MAX_OUTPUT_TOKENS = 8192
@@ -42,58 +50,12 @@ DEFAULT_MAX_OUTPUT_TOKENS = 8192
 # a sane max_tokens rather than its hardcoded 32000 default, which routinely
 # blows past (max_model_len - input_tokens) and raises ContextOverflowError.
 FALLBACK_CONTEXT_TOKENS = 32768
+CAPTURE_STAGING = ROOT / "captures"
 
-_originals: dict[str, dict[str, bytes]] = {}
-
-SKIP_DIRS = {"node_modules", "__pycache__"}
-
-
-def _cleanup():
-    for key in list(_originals):
-        restore(Path(key))
-
-
-atexit.register(_cleanup)
-signal.signal(signal.SIGINT, lambda *_: sys.exit(1))
-signal.signal(signal.SIGTERM, lambda *_: sys.exit(1))
-
-
-def _files(path):
-    for p in path.rglob("*"):
-        if any(part in SKIP_DIRS for part in p.parts):
-            continue
-        if p.is_file():
-            yield p
-
-
-def snapshot(path):
-    key = str(path)
-    if key not in _originals:
-        _originals[key] = {str(p): p.read_bytes() for p in _files(path)}
-
-
-def restore(path):
-    key = str(path)
-    original = _originals.get(key, {})
-    for item in _files(path):
-        if str(item) not in original:
-            try:
-                item.unlink()
-            except OSError:
-                pass
-    for item in sorted(path.rglob("*"), reverse=True):
-        if any(part in SKIP_DIRS for part in item.parts):
-            continue
-        if item.is_dir() and not any(item.iterdir()):
-            try:
-                item.rmdir()
-            except OSError:
-                pass
-    for fpath, content in original.items():
-        p = Path(fpath)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        if not p.exists() or p.read_bytes() != content:
-            p.write_bytes(content)
+# Shared across worker threads so multiple parallel run()s don't each hit
+# /v1/models for the same (base_url, model_id) pair.
+_ctx_cache: dict[tuple[str, str], int | None] = {}
+_ctx_cache_lock = threading.Lock()
 
 
 def _inject_proxy(cwd, provider, url):
@@ -127,6 +89,19 @@ def _fetch_max_model_len(base_url, model_id, api_key="EMPTY", timeout=30):
     return None
 
 
+def _cached_context(base_url, model_id, api_key):
+    """Thread-safe cached lookup of max_model_len for (base_url, model_id)."""
+    key = (base_url, model_id)
+    with _ctx_cache_lock:
+        if key in _ctx_cache:
+            return _ctx_cache[key]
+    # Fetch outside the lock so slow HTTP calls don't serialize workers.
+    ctx = _fetch_max_model_len(base_url, model_id, api_key)
+    with _ctx_cache_lock:
+        _ctx_cache.setdefault(key, ctx)
+        return _ctx_cache[key]
+
+
 def _limit_for(context, max_output_tokens):
     """Build a `limit` block, clamping output so it can't meet or exceed context.
 
@@ -140,55 +115,39 @@ def _limit_for(context, max_output_tokens):
     return {"context": int(context), "output": output}
 
 
-def _patch_model_limits(max_output_tokens, api_key="EMPTY"):
-    """Fill in ``limit.{context, output}`` on every project's opencode.json.
+def _patch_model_limits_in(cwd, max_output_tokens, api_key="EMPTY"):
+    """Fill in ``limit.{context, output}`` on a single project's opencode.json.
 
-    For each ``projects/*/opencode.json`` that already has a custom provider
-    with a ``baseURL``/``api`` pointing at an OpenAI-compatible server, we
+    For each custom provider in ``cwd/opencode.json`` that has a
+    ``baseURL``/``api`` pointing at an OpenAI-compatible server, we
     hit ``/v1/models``, look up ``max_model_len`` for each registered model,
     and write it onto the model entry as ``limit.context``. ``limit.output``
-    is set from ``--max-output-tokens``.
+    is set from ``max_output_tokens``.
 
-    Results are cached per ``(base_url, model_id)`` so we only hit the server
-    once even though all 12 project configs share the same provider config.
-
-    Must run BEFORE ``snapshot(d)`` so the patched config is what gets
-    restored between samples.
+    Without this, opencode hardcodes 32000 for custom providers and routinely
+    raises ContextOverflowError when max_tokens + input_tokens exceeds
+    max_model_len.
     """
-    cache: dict[tuple[str, str], int | None] = {}
-    fallback_used = False
-    for d in sorted(PROJECTS.iterdir()):
-        if not d.is_dir():
+    path = cwd / "opencode.json"
+    if not path.exists():
+        return
+    cfg = json.loads(path.read_text())
+    dirty = False
+    for pcfg in cfg.get("provider", {}).values():
+        base_url = pcfg.get("options", {}).get("baseURL") or pcfg.get("api")
+        if not base_url:
             continue
-        path = d / "opencode.json"
-        if not path.exists():
-            continue
-        cfg = json.loads(path.read_text())
-        dirty = False
-        for pcfg in cfg.get("provider", {}).values():
-            base_url = pcfg.get("options", {}).get("baseURL") or pcfg.get("api")
-            if not base_url:
+        pkey = pcfg.get("options", {}).get("apiKey") or api_key
+        for mid, mcfg in pcfg.get("models", {}).items():
+            if not isinstance(mcfg, dict):
                 continue
-            pkey = pcfg.get("options", {}).get("apiKey") or api_key
-            for mid, mcfg in pcfg.get("models", {}).items():
-                if not isinstance(mcfg, dict):
-                    continue
-                key = (base_url, mid)
-                if key not in cache:
-                    cache[key] = _fetch_max_model_len(base_url, mid, pkey)
-                ctx = cache[key]
-                if ctx is None:
-                    ctx = FALLBACK_CONTEXT_TOKENS
-                    fallback_used = True
-                mcfg["limit"] = _limit_for(ctx, max_output_tokens)
-                dirty = True
-        if dirty:
-            path.write_text(json.dumps(cfg, indent=2))
-    if cache:
-        resolved = {f"{u}#{m}": v for (u, m), v in cache.items()}
-        print(f"Model limits: max_model_len={resolved}, "
-              f"max_output_tokens={max_output_tokens}"
-              + (f", fallback_context={FALLBACK_CONTEXT_TOKENS}" if fallback_used else ""))
+            ctx = _cached_context(base_url, mid, pkey)
+            if ctx is None:
+                ctx = FALLBACK_CONTEXT_TOKENS
+            mcfg["limit"] = _limit_for(ctx, max_output_tokens)
+            dirty = True
+    if dirty:
+        path.write_text(json.dumps(cfg, indent=2))
 
 
 def _inject_vllm_config(cwd, provider, model_id, server_url, api_key="EMPTY",
@@ -204,7 +163,7 @@ def _inject_vllm_config(cwd, provider, model_id, server_url, api_key="EMPTY",
     path = cwd / "opencode.json"
     cfg = json.loads(path.read_text()) if path.exists() else {}
 
-    ctx = _fetch_max_model_len(server_url, model_id, api_key) or FALLBACK_CONTEXT_TOKENS
+    ctx = _cached_context(server_url, model_id, api_key) or FALLBACK_CONTEXT_TOKENS
     model_entry = {
         "name": model_id,
         "id": model_id,
@@ -229,20 +188,28 @@ def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
         max_output_tokens=DEFAULT_MAX_OUTPUT_TOKENS):
     sid = sample["id"]
     name = sample.get("name", str(sid))
-    project = sample.get("project", "default")
-    cwd = PROJECTS / project
+    src = PROJECTS / f"{sid:03d}"
 
-    if not cwd.exists():
-        print(f"  SKIP #{sid} {name}: project {project}/ not found")
+    if not src.is_dir():
+        print(f"  SKIP #{sid} {name}: projects/{sid:03d}/ not found", flush=True)
         return None
 
-    restore(cwd)
+    cwd = run_dir / "projects" / f"{sid:03d}"
+    if cwd.exists():
+        shutil.rmtree(cwd)
+    shutil.copytree(src, cwd)
+
     if vllm_url:
         _inject_vllm_config(cwd, provider, vllm_model_id, vllm_url, vllm_api_key,
                             max_output_tokens=max_output_tokens)
-    elif proxy:
-        _inject_proxy(cwd, provider, proxy)
-    print(f"  RUN  #{sid} {name} (project={project})", end="", flush=True)
+    else:
+        # Patch limits on any pre-existing custom providers so opencode
+        # doesn't send its default 32000 max_tokens and trip ContextOverflow.
+        _patch_model_limits_in(cwd, max_output_tokens)
+        if proxy:
+            _inject_proxy(cwd, provider, proxy)
+
+    header = f"  RUN  #{sid:03d} {name}"
     start = time.time()
 
     try:
@@ -258,7 +225,7 @@ def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
         )
         stdout, stderr = proc.communicate(timeout=timeout)
         elapsed = time.time() - start
-        print(f"  ({elapsed:.0f}s)")
+        header += f"  ({elapsed:.0f}s)"
     except subprocess.TimeoutExpired:
         try:
             proc.kill()
@@ -266,13 +233,13 @@ def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
         except Exception:
             stdout, stderr = "", ""
         elapsed = time.time() - start
-        print(f"  TIMEOUT ({elapsed:.0f}s)")
+        header += f"  TIMEOUT ({elapsed:.0f}s)"
     except FileNotFoundError:
-        print(f"\n  ERROR: opencode not found in PATH")
+        print(f"  ERROR: opencode not found in PATH", flush=True)
         sys.exit(1)
 
     if "Model not found" in stderr or "Invalid model" in stderr:
-        print(f"\n  ERROR: {stderr.strip()}")
+        print(f"{header}\n  ERROR: {stderr.strip()}", flush=True)
         sys.exit(1)
 
     out = run_dir / f"{sid}_{name}.jsonl"
@@ -283,23 +250,16 @@ def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
 
     lines = [l for l in stdout.strip().split("\n") if l.strip()]
     tools = sum(1 for l in lines if '"tool_use"' in l)
-    print(f"         {len(lines)} events, {tools} tool calls")
+    print(f"{header}\n         {len(lines)} events, {tools} tool calls", flush=True)
 
     return out
 
 
 def main():
-    subprocess.run(
-        ["git", "checkout", "--", "projects/"],
-        cwd=ROOT,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--id", action="append", help="Run specific sample(s) by ID")
     parser.add_argument("--category", action="append", help="Run all samples in a category")
-    parser.add_argument("--clean", action="store_true", help="Wipe results first")
+    parser.add_argument("--clean", action="store_true", help="Wipe runs/ first")
     parser.add_argument("--model", "-m", help="Model in provider/model format (default: opencode config)")
     parser.add_argument(
         "--proxy",
@@ -313,18 +273,25 @@ def main():
     )
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT)
     parser.add_argument(
+        "--workers",
+        "-j",
+        type=int,
+        default=1,
+        help="Number of samples to run in parallel (default: 1)",
+    )
+    parser.add_argument(
         "--capture-dir",
         default=None,
-        help="Flat directory where switchyard writes captures. "
-             "New files are moved to captures/{slug}/{timestamp}/ after the run. "
-             "Defaults to captures/.",
+        help="Staging directory where switchyard writes captures. "
+             "New files are moved to runs/{slug}/{timestamp}/captures/ after the run. "
+             "Defaults to captures/ at the repo root.",
     )
     parser.add_argument(
         "--vllm",
         default=None,
         help="vLLM server URL (e.g. http://localhost:8000/v1). "
              "Injects full provider config (npm adapter, model registration, baseURL) "
-             "into each project's opencode.json. Requires --model in provider/model format.",
+             "into each per-sample opencode.json. Requires --model in provider/model format.",
     )
     parser.add_argument(
         "--vllm-api-key",
@@ -362,20 +329,20 @@ def main():
         print(f"ERROR: --model must be in provider/model format (got '{args.model}')")
         sys.exit(1)
 
-    if args.clean and RESULTS.exists():
-        shutil.rmtree(RESULTS)
-        print("Cleaned results/\n")
+    if args.workers < 1:
+        print(f"ERROR: --workers must be >= 1 (got {args.workers})")
+        sys.exit(1)
 
-    # Patch opencode.json limits BEFORE snapshotting so the auto-detected
-    # max_model_len / max_output_tokens survive restore() between samples.
-    # In the --vllm path the provider config doesn't exist yet; it'll be
-    # injected (with limits) per-sample inside run().
-    if not args.vllm:
-        _patch_model_limits(args.max_output_tokens)
+    if args.proxy and args.workers > 1:
+        print(
+            "WARNING: --proxy + --workers > 1: the stitch.py timestamp fallback "
+            "for zero-tool-call samples has a 3s window and may misattribute "
+            "captures. Tool-call samples are unaffected.\n"
+        )
 
-    for d in PROJECTS.iterdir():
-        if d.is_dir():
-            snapshot(d)
+    if args.clean and RUNS.exists():
+        shutil.rmtree(RUNS)
+        print("Cleaned runs/\n")
 
     samples = list(load(args))
     if not samples:
@@ -385,8 +352,9 @@ def main():
     now = datetime.now(timezone.utc)
     slug = model_slug(args.model)
     timestamp = now.strftime("%Y-%m-%dT%H-%M-%S")
-    run_dir = RESULTS / slug / timestamp
+    run_dir = RUNS / slug / timestamp
     run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / "projects").mkdir(exist_ok=True)
 
     provider = args.proxy_provider
     if args.vllm:
@@ -415,8 +383,8 @@ def main():
     }
     (run_dir / "meta.json").write_text(json.dumps(meta, indent=2) + "\n")
 
-    cap_src = Path(args.capture_dir) if args.capture_dir else CAPTURES
-    existing = set(cap_src.glob("*.json")) if cap_src and cap_src.is_dir() else set()
+    cap_src = Path(args.capture_dir) if args.capture_dir else CAPTURE_STAGING
+    existing = set(cap_src.glob("*.json")) if cap_src.is_dir() else set()
 
     parts = []
     if args.model:
@@ -425,29 +393,39 @@ def main():
         parts.append(f"vllm={args.vllm} (provider={provider}, model_id={vllm_model_id})")
     elif args.proxy:
         parts.append(f"proxy={args.proxy} ({provider})")
+    if args.workers > 1:
+        parts.append(f"workers={args.workers}")
     label = f"{', '.join(parts)}, " if parts else ""
     print(f"Running {len(samples)} sample(s) ({label}timeout={args.timeout}s)")
     print(f"Run dir: {run_dir}\n")
 
     ran = 0
     skipped = 0
-    for sample in samples:
-        if run(sample, args.timeout, run_dir, model=args.model, proxy=args.proxy,
-               provider=provider, vllm_url=args.vllm, vllm_model_id=vllm_model_id,
-               vllm_api_key=args.vllm_api_key,
-               max_output_tokens=args.max_output_tokens):
-            ran += 1
-        else:
-            skipped += 1
+    with ThreadPoolExecutor(max_workers=args.workers) as ex:
+        futures = [
+            ex.submit(
+                run, sample, args.timeout, run_dir,
+                model=args.model, proxy=args.proxy, provider=provider,
+                vllm_url=args.vllm, vllm_model_id=vllm_model_id,
+                vllm_api_key=args.vllm_api_key,
+                max_output_tokens=args.max_output_tokens,
+            )
+            for sample in samples
+        ]
+        for f in as_completed(futures):
+            if f.result():
+                ran += 1
+            else:
+                skipped += 1
 
-    # Restore all project directories to their original state so that
-    # injected provider configs (vllm, proxy) don't persist on disk.
-    for d in PROJECTS.iterdir():
-        if d.is_dir():
-            restore(d)
+    if _ctx_cache:
+        resolved = {f"{u}#{m}": v for (u, m), v in _ctx_cache.items()}
+        print(f"\nModel limits: max_model_len={resolved}, "
+              f"max_output_tokens={args.max_output_tokens}, "
+              f"fallback_context={FALLBACK_CONTEXT_TOKENS}")
 
-    if cap_src and cap_src.is_dir():
-        cap_dst = CAPTURES / slug / timestamp
+    if cap_src.is_dir():
+        cap_dst = run_dir / "captures"
         cap_dst.mkdir(parents=True, exist_ok=True)
         moved = 0
         for f in sorted(cap_src.glob("*.json")):
@@ -458,7 +436,7 @@ def main():
             print(f"\nMoved {moved} capture(s) to {cap_dst}/")
 
     print(f"\nDone. {ran} ran, {skipped} skipped")
-    print(f"Results in {run_dir}/")
+    print(f"Run in {run_dir}/")
 
 
 if __name__ == "__main__":

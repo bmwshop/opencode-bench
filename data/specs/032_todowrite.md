@@ -4,10 +4,6 @@
 
 tool_schema
 
-## Project
-
-default
-
 ## Contract
 
 completion
@@ -22,7 +18,7 @@ Tool schema adherence for the `todowrite` tool. Opencode exposes a `todowrite` t
 
 ## Setup
 
-No special project files needed beyond the default project. The prompt references `src/auth.ts` which exists in the default project.
+No special project files needed beyond the project. The prompt references `src/auth.ts` which exists in the project.
 
 ## Prompt
 

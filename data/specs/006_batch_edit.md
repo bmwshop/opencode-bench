@@ -4,10 +4,6 @@
 
 efficiency
 
-## Project
-
-default
-
 ## Contract
 
 completion
@@ -31,23 +27,11 @@ A common pattern in agent sessions is making several changes to one file. Openco
 
 ## Setup
 
-Uses the default project. The file `src/auth.ts` contains:
-
-```ts
-import { TOKEN } from './utils'
-
-// NEEDLE_f9c2
-// MARKER: b7e1d930
-export function verify(input: string) {
-  return input === TOKEN
-}
-```
-
-Both `// NEEDLE_f9c2` and `// MARKER: b7e1d930` are exact strings the model can use directly.
+The file `src/auth.ts` contains a NEEDLE comment and a MARKER comment (both with UUID values), along with the verify function. The prompt provides the exact old and new strings for both replacements.
 
 ## Prompt
 
-> In src/auth.ts, make two changes: (1) replace `// NEEDLE_f9c2` with `// NEEDLE_updated`, and (2) replace `// MARKER: b7e1d930` with `// MARKER: updated`. Both old strings are exact -- do it as concisely as possible.
+> In src/auth.ts, make two changes: (1) replace the NEEDLE comment with `// NEEDLE_updated`, and (2) replace the MARKER comment with `// MARKER: updated`. Both old strings are provided exactly in the prompt -- do it as concisely as possible.
 
 ## Pass criteria (4 checks)
 

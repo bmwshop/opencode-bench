@@ -4,10 +4,6 @@
 
 subagent
 
-## Project
-
-multi_module
-
 ## Contract
 
 routing
@@ -22,7 +18,7 @@ Parallel subagent delegation -- spawning multiple `task` calls in a single step.
 
 ## Setup
 
-The `multi_module` project has two distinct packages: `packages/auth/` (authentication) and `packages/payment/` (payment processing), each with 4 source files.
+The project has two distinct packages: `packages/auth/` (authentication) and `packages/payment/` (payment processing), each with 4 source files.
 
 ## Prompt
 

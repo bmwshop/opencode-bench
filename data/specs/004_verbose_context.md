@@ -4,10 +4,6 @@
 
 distractor
 
-## Project
-
-default
-
 ## Contract
 
 completion
@@ -28,14 +24,7 @@ This differs from #3 (`focused_read`) which lists files explicitly. Here, the di
 
 ## Setup
 
-Uses the default project. The file `src/index.ts` contains:
-
-```ts
-// MARKER: 8f3a2b1c
-export const version = '1.0.0'
-```
-
-The prompt describes `src/auth.ts` (verify function, token verification), `src/utils.ts` (TOKEN constant), and test files -- all real files that a model could read but shouldn't.
+The file `src/index.ts` contains a MARKER UUID comment and exports a version string (a UUID). The prompt describes `src/auth.ts` (verify function, token verification), `src/utils.ts` (TOKEN constant), and test files -- all real files that a model could read but shouldn't.
 
 ## Prompt
 
@@ -44,7 +33,7 @@ The prompt describes `src/auth.ts` (verify function, token verification), `src/u
 ## Pass criteria (5 checks)
 
 1. `any_tool_name` equals `read` -- uses the read tool
-2. `text_contains` `1\.0\.0` -- reports the correct version string
+2. `text_contains_from_file` -- reports the correct version string from `src/index.ts` (derived at eval time)
 3. `max_tool_count` max 2 -- at most 2 tool calls total
 4. `no_tool_name` not `grep` -- does not grep when the target file is named
 5. `no_tool_name` not `task` -- does not delegate unnecessarily

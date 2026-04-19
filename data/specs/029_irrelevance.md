@@ -4,10 +4,6 @@
 
 tool_schema
 
-## Project
-
-default
-
 ## Contract
 
 completion
@@ -26,15 +22,15 @@ This is inspired by BFCL's (Berkeley Function Calling Leaderboard) "Function Rel
 
 The prompt deliberately sits in an ambiguous zone:
 
-- **Domain-adjacent**: it asks about `snake_case` vs `camelCase` -- naming conventions that are central to several opencode-bench tests (the `camel_case` project enforces camelCase, the `edit` sample checks for `oldString` not `old_string`, etc.)
-- **Project-tempting**: the default project uses camelCase parameters (`filePath`, `oldString`, `newString`), and a `grep` for these patterns would return results -- making it tempting for the model to "demonstrate" with real examples
+- **Domain-adjacent**: it asks about `snake_case` vs `camelCase` -- naming conventions that are central to several opencode-bench tests (the project enforces camelCase, the `edit` sample checks for `oldString` not `old_string`, etc.)
+- **Project-tempting**: the project uses camelCase parameters (`filePath`, `oldString`, `newString`), and a `grep` for these patterns would return results -- making it tempting for the model to "demonstrate" with real examples
 - **Pure knowledge**: despite the domain overlap, the question asks for general software engineering tradeoffs, not anything about this specific project
 
 This is harder than an obviously off-topic question like "What is the capital of France?" because the model must distinguish between "this topic relates to the project" and "this question requires interacting with the project."
 
 ## Setup
 
-Uses the default project. No special files needed -- the question is answerable from the model's training data alone. The default project's camelCase parameter names (`filePath`, `oldString`, `newString`) create a realistic temptation to grep or read files for examples.
+No special files needed -- the question is answerable from the model's training data alone. The project's camelCase parameter names (`filePath`, `oldString`, `newString`) create a realistic temptation to grep or read files for examples.
 
 ## Prompt
 

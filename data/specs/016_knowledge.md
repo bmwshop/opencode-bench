@@ -4,10 +4,6 @@
 
 skill
 
-## Project
-
-skill_knowledge
-
 ## Contract
 
 completion

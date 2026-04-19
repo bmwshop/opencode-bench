@@ -4,10 +4,6 @@
 
 tool_schema
 
-## Project
-
-default
-
 ## Contract
 
 completion
@@ -22,11 +18,11 @@ Tool schema adherence for the `edit` tool. Opencode's edit tool uses camelCase p
 
 ## Setup
 
-The project contains `src/utils.ts` with `export const TOKEN = "abc123"`.
+The project contains `src/utils.ts` with a TOKEN constant set to a UUID value.
 
 ## Prompt
 
-> In src/utils.ts, change the TOKEN value from "abc123" to "xyz789".
+> In src/utils.ts, change the TOKEN value from the current UUID to a new UUID.
 
 ## Pass criteria (9 checks)
 
@@ -36,9 +32,9 @@ The project contains `src/utils.ts` with `export const TOKEN = "abc123"`.
 4. `any_tool_param_exists` `edit.newString` -- uses correct new string parameter
 5. `any_tool_param_absent` `edit.old_string` -- does not use snake_case variant
 6. `any_tool_param_absent` `edit.new_string` -- does not use snake_case variant
-7. `any_tool_param_regex` `edit.newString` matches `xyz789` -- replacement value is correct
+7. `any_tool_param_regex` `edit.newString` -- replacement value matches the new UUID from the prompt
 8. `tool_before` read → edit -- read before edit (filetime.assert enforced)
-9. `file_regex` `src/utils.ts` matches `xyz789` -- file on disk contains the new token value
+9. `file_regex` `src/utils.ts` -- file on disk contains the new token value
 
 ## Shortest path
 

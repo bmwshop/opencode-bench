@@ -24,9 +24,17 @@ To run the benchmark on a Slurm cluster with a GPU-hosted vLLM server, see [CLUS
 
 ## Running Samples
 
-`run.py` sends prompts from `data/samples.jsonl` to `opencode run --format json` and saves JSON traces to `results/{model_slug}/{timestamp}/`.
+`run.py` sends prompts from `data/samples.jsonl` to `opencode run --format json` and saves everything for that invocation under `runs/{model_slug}/{timestamp}/`.
 
-Each run creates an isolated directory with a `meta.json` file recording the model, date, timeout, sample IDs, and full command-line arguments. This lets you run the same benchmark against different models (or the same model multiple times) without overwriting previous results.
+Each run creates an isolated directory with:
+
+- `meta.json` — model, date, timeout, sample IDs, full command-line arguments
+- `{id}_{name}.jsonl` — per-sample opencode trace
+- `projects/{id:03d}/` — per-sample workspace, copied from `projects/{id:03d}/` before the sample runs and left in place afterwards for inspection
+- `captures/` (when `--proxy` is set) — proxy request/response logs moved here after the run
+- `stitched/` (after `stitch.py` runs) — stitched multi-turn traces
+
+The canonical `projects/` tree is never modified at runtime, so it is safe to run multiple models (or the same model multiple times) in parallel.
 
 ```bash
 python run.py                                              # run all samples
@@ -36,11 +44,14 @@ python run.py --category tool_schema                       # run one category
 python run.py --category tool_schema --category subagent   # run multiple categories
 python run.py --model provider/model-name                  # override the default model
 python run.py --proxy http://localhost:4000/v1             # route through a logging proxy
-python run.py --clean                                      # wipe all results first
+python run.py --clean                                      # wipe runs/ first
 python run.py --timeout 120                                # custom per-sample timeout (default: 180s)
+python run.py -j 4                                         # run up to 4 samples in parallel
 ```
 
-The `--model` flag is optional. When omitted, opencode uses its configured default and traces go under `results/default/`. The format is `provider/model-id` (e.g. `anthropic/claude-opus-4-6`), which gets converted to a directory slug (`anthropic_claude-opus-4-6`).
+The `--model` flag is optional. When omitted, opencode uses its configured default and traces go under `runs/default/`. The format is `provider/model-id` (e.g. `anthropic/claude-opus-4-6`), which gets converted to a directory slug (`anthropic_claude-opus-4-6`).
+
+`--workers` / `-j` (default 1) runs samples in parallel via a thread pool. Each sample already executes in its own `runs/{slug}/{ts}/projects/{id:03d}/` workspace copy, so parallelism is safe with no contention on disk. Combined with `--proxy`, the switchyard timestamp fallback used by `stitch.py` has a 3-second window, so attribution for zero-tool-call samples may be unreliable — `run.py` prints a warning but does not block it.
 
 ## Evaluating Results
 
@@ -100,7 +111,7 @@ nemo-switchyard opencode \
 python run.py --proxy http://localhost:4000/v1 --model nvidia/nvidia/nemotron-3-super-120b-a12b
 ```
 
-The `--proxy` flag dynamically injects a `provider.{id}.options.baseURL` override into each project fixture's `opencode.json` before running the sample. The existing snapshot/restore mechanism cleans up the override after each run.
+The `--proxy` flag dynamically injects a `provider.{id}.options.baseURL` override into each sample's workspace `opencode.json` before running. Because each sample executes in a fresh copy of `projects/{id:03d}/` under `runs/{slug}/{timestamp}/projects/`, the canonical `projects/` tree is never touched and the override lives only inside the run directory.
 
 By default, the provider ID is inferred from the first segment of `--model` (e.g. `nvidia`). Override it explicitly with `--proxy-provider`:
 
@@ -108,7 +119,7 @@ By default, the provider ID is inferred from the first segment of `--model` (e.g
 python run.py --proxy http://localhost:4000/v1 --proxy-provider anthropic --model anthropic/claude-opus-4-6
 ```
 
-When `--proxy` is set, `run.py` automatically moves new capture files from the switchyard output directory into `captures/{model_slug}/{timestamp}/`, matching the `results/` layout. By default it looks for new `.json` files in `captures/` (the `--rl-log-dir` passed to switchyard). Override with `--capture-dir` if switchyard writes elsewhere:
+When `--proxy` is set, `run.py` automatically moves new capture files from the switchyard staging directory into `runs/{model_slug}/{timestamp}/captures/`. By default it looks for new `.json` files in `captures/` at the repo root (the `--rl-log-dir` passed to switchyard). Override with `--capture-dir` if switchyard writes elsewhere:
 
 ```bash
 python run.py --proxy http://localhost:4000/v1 --capture-dir /tmp/switchyard-output --model nvidia/nvidia/nemotron-3-super-120b-a12b
@@ -126,30 +137,30 @@ data/
 run.py                   # runner — executes samples via opencode CLI
 eval.py                  # evaluator — scores traces against checks
 common.py                # shared constants and sample loader
-projects/                # working directories for each sample
-  default/               # shared project for distractor, efficiency, tool_orchestration, and tool_schema tests
-  multi_module/          # multi-package project for subagent delegation tests
-  camel_case/            # AGENTS.md enforcing camelCase naming
-  custom_subagent/       # custom reviewer subagent defined in opencode.json
-  custom_main_agent/     # custom primary agent with [AUDITOR] prefix
-  plan_default/          # plan mode with restricted edit permissions
-  custom_plan/           # custom plan agent prompt with [PLANNER] prefix
-  bash_only/             # prompt-based bash-only tool restriction
-  bash_strict/           # system-level tool restriction via permissions
-  skill_knowledge/       # knowledge-based skill (api-style conventions)
-  skill_workflow/        # workflow-based skill (review steps)
-  skill_code/            # code-backed skill (validate.sh script)
+projects/                # canonical per-sample fixtures, read-only at runtime
+  001/                   #   fixture for sample #1
+  002/                   #   fixture for sample #2
+  ...
+  033/                   #   fixture for sample #33
+scripts/
+  flatten_projects.py    # one-time migration that built the per-sample layout
 evaluators/              # check implementations (auto-registered)
   tool/                  # tool name and parameter checks
   content/               # text and file content checks
   orchestration/         # tool ordering and parallelism checks
-results/                 # output traces, organized by model and timestamp (git-ignored)
+runs/                    # everything produced by a run, organized by model and timestamp (git-ignored)
   {model_slug}/          #   e.g. nvidia_nemotron/
     {timestamp}/         #     e.g. 2026-04-12T18-30-00/
       meta.json          #       run metadata (model, date, args, etc.)
-      1_camel_case.jsonl #       per-sample trace files
+      1_camel_case.jsonl #       per-sample opencode trace
       ...
-captures/                # proxy request/response logs (git-ignored)
+      projects/          #       per-sample workspace copies (post-run state)
+        001/
+        ...
+      captures/          #       proxy payloads (when --proxy is used)
+      stitched/          #       stitched multi-turn traces (produced by stitch.py)
+      scores.json        #       machine-readable scores (produced by eval.py)
+captures/                # staging dir for switchyard output (git-ignored)
 ```
 
 ## Sample Categories
@@ -206,7 +217,6 @@ Each sample has a detailed spec in `data/specs/` describing the capability under
   "id": 34,
   "name": "my_test",
   "category": "tool_schema",
-  "project": "default",
   "contract": "completion",
   "surface": "tools",
   "min_calls": 1,
@@ -221,7 +231,7 @@ The `min_calls` field is the minimum number of tool calls needed to pass all che
 
 2. Create a matching spec at `data/specs/034_my_test.md`.
 
-3. If the test needs a custom project environment, create it under `projects/` with an `opencode.json` (at minimum `{"permission": {"*": "allow"}}` to auto-approve tool use).
+3. Create the sample's project fixture at `projects/034/` with an `opencode.json` (at minimum `{"permission": {"*": "allow"}}` to auto-approve tool use). Each sample gets its own directory; if two samples need similar fixtures, duplicate them — per-sample isolation is intentional and also lets each fixture carry its own fresh UUIDs. This directory is read-only at runtime: `run.py` copies it into `runs/.../projects/034/` before executing opencode.
 
 ### Scoring
 

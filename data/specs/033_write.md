@@ -4,10 +4,6 @@
 
 tool_schema
 
-## Project
-
-default
-
 ## Contract
 
 completion
@@ -26,7 +22,7 @@ The file `src/id.txt` does not exist in the fixture. The prompt asks to create i
 
 ## Prompt
 
-> Create a new file src/id.txt containing exactly: BENCH_7d4e
+> Create a new file src/id.txt containing exactly: \<UUID\>
 
 ## Pass criteria (6 checks)
 
@@ -34,8 +30,8 @@ The file `src/id.txt` does not exist in the fixture. The prompt asks to create i
 2. `max_tool_count` max 1 -- exactly one tool call (no read, glob, bash, or other tools)
 3. `any_tool_param_exists` `write.filePath` -- uses the correct file path parameter
 4. `any_tool_param_exists` `write.content` -- uses the correct content parameter
-5. `any_tool_param_regex` `write.content` matches `^BENCH_7d4e\s*$` -- content is exactly `BENCH_7d4e`
-6. `file_regex` `src/id.txt` matches `^BENCH_7d4e\s*$` -- file contains exactly `BENCH_7d4e`
+5. `any_tool_param_regex` `write.content` -- content is exactly the UUID from the prompt
+6. `file_regex` `src/id.txt` -- file on disk contains exactly the UUID from the prompt
 
 ## Shortest path
 
@@ -46,5 +42,5 @@ The file `src/id.txt` does not exist in the fixture. The prompt asks to create i
 - Uses `bash echo >` instead of the native `write` tool
 - Uses `edit` tool (meant for modifying existing files, not creating new ones)
 - Hallucinated tool name like `create_file` or `touch`
-- Writes the marker with extra content (e.g., explanatory comments or newlines) -- fails anchored exact check
+- Writes the UUID with extra content (e.g., explanatory comments or newlines) -- fails anchored exact check
 - Calls write with correct params but the file is not created on disk

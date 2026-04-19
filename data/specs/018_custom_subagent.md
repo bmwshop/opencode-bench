@@ -4,10 +4,6 @@
 
 subagent
 
-## Project
-
-custom_subagent
-
 ## Contract
 
 routing

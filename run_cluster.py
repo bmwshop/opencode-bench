@@ -175,7 +175,7 @@ def build_parser():
     output = parser.add_argument_group("Output & Installation")
     output.add_argument(
         "--output-dir", required=True,
-        help="Cluster path for results (auto-mounted to /nemo_run/code/results)",
+        help="Cluster path for run outputs (auto-mounted to /runs inside the container)",
     )
     output.add_argument(
         "--opencode-install-cmd", default=DEFAULT_INSTALL_CMD,
@@ -237,8 +237,8 @@ def build_benchmark_command(opencode_model, provider, server_url, timeout,
     """Build the in-container shell command that runs the benchmark."""
     parts = []
 
-    # Point RESULTS to the mounted /results directory
-    parts.append("export OPENCODE_BENCH_RESULTS=/results")
+    # Point RUNS to the mounted /runs directory
+    parts.append("export OPENCODE_BENCH_RUNS=/runs")
 
     # Extract model ID (part after provider/) for config registration
     model_id = opencode_model.split("/", 1)[1] if "/" in opencode_model else opencode_model
@@ -312,26 +312,26 @@ def main():
         server_url = f"http://localhost:{DEFAULT_SERVER_PORT}/v1"
 
     # -- Mount handling --------------------------------------------------
-    # Append expname to output_dir (e.g. /lustre/.../results/my-exp)
-    # and mount that as /results inside the container.  The benchmark
-    # command sets OPENCODE_BENCH_RESULTS=/results so that common.py
+    # Append expname to output_dir (e.g. /lustre/.../runs/my-exp)
+    # and mount that as /runs inside the container.  The benchmark
+    # command sets OPENCODE_BENCH_RUNS=/runs so that common.py
     # writes directly to the mounted cluster storage.
-    results_dir = os.path.join(args.output_dir.rstrip("/"), args.expname)
-    log_dir = args.log_dir if args.log_dir else os.path.join(results_dir, "logs")
+    runs_dir = os.path.join(args.output_dir.rstrip("/"), args.expname)
+    log_dir = args.log_dir if args.log_dir else os.path.join(runs_dir, "logs")
 
-    # Create the results and log directories on the cluster before
+    # Create the runs and log directories on the cluster before
     # submitting so the mount sources exist when Slurm starts the container.
     if not args.dry_run:
         cluster_config = get_cluster_config(args.cluster, args.config_dir)
-        create_remote_directory([results_dir, log_dir], cluster_config)
+        create_remote_directory([runs_dir, log_dir], cluster_config)
 
-    output_mount = f"{results_dir}:/results"
+    output_mount = f"{runs_dir}:/runs"
     if args.mount_paths:
         mount_paths = f"{args.mount_paths},{output_mount}"
     else:
         mount_paths = output_mount
 
-    # Resolve log_dir to its container path (e.g. /results/logs) so that
+    # Resolve log_dir to its container path (e.g. /runs/logs) so that
     # run_cmd writes Slurm logs to the mounted volume.
     cluster_cfg = get_cluster_config(args.cluster, args.config_dir)
     resolve_mount_paths(cluster_cfg, mount_paths)
@@ -363,7 +363,7 @@ def main():
     elif args.server_address:
         print(f"  Server addr:    {args.server_address} (external)")
     print(f"  Output dir:     {args.output_dir}")
-    print(f"  Results dir:    {results_dir}")
+    print(f"  Runs dir:       {runs_dir}")
     print(f"  Log dir:        {log_dir}")
     print(f"  Mount paths:    {mount_paths}")
     print(f"  Timeout:        {args.timeout}s per sample")

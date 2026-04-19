@@ -231,7 +231,7 @@ python run_cluster.py \
 
 | Flag | Default | Description |
 |---|---|---|
-| `--output-dir` | *(required)* | Cluster path for results (mounted to `/results` in container) |
+| `--output-dir` | *(required)* | Cluster path for run outputs (mounted to `/runs` in container) |
 | `--opencode-install-cmd` | *official install script* | Command to install the opencode CLI binary |
 | `--skip-opencode-install` | `false` | Skip installation (assumes opencode is pre-installed) |
 
@@ -239,11 +239,11 @@ python run_cluster.py \
 
 ### Output directory mounting
 
-The final results path is `{output_dir}/{expname}/`, which is mounted into the container as `/results`. The benchmark command sets `OPENCODE_BENCH_RESULTS=/results` so that `common.py` writes results directly to the mounted cluster storage instead of the default `results/` relative to the code root.
+The final runs path is `{output_dir}/{expname}/`, which is mounted into the container as `/runs`. The benchmark command sets `OPENCODE_BENCH_RUNS=/runs` so that `common.py` writes run outputs directly to the mounted cluster storage instead of the default `runs/` relative to the code root.
 
 ### Provider URL injection
 
-Instead of using `run.py`'s `--proxy` flag (which requires the switchyard proxy codebase), `run_cluster.py` injects the vLLM server URL directly into each project's `opencode.json` before `run.py` takes file snapshots. This sets `provider.{provider}.options.baseURL` so that the opencode CLI connects to the vLLM server.
+Instead of using `run.py`'s `--proxy` flag (which requires the switchyard proxy codebase), `run_cluster.py` injects the vLLM server URL directly into each project's `opencode.json` before `run.py` copies it into the per-sample run directory. This sets `provider.{provider}.options.baseURL` so that the opencode CLI connects to the vLLM server.
 
 ### opencode installation
 

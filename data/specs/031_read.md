@@ -4,10 +4,6 @@
 
 tool_schema
 
-## Project
-
-default
-
 ## Contract
 
 completion
@@ -22,7 +18,7 @@ Tool schema adherence for the `read` tool. Opencode exposes a `read` tool with t
 
 ## Setup
 
-The project contains `src/index.ts` with a known marker value `8f3a2b1c` on the first line.
+The project contains `src/index.ts` with a MARKER UUID on the first line.
 
 ## Prompt
 
@@ -34,7 +30,7 @@ The project contains `src/index.ts` with a known marker value `8f3a2b1c` on the 
 2. `max_tool_count` max 1 -- exactly one tool call
 3. `any_tool_param_exists` `read.filePath` -- uses the correct parameter name
 4. `any_tool_param_absent` `read.path` -- does not use the wrong parameter name
-5. `text_contains` `8f3a2b1c` -- response mentions the marker value
+5. `text_contains_from_file` -- response mentions the MARKER value from `src/index.ts` (derived at eval time)
 
 ## Shortest path
 

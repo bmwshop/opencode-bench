@@ -4,10 +4,6 @@
 
 agents_md
 
-## Project
-
-custom_main_agent
-
 ## Contract
 
 routing

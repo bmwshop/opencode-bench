@@ -4,10 +4,6 @@
 
 tool_orchestration
 
-## Project
-
-default
-
 ## Contract
 
 completion
@@ -22,7 +18,7 @@ Parallel tool execution -- the model should issue multiple independent tool call
 
 ## Setup
 
-The project contains `src/index.ts` with marker `8f3a2b1c` and `src/auth.ts` with marker `b7e1d930`.
+The project contains `src/index.ts` with a MARKER UUID and `src/auth.ts` with a different MARKER UUID.
 
 ## Prompt
 
@@ -32,8 +28,8 @@ The project contains `src/index.ts` with marker `8f3a2b1c` and `src/auth.ts` wit
 
 1. `min_tool_count` `read` >= 2 -- at least two read calls in the trace
 2. `tools_same_step` `read` >= 2 -- both reads occur in the same assistant turn
-3. `text_contains` `8f3a2b1c` -- response includes the index.ts marker
-4. `text_contains` `b7e1d930` -- response includes the auth.ts marker
+3. `text_contains_from_file` -- response includes the MARKER value from `src/index.ts` (derived at eval time)
+4. `text_contains_from_file` -- response includes the MARKER value from `src/auth.ts` (derived at eval time)
 
 ## Shortest path
 

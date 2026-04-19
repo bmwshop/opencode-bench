@@ -23,7 +23,7 @@ import pkgutil
 from dataclasses import dataclass, field
 
 import evaluators
-from common import PROJECTS, RESULTS, load, resolve_run, list_runs, model_slug
+from common import PROJECTS, RUNS, load, resolve_run, list_runs, model_slug
 
 
 def load_evaluators():
@@ -92,7 +92,9 @@ def evaluate(sample, run_dir):
     if not tools and not texts:
         return Result(label, sample["category"], failed=["empty trace"])
 
-    project = PROJECTS / sample.get("project", "default")
+    project = run_dir / "projects" / f"{sid:03d}"
+    if not project.is_dir():
+        project = PROJECTS / f"{sid:03d}"
     result = Result(label, sample["category"])
     for chk in sample.get("checks", []):
         fn = evaluators.get(chk["type"])

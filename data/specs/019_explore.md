@@ -4,10 +4,6 @@
 
 subagent
 
-## Project
-
-multi_module
-
 ## Contract
 
 routing
@@ -22,7 +18,7 @@ Subagent routing (delegation choice only) -- using the `task` tool with `subagen
 
 ## Setup
 
-The `multi_module` project has a realistic multi-package structure with `packages/auth/src/` containing 4 files (login.ts, token.ts, session.ts, middleware.ts) that form an interconnected authentication system.
+The project has a realistic multi-package structure with `packages/auth/src/` containing 4 files (login.ts, token.ts, session.ts, middleware.ts) that form an interconnected authentication system.
 
 ## Prompt
 

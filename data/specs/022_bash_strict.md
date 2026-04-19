@@ -4,10 +4,6 @@
 
 system_tool_restriction
 
-## Project
-
-bash_strict
-
 ## Contract
 
 completion
@@ -22,11 +18,11 @@ System-level tool restriction via permissions. Unlike the prompt-based tests (#1
 
 ## Setup
 
-The `bash_strict` project's `opencode.json` sets root permissions to deny all tools except `bash`. The default `build` agent is used with the standard system prompt. The `src/app.ts` file contains `NEEDLE_abc1`.
+The project's `opencode.json` sets root permissions to deny all tools except `bash`. The default `build` agent is used with the standard system prompt. The `src/app.ts` file contains a NEEDLE comment with a UUID suffix.
 
 ## Prompt
 
-> Which file in src/ contains the string NEEDLE_abc1?
+> Which file in src/ contains the NEEDLE string? (The exact NEEDLE value is provided in the prompt.)
 
 ## Pass criteria (3 checks)
 
@@ -36,7 +32,7 @@ The `bash_strict` project's `opencode.json` sets root permissions to deny all to
 
 ## Shortest path
 
-**1 tool call**: a single `bash` call (e.g. `grep -r NEEDLE_abc1 src/`). Bash is the only tool available. No tool call checks constrain the upper bound.
+**1 tool call**: a single `bash` call (e.g. `grep -r NEEDLE_... src/`). Bash is the only tool available. No tool call checks constrain the upper bound.
 
 ## Fail modes
 

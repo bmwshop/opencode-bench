@@ -4,10 +4,6 @@
 
 tool_schema
 
-## Project
-
-default
-
 ## Contract
 
 completion
@@ -22,7 +18,7 @@ Targeted irrelevance detection -- resisting the temptation to call `read` when t
 
 ## Design rationale
 
-The default project contains `src/auth.ts` with a `verify` function that checks a token against a constant. The prompt asks "How does a typical verify function in an auth module validate tokens?" -- this is clearly a general knowledge question (note "a typical"), but every keyword maps to something in the project:
+The project contains `src/auth.ts` with a `verify` function that checks a token against a constant. The prompt asks "How does a typical verify function in an auth module validate tokens?" -- this is clearly a general knowledge question (note "a typical"), but every keyword maps to something in the project:
 
 - "verify" matches the `verify()` function in `src/auth.ts`
 - "auth module" matches the filename `auth.ts`
@@ -32,7 +28,7 @@ This mirrors BFCL's hardest irrelevance samples where the available tools are do
 
 ## Setup
 
-Uses the default project. The file `src/auth.ts` contains:
+The file `src/auth.ts` contains:
 
 ```ts
 import { TOKEN } from './utils'

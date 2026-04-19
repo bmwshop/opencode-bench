@@ -218,19 +218,10 @@ __marimo__/
 
 # --- Project-specific ---
 .DS_Store
-results/
+runs/
 captures/
-traces/
 *.err
 node_modules/
 package-lock.json
 projects/**/.opencode/package.json
-
-# Runtime artifacts created by samples (snapshot/restore normally cleans these,
-# but interrupted runs can leave them behind)
-projects/default/src/id.txt
-projects/default/src/config.ts
-projects/default/.opencode/
-projects/plan_default/.opencode/plans/
-projects/skill_workflow/review.md
 a.sh

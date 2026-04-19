@@ -4,10 +4,6 @@
 
 tool_orchestration
 
-## Project
-
-default
-
 ## Contract
 
 completion
@@ -22,17 +18,17 @@ Sequential tool execution -- the model must chain tools in the correct order whe
 
 ## Setup
 
-The project contains `src/utils.ts` with `export const TOKEN = "abc123"`.
+The project contains `src/utils.ts` with a TOKEN constant set to a UUID value.
 
 ## Prompt
 
-> Read src/utils.ts, then change the TOKEN value from "abc123" to "xyz789".
+> Read src/utils.ts, then change the TOKEN value from the current UUID to a new UUID.
 
 ## Pass criteria (3 checks)
 
 1. `tool_before` `read` then `edit` -- read is called before edit in the trace
-2. `any_tool_param_regex` `edit.newString` matches `xyz789` -- replacement value is correct
-3. `file_regex` `src/utils.ts` matches `xyz789` -- file on disk contains the new token value
+2. `any_tool_param_regex` `edit.newString` -- replacement value matches the new UUID from the prompt
+3. `file_regex` `src/utils.ts` -- file on disk contains the new token value
 
 ## Shortest path
 
