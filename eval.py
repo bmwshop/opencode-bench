@@ -23,12 +23,58 @@ import pkgutil
 from dataclasses import dataclass, field
 
 import evaluators
-from common import PROJECTS, RUNS, load, resolve_run, list_runs, model_slug
+from common import (
+    PROJECTS, RUNS, SCHEMAS_PATH,
+    load, resolve_run, list_runs, model_slug,
+    opencode_rev_label, schema_meta, compare_opencode,
+)
 
 
 def load_evaluators():
     for pkg in pkgutil.walk_packages(evaluators.__path__, evaluators.__name__ + "."):
         importlib.import_module(pkg.name)
+
+
+def refresh_schemas():
+    """Re-extract data/tool_schemas.json from the (current) opencode install.
+
+    Honors $OPENCODE_BIN / $OPENCODE_CWD so you can target a source build:
+        OPENCODE_BIN="bun run src/index.ts" \\
+            OPENCODE_CWD=/path/to/opencode/packages/opencode \\
+            python eval.py --refresh-schemas
+    """
+    from scripts.extract_schemas import extract
+    out = extract()
+    print(
+        f"Refreshed tool schemas: opencode {out['opencode_version']} "
+        f"({len(out['tools'])} tools) -> {SCHEMAS_PATH}"
+    )
+
+
+def schemas_banner():
+    sm = schema_meta()
+    if sm is None:
+        return "Tool schemas: (not extracted; run with --refresh-schemas)"
+    return (
+        f"Tool schemas: opencode {opencode_rev_label(sm)} "
+        f"({sm['tools']} tools, extracted {sm['extracted_at']})"
+    )
+
+
+TAG = {"match": "MATCH", "match-version": "MATCH: version", "mismatch": "MISMATCH", "unknown": "WARN"}
+
+
+def compare_banner(run_oc):
+    """Compare run.py's opencode (from meta.json) vs the schemas' opencode."""
+    sm = schema_meta()
+    if not run_oc or not sm:
+        return None
+    status, detail = compare_opencode(run_oc, sm)
+    line = (
+        f"Runtime opencode: {opencode_rev_label(run_oc)}  "
+        f"vs  schemas: {opencode_rev_label(sm)}"
+    )
+    return f"{line}  [{TAG[status]}: {detail}]"
 
 
 @dataclass
@@ -253,7 +299,16 @@ def main():
     parser.add_argument("--list", action="store_true", help="List available runs and exit")
     parser.add_argument("--format", choices=["text", "json"], default="text", help="Output format")
     parser.add_argument("--output", "-o", help="Write results to file (in addition to stdout)")
+    parser.add_argument(
+        "--refresh-schemas",
+        action="store_true",
+        help="Re-extract data/tool_schemas.json from opencode before evaluating "
+             "(uses $OPENCODE_BIN / $OPENCODE_CWD if set).",
+    )
     args = parser.parse_args()
+
+    if args.refresh_schemas:
+        refresh_schemas()
 
     if args.list:
         print_list(args.model)
@@ -282,7 +337,12 @@ def main():
     model_label = meta.get("model") or run_dir.parent.name
     date_label = meta.get("date") or run_dir.name
     print(f"Evaluating: {model_label}  ({date_label})")
-    print(f"Run dir:    {run_dir}\n")
+    print(f"Run dir:    {run_dir}")
+    print(schemas_banner())
+    cmp_line = compare_banner(meta.get("opencode"))
+    if cmp_line:
+        print(cmp_line)
+    print()
 
     load_evaluators()
 

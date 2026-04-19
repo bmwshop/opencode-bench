@@ -7,6 +7,8 @@ A benchmark suite for evaluating LLM compatibility with the [opencode](https://g
 - Python 3.10+
 - `opencode` CLI installed and available in `PATH`
 - A configured model provider (the model under test)
+- `pip install -r requirements.txt` (currently just `jsonschema`, used by the
+  `call_schema_valid` check)
 
 ## Quick Start
 
@@ -66,9 +68,53 @@ python eval.py --category tool_schema --category subagent  # evaluate multiple c
 python eval.py --format json                               # machine-readable JSON output
 python eval.py --format json --output scores.json          # JSON output to stdout and file
 python eval.py --output scores.txt                         # text output to stdout and file
+python eval.py --refresh-schemas                           # re-extract data/tool_schemas.json first
 ```
 
 When using `--format json`, the output includes a `"run"` object with the model name, date, and timestamp from `meta.json`, making each score file self-describing.
+
+The eval header prints which opencode tool schemas it validated against, e.g.:
+
+```
+Tool schemas: opencode 1.4.0 (14 tools, extracted 2026-04-19T21:36:25+00:00)
+```
+
+### Tool schema validation (`call_schema_valid`)
+
+Opt-in check that validates every tool call in a trace against opencode's
+canonical JSON Schemas. Schemas live in `data/tool_schemas.json` and are
+extracted directly from `opencode serve`'s `/experimental/tool` endpoint by
+`scripts/extract_schemas.py` (checked in, versioned by `opencode_version`).
+
+Add it to a sample's `checks` with:
+
+```json
+{"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+```
+
+Fails on: unknown tools, missing required params, extra/misspelled params
+(`filePath` vs `file_path`), and wrong parameter types. It is opt-in because
+samples that exercise non-opencode tools (plugins, custom agents) would fail
+spuriously.
+
+Refresh schemas after upgrading opencode:
+
+```bash
+# installed opencode on PATH
+python eval.py --refresh-schemas
+# or explicitly
+python scripts/extract_schemas.py
+
+# from a source checkout (e.g. dev HEAD before a release is cut)
+OPENCODE_BIN="bun run src/index.ts" \
+  OPENCODE_CWD=/path/to/opencode/packages/opencode \
+  python scripts/extract_schemas.py
+```
+
+Note: released opencode 1.4.0 has a Zod v4 / zod-to-json-schema bug that makes
+`/experimental/tool` return `{type: "string"}` for every tool. Until the next
+release, extract from a `dev` checkout using the `OPENCODE_BIN`/`OPENCODE_CWD`
+form above.
 
 Output shows scores at three levels:
 
