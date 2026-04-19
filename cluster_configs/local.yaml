@@ -16,7 +16,7 @@ executor: local
 
 # From https://github.com/NVIDIA/NeMo-Skills/blob/main/cluster_configs/example-local.yaml
 containers:
-  vllm: vllm/vllm-openai:v0.18.0
+  vllm: vllm/vllm-openai:v0.19.1
   # dockerfile: for now can only specify relative to repo roorlt
   sandbox: dockerfile:dockerfiles/Dockerfile.sandbox
   nemo-skills: dockerfile:dockerfiles/Dockerfile.nemo-skills
