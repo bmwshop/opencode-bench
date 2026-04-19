@@ -19,7 +19,7 @@ job_name_prefix: ""
 dependency_type: "afterany"
 
 containers:
-  vllm: /lustre/fsw/portfolios/llmservice/users/igitman/images/nemo-skills-vllm-v0.18.0.sqsh
+  vllm: /lustre/fsw/portfolios/llmservice/users/igitman/images/nemo-skills-vllm-v0.19.1.sqsh
   sandbox: /lustre/fsw/portfolios/llmservice/users/igitman/images/nemo-skills-sandbox-latest.sqsh
   nemo-skills: /lustre/fsw/portfolios/llmservice/users/igitman/images/nemo-skills-latest.sqsh
 
