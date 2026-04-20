@@ -119,7 +119,12 @@ def main():
     parser.add_argument("--id", action="append", help="Run specific sample(s) by ID")
     parser.add_argument("--category", action="append", help="Run all samples in a category")
     parser.add_argument("--clean", action="store_true", help="Wipe runs/ first")
-    parser.add_argument("--model", "-m", help="Model in provider/model format (default: opencode config)")
+    parser.add_argument(
+        "--model",
+        "-m",
+        default="nvidia/nvidia/nemotron-3-nano-30b-a3b",
+        help="Model in provider/model format (default: nvidia/nvidia/nemotron-3-nano-30b-a3b)",
+    )
     parser.add_argument(
         "--proxy",
         help="Proxy URL (e.g. http://localhost:4000/v1). "
