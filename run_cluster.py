@@ -30,6 +30,7 @@ Usage:
 
 import argparse
 import os
+import shlex
 import sys
 
 try:
@@ -233,8 +234,13 @@ def build_config_inject_cmd(provider, model_id, server_url):
 
 def build_benchmark_command(opencode_model, provider, server_url, timeout,
                             benchmark_ids, benchmark_categories,
-                            max_output_tokens):
-    """Build the in-container shell command that runs the benchmark."""
+                            max_output_tokens, extra_run_args=None):
+    """Build the in-container shell command that runs the benchmark.
+
+    ``extra_run_args`` is a list of additional tokens appended verbatim to the
+    ``run.py`` invocation. They are shell-quoted so arbitrary values (including
+    those with spaces or shell metacharacters) flow through safely.
+    """
     parts = []
 
     # Point RUNS to the mounted /runs directory
@@ -262,6 +268,8 @@ def build_benchmark_command(opencode_model, provider, server_url, timeout,
     if benchmark_categories:
         for cat in benchmark_categories:
             run_args.append(f"--category {cat}")
+    if extra_run_args:
+        run_args.extend(shlex.quote(a) for a in extra_run_args)
     parts.append(" ".join(run_args))
 
     # eval.py  (no proxy-related args)
@@ -287,7 +295,9 @@ def build_benchmark_command(opencode_model, provider, server_url, timeout,
 
 def main():
     parser = build_parser()
-    args = parser.parse_args()
+    # Accept unknown args and forward them verbatim to run.py so new flags
+    # on run.py don't require a mirrored definition here.
+    args, extra_run_args = parser.parse_known_args()
 
     # -- Validate server configuration -----------------------------------
     if not args.server_gpus and not args.server_address:
@@ -346,6 +356,7 @@ def main():
         benchmark_ids=args.benchmark_id,
         benchmark_categories=args.benchmark_category,
         max_output_tokens=args.max_output_tokens,
+        extra_run_args=extra_run_args,
     )
 
     # -- Print summary ---------------------------------------------------
@@ -373,6 +384,8 @@ def main():
         print(f"  Sample IDs:     {args.benchmark_id}")
     if args.benchmark_category:
         print(f"  Categories:     {args.benchmark_category}")
+    if extra_run_args:
+        print(f"  Extra run.py:   {' '.join(shlex.quote(a) for a in extra_run_args)}")
     if not args.skip_opencode_install:
         print(f"  Install cmd:    {args.opencode_install_cmd}")
     if args.dry_run:
