@@ -13,7 +13,7 @@ def check(tools, texts, chk):
         content = source.read_text()
     except Exception as e:
         return False, f"could not read {chk['source']}: {e}"
-    m = re.search(chk["extract"], content)
+    m = re.search(chk["extract"], content, re.MULTILINE)
     if not m or not m.group(1):
         return False, f"extract pattern did not match in {chk['source']}"
     expected = m.group(1).strip()
