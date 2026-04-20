@@ -33,11 +33,12 @@ The file `src/utils.ts` contains a TOKEN constant set to a UUID value.
 
 > In src/utils.ts, replace the exact TOKEN UUID with a new value. Everything you need is in this message -- do it in a single step.
 
-## Pass criteria (3 checks)
+## Pass criteria (4 checks)
 
 1. `max_tool_count` max 2 -- at most 2 tool calls
 2. `tool_count_score` optimal 2, limit 2 -- read + edit (opencode discourages bash for file edits)
 3. `file_regex` `src/utils.ts` -- file on disk contains the new value from the prompt
+4. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 

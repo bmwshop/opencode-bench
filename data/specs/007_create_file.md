@@ -30,7 +30,7 @@ The file `src/config.ts` does not exist. The prompt asks to create it with speci
 
 > Create a new file src/config.ts containing exactly: `export const DEBUG = true`. The file doesn't exist yet -- just create it.
 
-## Pass criteria (6 checks)
+## Pass criteria (7 checks)
 
 1. `any_tool_name` equals `write` -- uses the write tool
 2. `max_tool_count` max 1 -- exactly one tool call
@@ -38,6 +38,7 @@ The file `src/config.ts` does not exist. The prompt asks to create it with speci
 4. `no_tool_name` not `glob` -- does not glob the directory
 5. `tool_count_score` optimal 1, limit 1 -- optimal and maximum is 1 tool call
 6. `file_regex` `src/config.ts` matches `^export const DEBUG = true\s*$` -- file contains exactly `export const DEBUG = true`
+7. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 

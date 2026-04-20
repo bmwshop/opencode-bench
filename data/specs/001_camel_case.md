@@ -24,12 +24,13 @@ The project's `AGENTS.md` contains a single style rule: "Use camelCase for all f
 
 > Write a function that converts Fahrenheit to Celsius. Write it to src/convert.py
 
-## Pass criteria (4 checks)
+## Pass criteria (5 checks)
 
 1. `file_regex` `src/convert.py` matches `def\s+[a-z]+[A-Z]\w*\(` -- function name is camelCase
 2. `file_regex` `src/convert.py` does NOT match `def\s+[a-z]+_[a-z]` -- no snake_case function names
 3. `file_regex` `src/convert.py` matches `return.*\(.*-\s*32\)` -- function body contains F-to-C conversion formula (f - 32)
 4. `tool_before` read → edit -- read before edit (filetime.assert enforced)
+5. `call_schema_valid` -- all tool calls match opencode schemas
 
 ## Shortest path
 

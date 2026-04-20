@@ -24,9 +24,10 @@ The project's `opencode.json` sets `agent.plan.prompt` to: "You are a planning a
 
 > Analyze src/app.ts and suggest improvements.
 
-## Pass criteria (1 check)
+## Pass criteria (2 checks)
 
 1. `text_contains` `\[PLANNER\]` -- response includes the `[PLANNER]` prefix
+2. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 

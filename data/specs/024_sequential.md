@@ -27,8 +27,8 @@ The project contains `src/utils.ts` with a TOKEN constant set to a UUID value.
 ## Pass criteria (3 checks)
 
 1. `tool_before` `read` then `edit` -- read is called before edit in the trace
-2. `any_tool_param_regex` `edit.newString` -- replacement value matches the new UUID from the prompt
-3. `file_regex` `src/utils.ts` -- file on disk contains the new token value
+2. `file_regex` `src/utils.ts` -- file on disk contains the new token value
+3. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 
@@ -38,5 +38,5 @@ The project contains `src/utils.ts` with a TOKEN constant set to a UUID value.
 
 - Calls `edit` without reading first (skips the explicit "read first" instruction)
 - Calls both in the same step / parallel (ignores the sequential "then" in the prompt)
-- Edits with the wrong replacement value
+- Edits with the wrong replacement value (file on disk ends up with the wrong UUID)
 - Edit call succeeds in the trace but the file is not actually modified on disk

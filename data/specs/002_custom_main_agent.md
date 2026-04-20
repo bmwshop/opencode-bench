@@ -24,10 +24,11 @@ The project defines a primary agent via `.opencode/agents/auditor.md` with promp
 
 > Review src/app.ts for security issues.
 
-## Pass criteria (2 checks)
+## Pass criteria (3 checks)
 
 1. `any_tool_name` equals `read` -- model reads the file before reviewing
 2. `text_contains` `\[AUDITOR\]` -- response includes the `[AUDITOR]` prefix
+3. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 

@@ -30,13 +30,14 @@ The file `src/index.ts` contains a MARKER UUID comment and exports a version str
 
 > This is a TypeScript project with an authentication module in src/auth.ts that handles token verification via a verify function, a utilities module in src/utils.ts with shared constants including TOKEN, test files for both modules, and an entry point at src/index.ts that exports a version string. I just need the version string from the entry point.
 
-## Pass criteria (5 checks)
+## Pass criteria (6 checks)
 
 1. `any_tool_name` equals `read` -- uses the read tool
 2. `text_contains_from_file` -- reports the correct version string from `src/index.ts` (derived at eval time)
 3. `max_tool_count` max 2 -- at most 2 tool calls total
 4. `no_tool_name` not `grep` -- does not grep when the target file is named
 5. `no_tool_name` not `task` -- does not delegate unnecessarily
+6. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 

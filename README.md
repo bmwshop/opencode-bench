@@ -7,6 +7,8 @@ A benchmark suite for evaluating LLM compatibility with the [opencode](https://g
 - Python 3.10+
 - `opencode` CLI installed and available in `PATH`
 - A configured model provider (the model under test)
+- `pip install -r requirements.txt` (currently just `jsonschema`, used by the
+  `call_schema_valid` check)
 
 ## Quick Start
 
@@ -70,9 +72,53 @@ python eval.py --category tool_schema --category subagent  # evaluate multiple c
 python eval.py --format json                               # machine-readable JSON output
 python eval.py --format json --output scores.json          # JSON output to stdout and file
 python eval.py --output scores.txt                         # text output to stdout and file
+python eval.py --refresh-schemas                           # re-extract data/tool_schemas.json first
 ```
 
 When using `--format json`, the output includes a `"run"` object with the model name, date, and timestamp from `meta.json`, making each score file self-describing.
+
+The eval header prints which opencode tool schemas it validated against, e.g.:
+
+```
+Tool schemas: opencode 1.4.0 (14 tools, extracted 2026-04-19T21:36:25+00:00)
+```
+
+### Tool schema validation (`call_schema_valid`)
+
+Opt-in check that validates every tool call in a trace against opencode's
+canonical JSON Schemas. Schemas live in `data/tool_schemas.json` and are
+extracted directly from `opencode serve`'s `/experimental/tool` endpoint by
+`scripts/extract_schemas.py` (checked in, versioned by `opencode_version`).
+
+Add it to a sample's `checks` with:
+
+```json
+{"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+```
+
+Fails on: unknown tools, missing required params, extra/misspelled params
+(`filePath` vs `file_path`), and wrong parameter types. It is opt-in because
+samples that exercise non-opencode tools (plugins, custom agents) would fail
+spuriously.
+
+Refresh schemas after upgrading opencode:
+
+```bash
+# installed opencode on PATH
+python eval.py --refresh-schemas
+# or explicitly
+python scripts/extract_schemas.py
+
+# from a source checkout (e.g. dev HEAD before a release is cut)
+OPENCODE_BIN="bun run src/index.ts" \
+  OPENCODE_CWD=/path/to/opencode/packages/opencode \
+  python scripts/extract_schemas.py
+```
+
+Note: released opencode 1.4.0 has a Zod v4 / zod-to-json-schema bug that makes
+`/experimental/tool` return `{type: "string"}` for every tool. Until the next
+release, extract from a `dev` checkout using the `OPENCODE_BIN`/`OPENCODE_CWD`
+form above.
 
 Output shows scores at three levels:
 
@@ -247,7 +293,7 @@ Category and overall scores are averages of the per-sample scores.
 **Tool checks** — verify tool usage:
 - `any_tool_name` — at least one tool call matches `equals`
 - `no_tool_name` — no tool call matches `not_equals`
-- `any_tool_param_exists` — a tool call has the expected parameter
+- `any_tool_param_exists` — a tool call has the expected parameter (currently unused; `call_schema_valid` subsumes required-param presence — still available for asserting optional params)
 - `any_tool_param_absent` — a tool call does *not* have a parameter
 - `any_tool_param_value` — a tool parameter equals an exact value
 - `any_tool_param_regex` — a tool parameter matches a regex
@@ -257,11 +303,13 @@ Category and overall scores are averages of the per-sample scores.
 - `any_tool_param_array_min` — a tool parameter is an array with at least N items
 - `any_tool_param_array_item_fields` — every item in an array parameter has the required fields
 - `no_tool_any` — no tool calls were made at all (irrelevance detection)
+- `call_schema_valid` — every tool call validates against `data/tool_schemas.json` (see the "Tool schema validation" section above)
 
 **Content checks** — verify output:
 - `text_contains` — agent response text matches a regex
+- `text_contains_from_file` — response text mentions a value extracted from a fixture file at eval time (`source` + `extract` regex group)
 - `file_regex` — content written via `write`/`edit` tools (or existing on disk) matches a regex
-- `file_exists` — a file or directory exists in the project after the run
+- `file_exists` — a file or directory exists in the project after the run (currently unused; available for fixture-shape assertions)
 
 **Orchestration checks** — verify ordering:
 - `tool_before` — one tool was called before another

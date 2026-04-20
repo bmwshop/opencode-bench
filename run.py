@@ -41,7 +41,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
-from common import PROJECTS, ROOT, RUNS, load, model_slug
+from common import (
+    ROOT, PROJECTS, RUNS,
+    model_slug, load,
+    opencode_meta, opencode_rev_label, resolve_opencode_cmd,
+    schema_meta, compare_opencode,
+)
 
 DEFAULT_TIMEOUT = 180
 DEFAULT_MAX_OUTPUT_TOKENS = 8192
@@ -212,9 +217,10 @@ def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
     header = f"  RUN  #{sid:03d} {name}"
     start = time.time()
 
+    argv, _, _ = resolve_opencode_cmd()
     try:
         proc = subprocess.Popen(
-            ["opencode", "run", "--format", "json"]
+            [*argv, "run", "--format", "json"]
             + (["--model", model] if model else [])
             + (["--agent", sample["agent"]] if "agent" in sample else [])
             + [sample["prompt"]],
@@ -310,6 +316,13 @@ def main():
             "(max_model_len - input_tokens). Default: 8192."
         ),
     )
+    parser.add_argument(
+        "--skip-schema-check",
+        action="store_true",
+        help="Skip the preflight that refuses to run when the opencode "
+             "runtime doesn't match data/tool_schemas.json (only enforced "
+             "when any sample uses call_schema_valid).",
+    )
     args = parser.parse_args()
 
     if args.vllm and args.proxy:
@@ -349,6 +362,37 @@ def main():
         print("No matching samples found.")
         sys.exit(1)
 
+    oc_meta = opencode_meta()
+    needs_schema = any(
+        c.get("type") == "call_schema_valid"
+        for s in samples for c in s.get("checks", [])
+    )
+    if needs_schema and not args.skip_schema_check:
+        sch = schema_meta()
+        if sch is None:
+            print(
+                "ERROR: samples use call_schema_valid but data/tool_schemas.json "
+                "is missing.\n"
+                "  Fix: python scripts/extract_schemas.py  (or --skip-schema-check)"
+            )
+            sys.exit(1)
+        status, detail = compare_opencode(oc_meta, sch)
+        if status not in ("match", "match-version"):
+            runtime_lbl = opencode_rev_label(oc_meta)
+            schema_lbl = opencode_rev_label(sch)
+            print(
+                f"ERROR: opencode runtime vs tool_schemas.json {status.upper()}:\n"
+                f"  runtime: {runtime_lbl}\n"
+                f"  schemas: {schema_lbl}\n"
+                f"  detail:  {detail}\n"
+                "  Fix: re-extract schemas against the runtime you intend to "
+                "benchmark\n"
+                "         python scripts/extract_schemas.py\n"
+                "       or override via OPENCODE_BIN / OPENCODE_CWD, or pass "
+                "--skip-schema-check."
+            )
+            sys.exit(1)
+
     now = datetime.now(timezone.utc)
     slug = model_slug(args.model)
     timestamp = now.strftime("%Y-%m-%dT%H-%M-%S")
@@ -380,8 +424,10 @@ def main():
         "vllm": args.vllm,
         "max_output_tokens": args.max_output_tokens,
         "argv": sys.argv,
+        "opencode": oc_meta,
     }
     (run_dir / "meta.json").write_text(json.dumps(meta, indent=2) + "\n")
+    print(f"  opencode: {opencode_rev_label(oc_meta)}", flush=True)
 
     cap_src = Path(args.capture_dir) if args.capture_dir else CAPTURE_STAGING
     existing = set(cap_src.glob("*.json")) if cap_src.is_dir() else set()
