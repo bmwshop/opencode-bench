@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
-Submit samples from samples.jsonl to opencode CLI and save traces to runs/.
+Submit samples from data/samples_v0.jsonl (or data/samples_v1.jsonl when
+`--version v1`) to the opencode CLI and save traces to runs/. A single
+invocation targets exactly one version.
 
 Each invocation writes to runs/{version}/{model_slug}/{timestamp}/ with:
     meta.json
@@ -11,8 +13,9 @@ Each invocation writes to runs/{version}/{model_slug}/{timestamp}/ with:
 The canonical projects/ tree is read-only at runtime.
 
 Usage:
-    python run.py                    # run all samples
-    python run.py --id 1             # run one sample
+    python run.py                    # run all v0 samples (default)
+    python run.py --version v1       # run all v1 samples (all repos)
+    python run.py --id 1             # run one sample (within selected version)
     python run.py --id 1 --id 2      # run multiple samples
     python run.py --category tool_schema
     python run.py --category tool_schema --category subagent

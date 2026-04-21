@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """
-Evaluate opencode benchmark traces against checks defined in samples.jsonl.
+Evaluate opencode benchmark traces against the checks defined in
+data/samples_v0.jsonl and data/samples_v1.jsonl. The run's version is
+auto-detected from its meta.json; override with --version.
 
 Usage:
-    python eval.py                        # evaluate latest run
+    python eval.py                        # evaluate latest run (auto-detects version)
+    python eval.py --version v1           # force v1 scope
     python eval.py --model nvidia/nemotron          # latest run for model
     python eval.py --model nvidia/nemotron --run 2026-04-12T18-30-00
     python eval.py --list                 # show all available runs

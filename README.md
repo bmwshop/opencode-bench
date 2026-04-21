@@ -92,7 +92,7 @@ python run.py --timeout 120                                # custom per-sample t
 python run.py -j 4                                         # run up to 4 samples in parallel
 ```
 
-The `--model` flag is optional. When omitted, opencode uses its configured default and traces go under `runs/default/`. The format is `provider/model-id` (e.g. `anthropic/claude-opus-4-6`), which gets converted to a directory slug (`anthropic_claude-opus-4-6`).
+The `--model` flag is optional. When omitted, opencode uses its configured default and traces go under `runs/v{version}/default/{timestamp}/`. The format is `provider/model-id` (e.g. `anthropic/claude-opus-4-6`), which gets converted to a directory slug (`anthropic_claude-opus-4-6`).
 
 `--workers` / `-j` (default 1) runs samples in parallel via a thread pool. Each sample already executes in its own `runs/v{version}/{slug}/{ts}/projects/{id:03d}/` workspace copy, so parallelism is safe with no contention on disk. Combined with `--proxy`, the switchyard timestamp fallback used by `stitch.py` has a 3-second window, so attribution for zero-tool-call samples may be unreliable — `run.py` prints a warning but does not block it.
 
@@ -242,7 +242,6 @@ projects/                # canonical per-sample fixtures, read-only at runtime
     autoresearch/        #   git submodule pinned via data/v1_repos.json
     requests/            #   git submodule pinned via data/v1_repos.json
 scripts/
-  flatten_projects.py    # one-time migration that built the per-sample layout
   extract_schemas.py     # re-extracts data/tool_schemas.json from opencode serve
 evaluators/              # check implementations (auto-registered)
   tool/                  # tool name and parameter checks
@@ -309,15 +308,21 @@ Each sample has a `surface` field identifying the opencode capability being test
 
 ## Per-Sample Documentation
 
-Each sample has a detailed spec in `data/specs/` describing the capability under test, project setup, exact prompt, pass criteria, and common failure modes. See any spec for the full format, e.g., `data/specs/001_camel_case.md`.
+Each sample has a detailed spec in `data/specs/` describing the capability under test, project setup, exact prompt, pass criteria, and common failure modes. Specs are namespaced by version — see any spec for the full format, e.g., `data/specs/v0/001_camel_case.md` or `data/specs/v1/001_plan_cosine_lr.md`.
 
-## Adding a Sample
+## Adding a v0 Sample
 
-1. Append a JSON line to `data/samples.jsonl`:
+v0 samples ship a per-sample fixture under `projects/v0/`. For a new v1 sample
+against a real repo, see [Adding a v1 repo](#adding-a-v1-repo) first, then
+follow step 1 below but write to `data/samples_v1.jsonl` (with `"version": "v1"`
+and `"repo": "<slug>"`) and the spec to `data/specs/v1/`.
+
+1. Append a JSON line to `data/samples_v0.jsonl`:
 
 ```json
 {
   "id": 34,
+  "version": "v0",
   "name": "my_test",
   "category": "tool_schema",
   "contract": "completion",
@@ -332,9 +337,9 @@ Each sample has a detailed spec in `data/specs/` describing the capability under
 
 The `min_calls` field is the minimum number of tool calls needed to pass all checks, respecting opencode's tool guidance (e.g. read-before-edit, prefer `edit` over `bash sed`). It is used by `stitch.py` to compute optimality of traced runs.
 
-2. Create a matching spec at `data/specs/034_my_test.md`.
+2. Create a matching spec at `data/specs/v0/034_my_test.md`.
 
-3. Create the sample's project fixture at `projects/034/` with an `opencode.json` (at minimum `{"permission": {"*": "allow"}}` to auto-approve tool use). Each sample gets its own directory; if two samples need similar fixtures, duplicate them — per-sample isolation is intentional and also lets each fixture carry its own fresh UUIDs. This directory is read-only at runtime: `run.py` copies it into `runs/.../projects/034/` before executing opencode.
+3. Create the sample's project fixture at `projects/v0/034/` with an `opencode.json` (at minimum `{"permission": {"*": "allow"}}` to auto-approve tool use). Each sample gets its own directory; if two samples need similar fixtures, duplicate them — per-sample isolation is intentional and also lets each fixture carry its own fresh UUIDs. This directory is read-only at runtime: `run.py` copies it into `runs/v0/{slug}/{timestamp}/projects/034/` before executing opencode.
 
 ### Scoring
 
