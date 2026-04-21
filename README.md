@@ -93,6 +93,7 @@ python run.py --model provider/model-name                  # override the defaul
 python run.py --proxy http://localhost:4000/v1             # route through a logging proxy
 python run.py --clean                                      # wipe runs/ first
 python run.py --timeout 120                                # custom per-sample timeout (default: 180s)
+python run.py --retry-on-timeout 2                         # retry on TimeoutExpired (up to 2 extra attempts per sample)
 python run.py -j 4                                         # run up to 4 samples in parallel
 ```
 

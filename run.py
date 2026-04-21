@@ -24,6 +24,7 @@ Usage:
     python run.py --proxy http://localhost:4000/v1 --capture-dir /tmp/sw
     python run.py --clean            # wipe runs/ first
     python run.py --timeout 120      # custom timeout
+    python run.py --retry-on-timeout 2  # retry each sample up to 2x on TimeoutExpired
     python run.py --workers 4        # run up to 4 samples in parallel
 
     # Local vLLM server (vllm/ prefix is auto-injected)
@@ -195,7 +196,8 @@ def _inject_vllm_config(cwd, provider, model_id, server_url, api_key="EMPTY",
 
 def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
         vllm_url=None, vllm_model_id=None, vllm_api_key="EMPTY",
-        max_output_tokens=DEFAULT_MAX_OUTPUT_TOKENS):
+        max_output_tokens=DEFAULT_MAX_OUTPUT_TOKENS,
+        retry_on_timeout=0, cap_src=None):
     sid = sample["id"]
     name = sample.get("name", str(sid))
     src = project_dir(sample)
@@ -222,34 +224,73 @@ def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
             _inject_proxy(cwd, provider, proxy)
 
     header = f"  RUN  #{sid:03d} {name}"
-    start = time.time()
-
     argv, _, _ = resolve_opencode_cmd()
-    try:
-        proc = subprocess.Popen(
-            [*argv, "run", "--format", "json"]
-            + (["--model", model] if model else [])
-            + (["--agent", sample["agent"]] if "agent" in sample else [])
-            + [sample["prompt"]],
-            cwd=cwd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
+    popen_argv = (
+        [*argv, "run", "--format", "json"]
+        + (["--model", model] if model else [])
+        + (["--agent", sample["agent"]] if "agent" in sample else [])
+        + [sample["prompt"]]
+    )
+
+    max_attempts = 1 + max(0, retry_on_timeout)
+    stdout, stderr = "", ""
+    timed_out = False
+    elapsed = 0.0
+    attempt = 0
+    for attempt in range(1, max_attempts + 1):
+        cap_snapshot = (
+            set(cap_src.glob("*.json"))
+            if (cap_src is not None and cap_src.is_dir())
+            else None
         )
-        stdout, stderr = proc.communicate(timeout=timeout)
-        elapsed = time.time() - start
-        header += f"  ({elapsed:.0f}s)"
-    except subprocess.TimeoutExpired:
+        start = time.time()
         try:
-            proc.kill()
-            stdout, stderr = proc.communicate(timeout=5)
-        except Exception:
-            stdout, stderr = "", ""
-        elapsed = time.time() - start
-        header += f"  TIMEOUT ({elapsed:.0f}s)"
-    except FileNotFoundError:
-        print(f"  ERROR: opencode not found in PATH", flush=True)
-        sys.exit(1)
+            proc = subprocess.Popen(
+                popen_argv,
+                cwd=cwd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            stdout, stderr = proc.communicate(timeout=timeout)
+            elapsed = time.time() - start
+            timed_out = False
+            break
+        except subprocess.TimeoutExpired:
+            try:
+                proc.kill()
+                stdout, stderr = proc.communicate(timeout=5)
+            except Exception:
+                stdout, stderr = "", ""
+            elapsed = time.time() - start
+            timed_out = True
+            if attempt < max_attempts and cap_snapshot is not None:
+                # Discard failed-attempt captures so only the final attempt's land on disk.
+                for f in cap_src.glob("*.json"):
+                    if f not in cap_snapshot:
+                        try:
+                            f.unlink()
+                        except OSError:
+                            pass
+            if attempt >= max_attempts:
+                break
+            continue
+        except FileNotFoundError:
+            print(f"  ERROR: opencode not found in PATH", flush=True)
+            sys.exit(1)
+
+    if timed_out:
+        header += (
+            f"  TIMEOUT ({timeout}s x{attempt})"
+            if attempt > 1
+            else f"  TIMEOUT ({elapsed:.0f}s)"
+        )
+    else:
+        header += (
+            f"  ({elapsed:.0f}s, retry {attempt}/{max_attempts})"
+            if attempt > 1
+            else f"  ({elapsed:.0f}s)"
+        )
 
     if "Model not found" in stderr or "Invalid model" in stderr:
         print(f"{header}\n  ERROR: {stderr.strip()}", flush=True)
@@ -350,6 +391,14 @@ def main():
         help="Provider ID to route through proxy (default: inferred from --model)",
     )
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT)
+    parser.add_argument(
+        "--retry-on-timeout",
+        type=int,
+        default=0,
+        metavar="N",
+        help="On TimeoutExpired, retry the sample up to N additional times "
+             "(default: 0). Only the final attempt's trace/captures are kept.",
+    )
     parser.add_argument(
         "--workers",
         "-j",
@@ -493,6 +542,7 @@ def main():
         "date": now.strftime("%Y-%m-%dT%H:%M:%S"),
         "timestamp": timestamp,
         "timeout": args.timeout,
+        "retry_on_timeout": args.retry_on_timeout,
         "samples": [s["id"] for s in samples],
         "categories": sorted(set(s["category"] for s in samples)),
         "version": args.version,
@@ -519,7 +569,12 @@ def main():
     if args.workers > 1:
         parts.append(f"workers={args.workers}")
     label = f"{', '.join(parts)}, " if parts else ""
-    print(f"Running {len(samples)} sample(s) ({label}timeout={args.timeout}s)")
+    retry_suffix = (
+        f", retry_on_timeout={args.retry_on_timeout}"
+        if args.retry_on_timeout > 0
+        else ""
+    )
+    print(f"Running {len(samples)} sample(s) ({label}timeout={args.timeout}s{retry_suffix})")
     print(f"Run dir: {run_dir}\n")
 
     ran = 0
@@ -532,6 +587,8 @@ def main():
                 vllm_url=args.vllm, vllm_model_id=vllm_model_id,
                 vllm_api_key=args.vllm_api_key,
                 max_output_tokens=args.max_output_tokens,
+                retry_on_timeout=args.retry_on_timeout,
+                cap_src=cap_src,
             )
             for sample in samples
         ]
