@@ -16,8 +16,6 @@ subagents
 
 Subagent routing -- using the `task` tool with `subagent_type: "general"`. The `general` agent's description says: "General-purpose agent for researching complex questions and executing multi-step tasks. Use this agent to execute multiple units of work in parallel." The prompt frames the task as two independent write operations across separate packages, naturally fitting the agent's "multiple units of work in parallel" guidance.
 
-The previous version of this sample asked the model to "delegate a task to refactor" which conflicted with the `task` tool's guidance ("When NOT to use: Other tasks that are not related to the agent descriptions above"). This version uses a prompt that aligns with the `general` agent's stated purpose.
-
 ## Setup
 
 The project has `packages/auth/` and `packages/payment/` with multiple source files. Neither package has a `CHANGELOG.md`.

@@ -23,11 +23,11 @@ def check(tools, texts, chk):
                 except Exception:
                     pass
     if should:
-        if not re.search(pattern, content):
+        if not re.search(pattern, content, re.MULTILINE):
             desc = chk.get("description", f"content did not match /{pattern}/")
             return False, desc
     else:
-        if re.search(pattern, content):
+        if re.search(pattern, content, re.MULTILINE):
             desc = chk.get("description", f"content unexpectedly matched /{pattern}/")
             return False, desc
     return True, None
