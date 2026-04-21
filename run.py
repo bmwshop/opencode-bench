@@ -264,17 +264,22 @@ def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
                 stdout, stderr = "", ""
             elapsed = time.time() - start
             timed_out = True
-            if attempt < max_attempts and cap_snapshot is not None:
-                # Discard failed-attempt captures so only the final attempt's land on disk.
-                for f in cap_src.glob("*.json"):
-                    if f not in cap_snapshot:
-                        try:
-                            f.unlink()
-                        except OSError:
-                            pass
-            if attempt >= max_attempts:
-                break
-            continue
+            if attempt < max_attempts:
+                if cap_snapshot is not None:
+                    # Discard failed-attempt captures so only the final attempt's land on disk.
+                    for f in cap_src.glob("*.json"):
+                        if f not in cap_snapshot:
+                            try:
+                                f.unlink()
+                            except OSError:
+                                pass
+                print(
+                    f"{header}  TIMEOUT ({elapsed:.0f}s) \u2014 retrying "
+                    f"{attempt + 1}/{max_attempts}",
+                    flush=True,
+                )
+                continue
+            break
         except FileNotFoundError:
             print(f"  ERROR: opencode not found in PATH", flush=True)
             sys.exit(1)
@@ -297,6 +302,22 @@ def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
         sys.exit(1)
 
     stem = trace_name(sample)
+
+    if timed_out:
+        # Invariant: no trace on disk unless opencode completed inside the
+        # timeout budget. Python loop variables persist after the loop, so
+        # cap_snapshot here is the snapshot taken at the start of the final
+        # attempt; prune anything the final attempt produced.
+        if cap_snapshot is not None:
+            for f in cap_src.glob("*.json"):
+                if f not in cap_snapshot:
+                    try:
+                        f.unlink()
+                    except OSError:
+                        pass
+        print(f"{header} \u2014 dropped", flush=True)
+        return None
+
     out = run_dir / f"{stem}.jsonl"
     out.write_text(stdout)
 

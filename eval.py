@@ -87,6 +87,7 @@ class Result:
     category: str
     passed: list = field(default_factory=list)
     failed: list = field(default_factory=list)
+    completed: bool = True
 
     @property
     def ok(self):
@@ -136,11 +137,11 @@ def evaluate(sample, run_dir):
 
     trace = run_dir / f"{trace_name(sample)}.jsonl"
     if not trace.exists():
-        return Result(label, sample["category"], failed=["trace not found"])
+        return Result(label, sample["category"], failed=["trace not found"], completed=False)
 
     tools, texts = extract(trace)
     if not tools and not texts:
-        return Result(label, sample["category"], failed=["empty trace"])
+        return Result(label, sample["category"], failed=["empty trace"], completed=False)
 
     project = run_dir / "projects" / run_project_name(sample)
     if not project.is_dir():
@@ -190,6 +191,7 @@ def build(results, meta=None):
                 "label": r.label,
                 "pass": r.ok,
                 "score": round(r.score, 4),
+                "completed": r.completed,
                 "checks_passed": len(r.passed),
                 "checks_total": _checks(r),
                 "passed": r.passed,
@@ -214,10 +216,22 @@ def build(results, meta=None):
         key=lambda s: int(s["label"].split()[0].lstrip("#")),
     )
 
+    completed_results = [r for r in results if r.completed]
+    total_completed = len(completed_results)
+    strict_completed = sum(1 for r in completed_results if r.ok)
+    partial_completed = (
+        sum(r.score for r in completed_results) / total_completed
+        if total_completed else 0.0
+    )
+
     data = {
         "strict": sum_strict,
         "total": total,
         "partial": round(sum_partial / total, 4) if total else 0.0,
+        "strict_completed": strict_completed,
+        "total_completed": total_completed,
+        "partial_completed": round(partial_completed, 4),
+        "timed_out": total - total_completed,
         "checks_passed": all_passed,
         "checks_total": all_checks,
         "samples": flat,
@@ -259,10 +273,19 @@ def format_text(data):
 
     lines.append(f"\n{'='*60}")
     if data["total"]:
-        lines.append(f"  Strict score:  {data['strict']}/{data['total']} samples fully passed "
+        lines.append(f"  Strict score:      {data['strict']}/{data['total']} samples fully passed "
                       f"({data['strict']/data['total']:.0%})")
-        lines.append(f"  Partial score: {data['partial']:.1%} average across all samples")
-        lines.append(f"  Checks:        {data['checks_passed']}/{data['checks_total']} total checks passed")
+        lines.append(f"  Partial score:     {data['partial']:.1%} average across all samples")
+        tc = data.get("total_completed", data["total"])
+        if tc and tc != data["total"]:
+            sc = data["strict_completed"]
+            pc = data["partial_completed"]
+            to = data["timed_out"]
+            lines.append(f"  Strict (done):     {sc}/{tc} passed of {tc} completed "
+                          f"({sc/tc:.0%})")
+            lines.append(f"  Partial (done):    {pc:.1%} average across completed samples")
+            lines.append(f"  Timed out:         {to}")
+        lines.append(f"  Checks:            {data['checks_passed']}/{data['checks_total']} total checks passed")
     else:
         lines.append("  No results.")
     lines.append(f"{'='*60}\n")
