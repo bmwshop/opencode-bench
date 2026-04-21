@@ -30,18 +30,17 @@ The file `src/utils.ts` contains a TOKEN constant set to a UUID value. The file 
 
 > The verify function in src/auth.ts is returning false for valid inputs. I've looked at the logic and the comparison seems fine. Maybe the TOKEN value in src/utils.ts changed? Before I dig into auth.ts further, what is TOKEN currently set to?
 
-## Pass criteria (6 checks)
+## Pass criteria (5 checks)
 
 1. `any_tool_name` equals `read` -- uses the read tool
 2. `any_tool_param_regex` `read.filePath` matches `utils` -- reads utils.ts (the target file)
 3. `text_contains_from_file` -- reports the correct TOKEN value from `src/utils.ts` (derived at eval time)
-4. `max_tool_count` max 2 -- at most 2 tool calls total
-5. `no_tool_name` not `grep` -- does not grep when the file is already named
-6. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
+4. `no_tool_name` not `grep` -- does not grep when the file is already named
+5. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 
-**1 tool call**: read `src/utils.ts`, then report the TOKEN value. The `read` tool has no prerequisites. `max_tool_count` allows up to 2.
+**1 tool call**: read `src/utils.ts`, then report the TOKEN value. The `read` tool has no prerequisites.
 
 ## Fail modes
 

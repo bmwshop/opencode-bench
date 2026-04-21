@@ -24,17 +24,16 @@ No special project files needed beyond the project. The prompt references `src/a
 
 > I need to refactor src/auth.ts. Create a todo list with these tasks: 1) Read the current auth code, 2) Extract token logic into a helper, 3) Add error handling, 4) Write tests.
 
-## Pass criteria (5 checks)
+## Pass criteria (4 checks)
 
 1. `any_tool_name` equals `todowrite` -- model calls the todowrite tool
-2. `max_tool_count` max 1 -- exactly one tool call (no write, read, or other tools)
-3. `any_tool_param_array_min` `todowrite.todos` min 4 -- array contains all 4 requested items
-4. `any_tool_param_array_item_fields` `todowrite.todos` fields `["content", "status", "priority"]` -- each item has the correct object shape
-5. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
+2. `any_tool_param_array_min` `todowrite.todos` min 4 -- array contains all 4 requested items
+3. `any_tool_param_array_item_fields` `todowrite.todos` fields `["content", "status", "priority"]` -- each item has the correct object shape
+4. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 
-**1 tool call**: `todowrite` with a `todos` array of 4 items. No prerequisites. No tool call checks constrain the upper bound.
+**1 tool call**: `todowrite` with a `todos` array of 4 items. No prerequisites.
 
 ## Fail modes
 

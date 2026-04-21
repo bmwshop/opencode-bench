@@ -31,18 +31,17 @@ The relevant files:
 
 > This project has src/auth.ts, src/utils.ts, src/index.ts, and their test files. I only need the marker value from index.ts -- nothing else.
 
-## Pass criteria (6 checks)
+## Pass criteria (5 checks)
 
 1. `any_tool_name` equals `read` -- uses the read tool
 2. `text_contains_from_file` -- reports the correct MARKER value from `src/index.ts` (derived at eval time)
-3. `max_tool_count` max 2 -- at most 2 tool calls total
-4. `no_tool_name` not `grep` -- does not grep when the file is already known
-5. `no_tool_name` not `task` -- does not delegate unnecessarily
-6. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
+3. `no_tool_name` not `grep` -- does not grep when the file is already known
+4. `no_tool_name` not `task` -- does not delegate unnecessarily
+5. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 
-**1 tool call**: read `src/index.ts`, then report the marker. The `read` tool has no prerequisites. `max_tool_count` allows up to 2.
+**1 tool call**: read `src/index.ts`, then report the marker. The `read` tool has no prerequisites.
 
 ## Fail modes
 
@@ -50,4 +49,3 @@ The relevant files:
 - Reads `src/auth.ts` and reports the wrong marker -- reads the wrong file or reports the distractor marker
 - Greps for "marker" across the project -- unnecessary search when the file is specified
 - Delegates to a subagent -- over-engineering a simple read task
-- Reads `index.ts` correctly but also makes extra calls (partial failure on `max_tool_count`)

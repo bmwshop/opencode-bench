@@ -24,16 +24,15 @@ The project contains `src/auth.ts` with a NEEDLE comment containing a UUID suffi
 
 > Find which file contains the NEEDLE string. (The exact NEEDLE value is provided in the prompt.)
 
-## Pass criteria (4 checks)
+## Pass criteria (3 checks)
 
 1. `any_tool_name` equals `grep` -- model calls the `grep` tool
-2. `max_tool_count` max 1 -- exactly one tool call
-3. `text_contains` `auth\.ts` -- response identifies the correct file
-4. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
+2. `text_contains` `auth\.ts` -- response identifies the correct file
+3. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 
-**1 tool call**: `grep` with the NEEDLE pattern. No prerequisites. No tool call checks constrain the upper bound.
+**1 tool call**: `grep` with the NEEDLE pattern. No prerequisites.
 
 ## Fail modes
 

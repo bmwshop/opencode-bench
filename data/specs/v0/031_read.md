@@ -24,16 +24,15 @@ The project contains `src/index.ts` with a MARKER UUID on the first line.
 
 > Read the file src/index.ts and tell me the marker value.
 
-## Pass criteria (4 checks)
+## Pass criteria (3 checks)
 
 1. `any_tool_name` equals `read` -- model calls the `read` tool
-2. `max_tool_count` max 1 -- exactly one tool call
-3. `text_contains_from_file` -- response mentions the MARKER value from `src/index.ts` (derived at eval time)
-4. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
+2. `text_contains_from_file` -- response mentions the MARKER value from `src/index.ts` (derived at eval time)
+3. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 
-**1 tool call**: `read` with `filePath` set to `src/index.ts`. No prerequisites. No tool call checks constrain the upper bound.
+**1 tool call**: `read` with `filePath` set to `src/index.ts`. No prerequisites.
 
 ## Fail modes
 

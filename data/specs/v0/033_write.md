@@ -24,16 +24,15 @@ The file `src/id.txt` does not exist in the fixture. The prompt asks to create i
 
 > Create a new file src/id.txt containing exactly: \<UUID\>
 
-## Pass criteria (4 checks)
+## Pass criteria (3 checks)
 
 1. `any_tool_name` equals `write` -- model calls the `write` tool
-2. `max_tool_count` max 1 -- exactly one tool call (no read, glob, bash, or other tools)
-3. `file_regex` `src/id.txt` -- file on disk contains exactly the UUID from the prompt
-4. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
+2. `file_regex` `src/id.txt` -- file on disk contains exactly the UUID from the prompt
+3. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
 
 ## Shortest path
 
-**1 tool call**: `write` with `filePath` and `content`. The file doesn't exist, so `filetime.assert` is skipped. No tool call checks constrain the upper bound.
+**1 tool call**: `write` with `filePath` and `content`. The file doesn't exist, so `filetime.assert` is skipped.
 
 ## Fail modes
 

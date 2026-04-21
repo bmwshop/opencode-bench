@@ -41,7 +41,7 @@ The fixture includes `src/register.ts` with a non-conforming stub (`register` in
 
 ## Shortest path
 
-**3 tool calls**: `skill` (with `name: "api-style"`) → `read src/register.ts` → `edit` to rewrite the stub with a conforming handler. The file exists, so `filetime.assert` requires a read before edit. No `max_tool_count` check constrains the upper bound.
+**3 tool calls**: `skill` (with `name: "api-style"`) → `read src/register.ts` → `edit` to rewrite the stub with a conforming handler. The file exists, so `filetime.assert` requires a read before edit.
 
 ## Fail modes
 

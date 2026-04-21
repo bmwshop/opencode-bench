@@ -34,7 +34,7 @@ The project's `AGENTS.md` contains a single style rule: "Use camelCase for all f
 
 ## Shortest path
 
-**2 tool calls**: `read src/convert.py` then `edit` to replace the snake_case stub with a camelCase implementation. The file exists, so `filetime.assert` requires a read before edit. No `max_tool_count` check constrains the upper bound.
+**2 tool calls**: `read src/convert.py` then `edit` to replace the snake_case stub with a camelCase implementation. The file exists, so `filetime.assert` requires a read before edit.
 
 ## Fail modes
 

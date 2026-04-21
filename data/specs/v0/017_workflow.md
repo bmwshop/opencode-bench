@@ -42,7 +42,7 @@ Note: previous checks requiring `tool_before read -> bash` and `any_tool_name wr
 
 ## Shortest path
 
-**4 tool calls**: `skill` (with `name: "review-flow"`) → `read src/app.ts` → `bash grep -c "TODO" src/app.ts` → `write review.md`. Alternative valid paths include counting TODOs via `read` and creating the file via `edit`. No `max_tool_count` check constrains the upper bound.
+**4 tool calls**: `skill` (with `name: "review-flow"`) → `read src/app.ts` → `bash grep -c "TODO" src/app.ts` → `write review.md`. Alternative valid paths include counting TODOs via `read` and creating the file via `edit`.
 
 ## Fail modes
 
