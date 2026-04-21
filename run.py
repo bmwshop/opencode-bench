@@ -2,10 +2,10 @@
 """
 Submit samples from samples.jsonl to opencode CLI and save traces to runs/.
 
-Each invocation writes to runs/{model_slug}/{timestamp}/ with:
+Each invocation writes to runs/{version}/{model_slug}/{timestamp}/ with:
     meta.json
-    {id}_{name}.jsonl           raw opencode trace
-    projects/{id:03d}/          post-run workspace (copied from projects/{id:03d}/)
+    {id:03d}_{name}.jsonl       raw opencode trace
+    projects/{id:03d}/          post-run workspace (copied from the canonical fixture)
     captures/ (with --proxy)    proxy payloads moved from the staging dir
 
 The canonical projects/ tree is read-only at runtime.
@@ -37,6 +37,8 @@ from common import (
     model_slug, load,
     opencode_meta, opencode_rev_label, resolve_opencode_cmd,
     schema_meta, compare_opencode,
+    project_dir, run_project_name, trace_name,
+    v1_repos, v1_repo_pin,
 )
 
 DEFAULT_TIMEOUT = 180
@@ -53,15 +55,17 @@ def _inject_proxy(cwd, provider, url):
 def run(sample, timeout, run_dir, model=None, proxy=None, provider=None):
     sid = sample["id"]
     name = sample.get("name", str(sid))
-    src = PROJECTS / f"{sid:03d}"
+    src = project_dir(sample)
 
     if not src.is_dir():
-        print(f"  SKIP #{sid} {name}: projects/{sid:03d}/ not found", flush=True)
+        rel = src.relative_to(ROOT) if src.is_absolute() else src
+        print(f"  SKIP #{sid} {name}: {rel}/ not found", flush=True)
         return None
 
-    cwd = run_dir / "projects" / f"{sid:03d}"
+    cwd = run_dir / "projects" / run_project_name(sample)
     if cwd.exists():
         shutil.rmtree(cwd)
+    cwd.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(src, cwd)
 
     if proxy:
@@ -101,11 +105,12 @@ def run(sample, timeout, run_dir, model=None, proxy=None, provider=None):
         print(f"{header}\n  ERROR: {stderr.strip()}", flush=True)
         sys.exit(1)
 
-    out = run_dir / f"{sid}_{name}.jsonl"
+    stem = trace_name(sample)
+    out = run_dir / f"{stem}.jsonl"
     out.write_text(stdout)
 
     if stderr.strip():
-        (run_dir / f"{sid}_{name}.err").write_text(stderr)
+        (run_dir / f"{stem}.err").write_text(stderr)
 
     lines = [l for l in stdout.strip().split("\n") if l.strip()]
     tools = sum(1 for l in lines if '"tool_use"' in l)
@@ -114,10 +119,69 @@ def run(sample, timeout, run_dir, model=None, proxy=None, provider=None):
     return out
 
 
+def _move_captures(run_dir, cap_src, existing):
+    """Move all new captures from staging into run_dir/captures/."""
+    dst = run_dir / "captures"
+    dst.mkdir(parents=True, exist_ok=True)
+    moved = 0
+    for f in sorted(cap_src.glob("*.json")):
+        if f in existing:
+            continue
+        shutil.move(str(f), str(dst / f.name))
+        moved += 1
+    if moved:
+        print(f"\nMoved {moved} capture(s) to {dst}/")
+
+
+def _check_v1_pins(samples):
+    """Preflight: for each distinct v1 repo in the selected samples, verify the
+    submodule is checked out at the SHA declared in data/v1_repos.json. Aborts
+    with an actionable hint on mismatch.
+    """
+    v1_samples = [s for s in samples if s.get("version") == "v1"]
+    if not v1_samples:
+        return
+    repos_used = sorted({s["repo"] for s in v1_samples if s.get("repo")})
+    repos = v1_repos()
+    for repo in repos_used:
+        entry = repos.get(repo)
+        if not entry:
+            print(f"ERROR: v1 sample references unknown repo {repo!r}; "
+                  f"declare it in data/v1_repos.json")
+            sys.exit(1)
+        sub_path = ROOT / entry["submodule_path"]
+        if not (sub_path / ".git").exists() and not (sub_path.is_dir() and any(sub_path.iterdir())):
+            print(f"ERROR: submodule {entry['submodule_path']!r} not initialized\n"
+                  f"  Fix: git submodule update --init {entry['submodule_path']}")
+            sys.exit(1)
+        try:
+            got = subprocess.run(
+                ["git", "-C", str(sub_path), "rev-parse", "HEAD"],
+                capture_output=True, text=True, timeout=5, check=True,
+            ).stdout.strip()
+        except (OSError, subprocess.SubprocessError) as e:
+            print(f"ERROR: could not read submodule HEAD for {repo!r}: {e}")
+            sys.exit(1)
+        want = entry["pin"]
+        if got != want:
+            print(f"ERROR: submodule pin drift for {repo!r}\n"
+                  f"  declared (data/v1_repos.json): {want}\n"
+                  f"  checked-out HEAD:              {got}\n"
+                  f"  Fix: cd {entry['submodule_path']} && git fetch && git checkout {want}")
+            sys.exit(1)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--id", action="append", help="Run specific sample(s) by ID")
     parser.add_argument("--category", action="append", help="Run all samples in a category")
+    parser.add_argument(
+        "--version",
+        choices=["v0", "v1"],
+        default="v0",
+        help="Benchmark version to run. A single run targets exactly one "
+             "version (default: v0). Run v1 separately with --version v1.",
+    )
     parser.add_argument("--clean", action="store_true", help="Wipe runs/ first")
     parser.add_argument(
         "--model",
@@ -147,8 +211,8 @@ def main():
         "--capture-dir",
         default=None,
         help="Staging directory where switchyard writes captures. "
-             "New files are moved to runs/{slug}/{timestamp}/captures/ after the run. "
-             "Defaults to captures/ at the repo root.",
+             "New files are moved to runs/{version}/{slug}/{timestamp}/captures/ "
+             "after the run. Defaults to captures/ at the repo root.",
     )
     parser.add_argument(
         "--skip-schema-check",
@@ -182,6 +246,8 @@ def main():
     if not samples:
         print("No matching samples found.")
         sys.exit(1)
+
+    _check_v1_pins(samples)
 
     oc_meta = opencode_meta()
     needs_schema = any(
@@ -217,7 +283,7 @@ def main():
     now = datetime.now(timezone.utc)
     slug = model_slug(args.model)
     timestamp = now.strftime("%Y-%m-%dT%H-%M-%S")
-    run_dir = RUNS / slug / timestamp
+    run_dir = RUNS / args.version / slug / timestamp
     run_dir.mkdir(parents=True, exist_ok=True)
     (run_dir / "projects").mkdir(exist_ok=True)
 
@@ -225,6 +291,7 @@ def main():
     if args.proxy and not provider:
         provider = args.model.split("/")[0] if args.model else "nvidia"
 
+    v1_repos_used = sorted({s["repo"] for s in samples if s.get("version") == "v1" and s.get("repo")})
     meta = {
         "model": args.model,
         "model_slug": slug,
@@ -233,6 +300,8 @@ def main():
         "timeout": args.timeout,
         "samples": [s["id"] for s in samples],
         "categories": sorted(set(s["category"] for s in samples)),
+        "version": args.version,
+        "v1_repo_pins": {r: v1_repo_pin(r) for r in v1_repos_used},
         "proxy": args.proxy,
         "argv": sys.argv,
         "opencode": oc_meta,
@@ -271,15 +340,7 @@ def main():
                 skipped += 1
 
     if cap_src.is_dir():
-        cap_dst = run_dir / "captures"
-        cap_dst.mkdir(parents=True, exist_ok=True)
-        moved = 0
-        for f in sorted(cap_src.glob("*.json")):
-            if f not in existing:
-                shutil.move(str(f), str(cap_dst / f.name))
-                moved += 1
-        if moved:
-            print(f"\nMoved {moved} capture(s) to {cap_dst}/")
+        _move_captures(run_dir, cap_src, existing)
 
     print(f"\nDone. {ran} ran, {skipped} skipped")
     print(f"Run in {run_dir}/")

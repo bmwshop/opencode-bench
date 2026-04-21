@@ -2,13 +2,13 @@
 """
 Stitch proxy capture files into per-sample multi-turn traces.
 
-Joins runs/{slug}/{ts}/captures/ (full API request/response pairs) with
-runs/{slug}/{ts}/{id}_{name}.jsonl (opencode event traces) using the callID
-linkage:
+Joins runs/{version}/{slug}/{ts}/captures/ (full API request/response pairs)
+with runs/{version}/{slug}/{ts}/{id:03d}_{name}.jsonl (opencode event traces)
+using the callID linkage:
 
     trace tool_use.callID == capture response.tool_calls[].id
 
-Output goes to runs/{slug}/{ts}/stitched/ with one JSON file per sample.
+Output goes to runs/{version}/{slug}/{ts}/stitched/ with one JSON file per sample.
 
 Usage:
     python stitch.py                         # stitch latest run
@@ -21,7 +21,7 @@ import json
 import sys
 import argparse
 from datetime import datetime
-from common import load, resolve_run
+from common import load, resolve_run, version_of, trace_name
 
 
 _TITLE_SYSTEM = "You are a title generator"
@@ -36,12 +36,14 @@ def _is_title_call(cap):
 
 
 def _load_captures(cap_dir):
-    """Load all capture files and build a tool_call_id -> capture index."""
+    """Load all capture files in cap_dir; build a tool_call_id -> filename index."""
     caps = {}
     tc_index = {}
     skipped = 0
+    if not cap_dir or not cap_dir.is_dir():
+        return caps, tc_index, skipped
     for p in sorted(cap_dir.iterdir()):
-        if not p.suffix == ".json":
+        if p.suffix != ".json":
             continue
         d = json.loads(p.read_text())
         if _is_title_call(d):
@@ -142,13 +144,9 @@ def stitch(sample, run_dir, caps, tc_index, scores):
     """Stitch captures for a single sample. Returns the trace dict or None."""
     sid = sample["id"]
     name = sample.get("name", str(sid))
-    trace_file = None
-    for p in run_dir.iterdir():
-        if p.name.startswith(f"{sid}_") and p.suffix == ".jsonl":
-            trace_file = p
-            break
+    trace_file = run_dir / f"{trace_name(sample)}.jsonl"
 
-    if not trace_file or not trace_file.exists():
+    if not trace_file.exists():
         return None
 
     call_ids, ts_range = _trace_callids(trace_file)
@@ -212,16 +210,26 @@ def main():
     parser.add_argument("--category", action="append", help="Stitch samples in a category")
     parser.add_argument("--pass-only", action="store_true", help="Only emit strictly-passing samples")
     parser.add_argument("--run", help="Specific run timestamp (default: latest)")
+    parser.add_argument(
+        "--version",
+        choices=["v0", "v1"],
+        default=None,
+        help="Benchmark version to stitch. Defaults to the run's version from meta.json.",
+    )
     args = parser.parse_args()
 
-    run_dir = resolve_run(args.model, args.run)
+    run_dir = resolve_run(args.model, args.run, version=args.version)
     if not run_dir:
-        print(f"ERROR: no run found for model={args.model}")
+        print(f"ERROR: no run found for model={args.model} version={args.version}")
         sys.exit(1)
+
+    # run_dir is runs/{version}/{slug}/{ts}/ — lock args.version so load()
+    # pulls samples from the tier the run targeted.
+    args.version = version_of(run_dir) or args.version
 
     cap_dir = run_dir / "captures"
     if not cap_dir.is_dir():
-        print(f"ERROR: no captures at {cap_dir}")
+        print(f"ERROR: no captures under {run_dir}")
         sys.exit(1)
 
     scores_path = run_dir / "scores.json"
@@ -242,11 +250,11 @@ def main():
         print("No matching samples found.")
         sys.exit(1)
 
-    out_dir = run_dir / "stitched"
-    if out_dir.is_dir():
-        for old in out_dir.glob("*.json"):
+    stitched_dir = run_dir / "stitched"
+    if stitched_dir.is_dir():
+        for old in stitched_dir.glob("*.json"):
             old.unlink()
-    out_dir.mkdir(parents=True, exist_ok=True)
+    stitched_dir.mkdir(parents=True, exist_ok=True)
 
     stitched = 0
     skipped = 0
@@ -266,7 +274,7 @@ def main():
             skipped += 1
             continue
 
-        out = out_dir / f"{sid}_{name}.json"
+        out = stitched_dir / f"{sid:03d}_{name}.json"
         out.write_text(json.dumps(result, indent=2) + "\n")
         n = len(result["messages"])
         tag = " *" if result["optimal"] else ""
@@ -274,7 +282,7 @@ def main():
         stitched += 1
 
     print(f"\nDone. {stitched} stitched, {skipped} skipped")
-    print(f"Output: {out_dir}/")
+    print(f"Output: {stitched_dir}/")
 
 
 if __name__ == "__main__":

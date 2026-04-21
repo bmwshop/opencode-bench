@@ -1,0 +1,6 @@
+[submodule "projects/v1/autoresearch"]
+	path = projects/v1/autoresearch
+	url = https://github.com/karpathy/autoresearch
+[submodule "projects/v1/requests"]
+	path = projects/v1/requests
+	url = https://github.com/psf/requests

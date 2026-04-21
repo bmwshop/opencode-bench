@@ -9,34 +9,79 @@ A benchmark suite for evaluating LLM compatibility with the [opencode](https://g
 - A configured model provider (the model under test)
 - `pip install -r requirements.txt` (currently just `jsonschema`, used by the
   `call_schema_valid` check)
+- For v1 samples: clone with submodules (see below)
 
 ## Quick Start
 
 ```bash
-# Run all samples
+# Clone with submodules (v1 needs pinned snapshots of real repos)
+git clone --recurse-submodules <repo-url>
+# or, if you already cloned without --recurse-submodules:
+git submodule update --init --recursive
+
+# Run the default v0 tier (curated toy projects)
 python run.py
+
+# Run v1 against real pinned repos
+python run.py --version v1
 
 # Evaluate results
 python eval.py
 ```
 
+## Benchmark Versions
+
+The bench is split into two tiers:
+
+- **v0** — 33 curated tiny projects under [projects/v0/](projects/v0/). Fast to run, exercises opencode's tool discipline (routing, efficiency, plan-mode adherence, subagents, skills, etc.). This is the default when no `--version` flag is passed.
+- **v1** — tasks against real pinned open-source repos, vendored as git submodules under [projects/v1/](projects/v1/). Each repo is declared once in [data/v1_repos.json](data/v1_repos.json) with its upstream URL and exact pinned SHA. Current repos:
+  - `autoresearch` — [karpathy/autoresearch](https://github.com/karpathy/autoresearch)
+  - `requests` — [psf/requests](https://github.com/psf/requests)
+
+A single run targets exactly one version (`run.py --version v0` or `--version v1`). Run the two tiers as separate invocations.
+
+Samples live in tier-specific files: [data/samples_v0.jsonl](data/samples_v0.jsonl) and [data/samples_v1.jsonl](data/samples_v1.jsonl). Specs live under [data/specs/v0/](data/specs/v0/) and [data/specs/v1/](data/specs/v1/).
+
+### Adding a v1 repo
+
+1. `git submodule add <upstream-url> projects/v1/<slug>`
+2. `cd projects/v1/<slug> && git checkout <pin-sha> && cd -`
+3. Declare the repo in [data/v1_repos.json](data/v1_repos.json) with `url`, `pin`, `submodule_path`, and `description`.
+4. Add samples to [data/samples_v1.jsonl](data/samples_v1.jsonl) with `"version": "v1"` and `"repo": "<slug>"`.
+5. `git add .gitmodules projects/v1/<slug> data/v1_repos.json data/samples_v1.jsonl && git commit`.
+
+### Bumping a v1 pin
+
+```bash
+cd projects/v1/<slug>
+git fetch && git checkout <new-sha>
+cd -
+# edit data/v1_repos.json -> pin: "<new-sha>"
+git add projects/v1/<slug> data/v1_repos.json
+git commit -m "bump <slug> pin"
+```
+
+Before running any v1 sample, `run.py` verifies the submodule HEAD matches the declared pin and aborts with an actionable hint on drift.
+
 ## Running Samples
 
-`run.py` sends prompts from `data/samples.jsonl` to `opencode run --format json` and saves everything for that invocation under `runs/{model_slug}/{timestamp}/`.
+`run.py` sends prompts from [data/samples_v0.jsonl](data/samples_v0.jsonl) (or [data/samples_v1.jsonl](data/samples_v1.jsonl) when `--version v1` is selected) to `opencode run --format json` and saves everything for that invocation under `runs/v{version}/{model_slug}/{timestamp}/`.
 
 Each run creates an isolated directory with:
 
-- `meta.json` — model, date, timeout, sample IDs, full command-line arguments
-- `{id}_{name}.jsonl` — per-sample opencode trace
-- `projects/{id:03d}/` — per-sample workspace, copied from `projects/{id:03d}/` before the sample runs and left in place afterwards for inspection
-- `captures/` (when `--proxy` is set) — proxy request/response logs moved here after the run
+- `meta.json` — model, date, timeout, sample IDs, `version`, `v1_repo_pins`, full command-line arguments
+- `scores.json` — machine-readable scores (produced by `eval.py`)
+- `{id:03d}_{name}.jsonl` — per-sample opencode trace (e.g. `001_camel_case.jsonl`)
+- `projects/{id:03d}/` — per-sample workspace, copied from the canonical fixture before the sample runs and left in place afterwards for inspection
+- `captures/` (when `--proxy` is set) — proxy request/response logs for this run
 - `stitched/` (after `stitch.py` runs) — stitched multi-turn traces
 
 The canonical `projects/` tree is never modified at runtime, so it is safe to run multiple models (or the same model multiple times) in parallel.
 
 ```bash
-python run.py                                              # run all samples
-python run.py --id 1                                       # run a single sample
+python run.py                                              # run v0 samples (default)
+python run.py --version v1                                 # run v1 samples (all repos)
+python run.py --id 1                                       # run a single sample (within selected version)
 python run.py --id 1 --id 2                                # run multiple samples
 python run.py --category tool_schema                       # run one category
 python run.py --category tool_schema --category subagent   # run multiple categories
@@ -49,14 +94,15 @@ python run.py -j 4                                         # run up to 4 samples
 
 The `--model` flag is optional. When omitted, opencode uses its configured default and traces go under `runs/default/`. The format is `provider/model-id` (e.g. `anthropic/claude-opus-4-6`), which gets converted to a directory slug (`anthropic_claude-opus-4-6`).
 
-`--workers` / `-j` (default 1) runs samples in parallel via a thread pool. Each sample already executes in its own `runs/{slug}/{ts}/projects/{id:03d}/` workspace copy, so parallelism is safe with no contention on disk. Combined with `--proxy`, the switchyard timestamp fallback used by `stitch.py` has a 3-second window, so attribution for zero-tool-call samples may be unreliable — `run.py` prints a warning but does not block it.
+`--workers` / `-j` (default 1) runs samples in parallel via a thread pool. Each sample already executes in its own `runs/v{version}/{slug}/{ts}/projects/{id:03d}/` workspace copy, so parallelism is safe with no contention on disk. Combined with `--proxy`, the switchyard timestamp fallback used by `stitch.py` has a 3-second window, so attribution for zero-tool-call samples may be unreliable — `run.py` prints a warning but does not block it.
 
 ## Evaluating Results
 
 `eval.py` replays the saved traces and checks them against the assertions defined in each sample. It auto-discovers the latest run, or you can target a specific model or run.
 
 ```bash
-python eval.py                                             # evaluate latest run (any model)
+python eval.py                                             # evaluate latest run (auto-detects version from meta.json)
+python eval.py --version v1                                # override to force v1 scope
 python eval.py --model nvidia/nemotron                     # evaluate latest run for a model
 python eval.py --model nvidia/nemotron --run 2026-04-12T18-30-00  # evaluate exact run
 python eval.py --list                                      # list all available runs
@@ -153,7 +199,7 @@ nemo-switchyard opencode \
 python run.py --proxy http://localhost:4000/v1 --model nvidia/nvidia/nemotron-3-super-120b-a12b
 ```
 
-The `--proxy` flag dynamically injects a `provider.{id}.options.baseURL` override into each sample's workspace `opencode.json` before running. Because each sample executes in a fresh copy of `projects/{id:03d}/` under `runs/{slug}/{timestamp}/projects/`, the canonical `projects/` tree is never touched and the override lives only inside the run directory.
+The `--proxy` flag dynamically injects a `provider.{id}.options.baseURL` override into each sample's workspace `opencode.json` before running. Because each sample executes in a fresh copy of the canonical fixture under `runs/v{version}/{slug}/{timestamp}/projects/{id:03d}/`, the canonical `projects/` tree is never touched and the override lives only inside the run directory.
 
 By default, the provider ID is inferred from the first segment of `--model` (e.g. `nvidia`). Override it explicitly with `--proxy-provider`:
 
@@ -161,7 +207,7 @@ By default, the provider ID is inferred from the first segment of `--model` (e.g
 python run.py --proxy http://localhost:4000/v1 --proxy-provider anthropic --model anthropic/claude-opus-4-6
 ```
 
-When `--proxy` is set, `run.py` automatically moves new capture files from the switchyard staging directory into `runs/{model_slug}/{timestamp}/captures/`. By default it looks for new `.json` files in `captures/` at the repo root (the `--rl-log-dir` passed to switchyard). Override with `--capture-dir` if switchyard writes elsewhere:
+When `--proxy` is set, `run.py` automatically moves new capture files from the switchyard staging directory into `runs/v{version}/{model_slug}/{timestamp}/captures/`. By default it looks for new `.json` files in `captures/` at the repo root (the `--rl-log-dir` passed to switchyard). Override with `--capture-dir` if switchyard writes elsewhere:
 
 ```bash
 python run.py --proxy http://localhost:4000/v1 --capture-dir /tmp/switchyard-output --model nvidia/nvidia/nemotron-3-super-120b-a12b
@@ -171,37 +217,52 @@ python run.py --proxy http://localhost:4000/v1 --capture-dir /tmp/switchyard-out
 
 ```
 data/
-  samples.jsonl          # test definitions (prompts + checks)
+  samples_v0.jsonl       # v0 test definitions (prompts + checks)
+  samples_v1.jsonl       # v1 test definitions (real-repo tasks)
+  v1_repos.json          # v1 repo declarations (slug -> url, pin, submodule_path)
+  tool_schemas.json      # opencode tool schemas (for call_schema_valid)
   specs/                 # per-sample documentation (capability, pass/fail criteria)
-    001_camel_case.md
-    ...
-    033_write.md
+    v0/
+      001_camel_case.md
+      ...
+      033_write.md
+    v1/
+      001_plan_cosine_lr.md
+      002_plan_retry_after.md
 run.py                   # runner — executes samples via opencode CLI
 eval.py                  # evaluator — scores traces against checks
-common.py                # shared constants and sample loader
+common.py                # shared constants, sample loader, path helpers
 projects/                # canonical per-sample fixtures, read-only at runtime
-  001/                   #   fixture for sample #1
-  002/                   #   fixture for sample #2
-  ...
-  033/                   #   fixture for sample #33
+  v0/
+    001/                 #   fixture for v0 sample #1
+    002/
+    ...
+    033/
+  v1/
+    autoresearch/        #   git submodule pinned via data/v1_repos.json
+    requests/            #   git submodule pinned via data/v1_repos.json
 scripts/
   flatten_projects.py    # one-time migration that built the per-sample layout
+  extract_schemas.py     # re-extracts data/tool_schemas.json from opencode serve
 evaluators/              # check implementations (auto-registered)
   tool/                  # tool name and parameter checks
   content/               # text and file content checks
   orchestration/         # tool ordering and parallelism checks
-runs/                    # everything produced by a run, organized by model and timestamp (git-ignored)
-  {model_slug}/          #   e.g. nvidia_nemotron/
-    {timestamp}/         #     e.g. 2026-04-12T18-30-00/
-      meta.json          #       run metadata (model, date, args, etc.)
-      1_camel_case.jsonl #       per-sample opencode trace
-      ...
-      projects/          #       per-sample workspace copies (post-run state)
-        001/
+runs/                    # everything produced by a run, organized by version / model / timestamp (git-ignored)
+  v{version}/            #   v0/ or v1/ — a run targets exactly one
+    {model_slug}/        #     e.g. nvidia_nemotron/
+      {timestamp}/       #       e.g. 2026-04-12T18-30-00/
+        meta.json        #         run metadata (model, date, version, v1_repo_pins, args, etc.)
+        scores.json      #         machine-readable scores (produced by eval.py)
+        001_camel_case.jsonl       # per-sample opencode trace
+        002_custom_main_agent.jsonl
         ...
-      captures/          #       proxy payloads (when --proxy is used)
-      stitched/          #       stitched multi-turn traces (produced by stitch.py)
-      scores.json        #       machine-readable scores (produced by eval.py)
+        projects/        #         per-sample workspace copies (post-run state)
+          001/
+          002/
+          ...
+        captures/        #         proxy payloads (when --proxy is used)
+        stitched/        #         stitched multi-turn traces (produced by stitch.py)
 captures/                # staging dir for switchyard output (git-ignored)
 ```
 

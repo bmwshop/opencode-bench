@@ -1,0 +1,14 @@
+{
+  "autoresearch": {
+    "url": "https://github.com/karpathy/autoresearch",
+    "pin": "228791fb499afffb54b46200aca536f79142f117",
+    "submodule_path": "projects/v1/autoresearch",
+    "description": "Single-GPU LLM training loop (nanochat-derived). Agent edits train.py."
+  },
+  "requests": {
+    "url": "https://github.com/psf/requests",
+    "pin": "79f4df84cf77a2fee873809821dfbd786de05b97",
+    "submodule_path": "projects/v1/requests",
+    "description": "HTTP client library. Clean layered design (Session, HTTPAdapter, PreparedRequest)."
+  }
+}

@@ -25,8 +25,9 @@ from dataclasses import dataclass, field
 import evaluators
 from common import (
     PROJECTS, RUNS, SCHEMAS_PATH,
-    load, resolve_run, list_runs, model_slug,
+    load, resolve_run, list_runs, model_slug, version_of,
     opencode_rev_label, schema_meta, compare_opencode,
+    project_dir, run_project_name, trace_name,
 )
 
 
@@ -129,8 +130,8 @@ def evaluate(sample, run_dir):
     sid = sample["id"]
     name = sample.get("name", str(sid))
     label = f"#{sid} {name}"
-    trace = run_dir / f"{sid}_{name}.jsonl"
 
+    trace = run_dir / f"{trace_name(sample)}.jsonl"
     if not trace.exists():
         return Result(label, sample["category"], failed=["trace not found"])
 
@@ -138,9 +139,12 @@ def evaluate(sample, run_dir):
     if not tools and not texts:
         return Result(label, sample["category"], failed=["empty trace"])
 
-    project = run_dir / "projects" / f"{sid:03d}"
+    project = run_dir / "projects" / run_project_name(sample)
     if not project.is_dir():
-        project = PROJECTS / f"{sid:03d}"
+        try:
+            project = project_dir(sample)
+        except (ValueError, AssertionError):
+            pass
     result = Result(label, sample["category"])
     for chk in sample.get("checks", []):
         fn = evaluators.get(chk["type"])
@@ -266,20 +270,21 @@ def format_json(data):
     return json.dumps(data, indent=2)
 
 
-def print_list(model_filter=None):
-    """Print available runs grouped by model."""
+def print_list(model_filter=None, version=None):
+    """Print available runs grouped by version + model."""
     slug_filter = model_slug(model_filter) if model_filter else None
 
     found = False
-    current_model = None
-    for ms, ts, meta in list_runs():
+    current = None
+    for v, ms, ts, meta in list_runs(version=version):
         if slug_filter and ms != slug_filter:
             continue
-        if ms != current_model:
-            if current_model is not None:
+        header = (v, ms)
+        if header != current:
+            if current is not None:
                 print()
-            print(f"  {ms}")
-            current_model = ms
+            print(f"  [{v}] {ms}")
+            current = header
         n = len(meta.get("samples", []))
         timeout = meta.get("timeout", "?")
         print(f"    {ts}  ({n} samples, {timeout}s timeout)")
@@ -294,6 +299,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--id", action="append", help="Evaluate specific sample(s) by ID")
     parser.add_argument("--category", action="append", help="Evaluate all samples in a category")
+    parser.add_argument(
+        "--version",
+        choices=["v0", "v1"],
+        default=None,
+        help="Benchmark version to evaluate. Defaults to the run's version "
+             "from meta.json (a run targets exactly one version).",
+    )
     parser.add_argument("--model", "-m", help="Model in provider/model format (selects latest run for model)")
     parser.add_argument("--run", help="Timestamp of a specific run (requires --model)")
     parser.add_argument("--list", action="store_true", help="List available runs and exit")
@@ -311,20 +323,25 @@ def main():
         refresh_schemas()
 
     if args.list:
-        print_list(args.model)
+        print_list(args.model, version=args.version)
         return
 
     if args.run and not args.model:
         print("ERROR: --run requires --model to identify which model's run to use")
         sys.exit(1)
 
-    run_dir = resolve_run(model=args.model, run=args.run)
+    run_dir = resolve_run(model=args.model, run=args.run, version=args.version)
     if not run_dir:
+        where = f"version={args.version}" if args.version else "any version"
         if args.model:
-            print(f"No runs found for model {args.model!r}")
+            print(f"No runs found for model {args.model!r} ({where})")
         else:
-            print("No runs found. Run benchmarks first with: python run.py")
+            print(f"No runs found ({where}). Run benchmarks first with: python run.py")
         sys.exit(1)
+
+    # run_dir is runs/{version}/{slug}/{ts}/ — lock args.version to it so
+    # load() pulls samples from exactly the tier the run targeted.
+    args.version = version_of(run_dir) or args.version
 
     meta_path = run_dir / "meta.json"
     meta = {}
@@ -336,7 +353,7 @@ def main():
 
     model_label = meta.get("model") or run_dir.parent.name
     date_label = meta.get("date") or run_dir.name
-    print(f"Evaluating: {model_label}  ({date_label})")
+    print(f"Evaluating: {model_label}  [{args.version}]  ({date_label})")
     print(f"Run dir:    {run_dir}")
     print(schemas_banner())
     cmp_line = compare_banner(meta.get("opencode"))
