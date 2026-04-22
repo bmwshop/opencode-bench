@@ -26,12 +26,12 @@ The project's `AGENTS.md` instructs: "You must only use the bash tool. Do not us
 
 ## Pass criteria (6 checks)
 
-1. `any_tool_name` equals `bash` -- model uses bash
-2. `no_tool_name` not `glob` -- does not use the native glob tool
-3. `any_tool_param_regex` `bash.command` matches `\|` -- command contains a pipe
-4. `any_tool_param_regex` `bash.command` matches `(?=.*src)(?=.*\.ts)` -- bash command references both `src/` and `.ts`
+1. `any_tool_name_recursive` equals `bash` -- bash happens at some layer (parent or subagent)
+2. `no_tool_name_recursive` not `glob` -- no glob at any layer
+3. `any_tool_param_regex_recursive` `bash.command` matches `\|` -- some bash call (parent or subagent) uses a pipe
+4. `any_tool_param_regex_recursive` `bash.command` matches `(?=.*src)(?=.*\.ts)` -- bash command references both `src/` and `.ts`
 5. `text_contains` `3` -- response reports the correct count
-6. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
+6. `call_schema_valid` -- all tool calls at every layer validate against `data/tool_schemas.json`
 
 ## Shortest path
 
@@ -43,3 +43,4 @@ The project's `AGENTS.md` instructs: "You must only use the bash tool. Do not us
 - Uses bash but without a pipe (e.g., just `ls src/*.ts` and counts visually)
 - Runs a bash command that references only `src/` or only `.ts` but not both (e.g., `echo 3`)
 - Reports the wrong count
+- Subagent sidecar missing -- `_recursive` checks surface this as `subagent-missing`

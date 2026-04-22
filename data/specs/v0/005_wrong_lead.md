@@ -32,11 +32,11 @@ The file `src/utils.ts` contains a TOKEN constant set to a UUID value. The file 
 
 ## Pass criteria (5 checks)
 
-1. `any_tool_name` equals `read` -- uses the read tool
-2. `any_tool_param_regex` `read.filePath` matches `utils` -- reads utils.ts (the target file)
+1. `any_tool_name_recursive` equals `read` -- read happens at some layer (parent or subagent)
+2. `any_tool_param_regex_recursive` `read.filePath` matches `utils` -- reads utils.ts at some layer, not auth.ts
 3. `text_contains_from_file` -- reports the correct TOKEN value from `src/utils.ts` (derived at eval time)
-4. `no_tool_name` not `grep` -- does not grep when the file is already named
-5. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
+4. `no_tool_name_recursive` not `grep` -- no grep at any layer (outcome-focused)
+5. `call_schema_valid` -- all tool calls at every layer validate against `data/tool_schemas.json`
 
 ## Shortest path
 
@@ -48,3 +48,4 @@ The file `src/utils.ts` contains a TOKEN constant set to a UUID value. The file 
 - Reads both auth.ts and utils.ts -- wastes a call on auth.ts
 - Greps for "TOKEN" across the project -- unnecessary when the file is specified
 - Tries to fix the bug instead of just reporting the current value
+- Subagent sidecar missing -- `_recursive` checks surface this as `subagent-missing`

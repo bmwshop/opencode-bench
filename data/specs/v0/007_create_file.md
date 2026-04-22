@@ -32,10 +32,10 @@ The file `src/config.ts` does not exist. The prompt asks to create it with speci
 
 ## Pass criteria (7 checks)
 
-1. `any_tool_name` equals `write` -- uses the write tool (strict: parent must call `write` directly; a `task` call at the parent layer would fail this check and #2 below)
+1. `any_tool_name_recursive` equals `write` -- write happens at some layer (parent or subagent). In practice the count checks below force it to be the parent, since any subagent path costs >=2 recursive tool calls.
 2. `max_tool_count_recursive` max 1 -- exactly one tool call across all layers (parent + any subagents)
-3. `no_tool_name` not `read` -- parent does not read any files
-4. `no_tool_name` not `glob` -- parent does not glob the directory
+3. `no_tool_name_recursive` not `read` -- no read at any layer
+4. `no_tool_name_recursive` not `glob` -- no glob at any layer
 5. `tool_count_score_recursive` optimal 1, limit 1 -- optimal and maximum is 1 tool call at any layer
 6. `file_regex` `src/config.ts` matches `^export const DEBUG = true\s*$` -- file contains exactly `export const DEBUG = true`
 7. `call_schema_valid` -- all tool calls (parent + subagents) validate against `data/tool_schemas.json`

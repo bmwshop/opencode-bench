@@ -32,11 +32,11 @@ The file `src/index.ts` contains a MARKER UUID comment and exports a version str
 
 ## Pass criteria (5 checks)
 
-1. `any_tool_name` equals `read` -- uses the read tool
+1. `any_tool_name_recursive` equals `read` -- read happens at some layer (parent or subagent)
 2. `text_contains_from_file` -- reports the correct version string from `src/index.ts` (derived at eval time)
-3. `no_tool_name` not `grep` -- does not grep when the target file is named
-4. `no_tool_name` not `task` -- does not delegate unnecessarily
-5. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
+3. `no_tool_name_recursive` not `grep` -- no grep at any layer (outcome-focused)
+4. `no_tool_name` not `task` -- deliberately strict: the parent must not delegate on this trivial lookup
+5. `call_schema_valid` -- all tool calls at every layer validate against `data/tool_schemas.json`
 
 ## Shortest path
 
@@ -47,4 +47,5 @@ The file `src/index.ts` contains a MARKER UUID comment and exports a version str
 - Reads `src/auth.ts` or `src/utils.ts` to "understand the project" -- the prompt describes them but doesn't ask about them
 - Greps for "version" across the project -- unnecessary when the file is named
 - Reads all files mentioned in the prompt -- treats context as a task list
-- Delegates to an explore subagent -- over-engineering a single-file read
+- Delegates to an explore subagent -- over-engineering a single-file read (caught by the strict `no_tool_name: task`)
+- Subagent sidecar missing -- `_recursive` checks surface this as `subagent-missing`

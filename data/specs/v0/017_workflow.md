@@ -31,12 +31,12 @@ The file `src/app.ts` contains 2 TODO comments.
 
 ## Pass criteria (6 checks)
 
-1. `any_tool_name` equals `skill` -- model invokes the skill tool
-2. `any_tool_param_value` `skill.name` equals `review-flow` -- loads the correct skill
+1. `any_tool_name_recursive` equals `skill` -- skill is invoked at some layer (parent or subagent)
+2. `any_tool_param_value_recursive` `skill.name` equals `review-flow` -- the correct skill is loaded, at any layer
 3. `file_regex` `review.md` matches `# Review` -- output file has the required heading
 4. `file_regex` `review.md` matches `app\.ts` -- review mentions the target filename
 5. `file_regex` `review.md` matches `TODO Count.*2` -- review includes the correct TODO count
-6. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
+6. `call_schema_valid` -- all tool calls at every layer validate against `data/tool_schemas.json`
 
 Note: previous checks requiring `tool_before read -> bash` and `any_tool_name write` were removed. Models may count TODOs via `read` instead of `bash grep`, and may use `edit` instead of `write` to create `review.md`. The outcome checks (3-5) validate correctness regardless of tool choice.
 
@@ -51,3 +51,4 @@ Note: previous checks requiring `tool_before read -> bash` and `any_tool_name wr
 - Creates the output file but with wrong format (missing `# Review` heading)
 - Writes a generic review without the target filename in the heading
 - Omits or miscounts the TODO count (fixture has exactly 2)
+- Subagent sidecar missing -- `_recursive` checks surface this as `subagent-missing`

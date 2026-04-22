@@ -26,9 +26,9 @@ The project contains `src/index.ts` with a MARKER UUID on the first line.
 
 ## Pass criteria (3 checks)
 
-1. `any_tool_name` equals `read` -- model calls the `read` tool
+1. `any_tool_name_recursive` equals `read` -- read happens at some layer (parent or subagent)
 2. `text_contains_from_file` -- response mentions the MARKER value from `src/index.ts` (derived at eval time)
-3. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
+3. `call_schema_valid` -- all tool calls at every layer validate against `data/tool_schemas.json`
 
 ## Shortest path
 
@@ -39,3 +39,4 @@ The project contains `src/index.ts` with a MARKER UUID on the first line.
 - Uses `bash` with `cat` instead of the native `read` tool
 - Reads the file but doesn't report the marker value in response text
 - Emits hallucinated param names like `path` -- caught universally by `call_schema_valid`
+- Subagent sidecar missing -- `_recursive` checks surface this as `subagent-missing`

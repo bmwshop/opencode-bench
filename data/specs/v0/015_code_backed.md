@@ -30,12 +30,12 @@ The file `scripts/validate.py` is a Python script that outputs a validation code
 
 ## Pass criteria (6 checks)
 
-1. `any_tool_name` equals `skill` -- model invokes the skill tool
-2. `any_tool_param_value` `skill.name` equals `validate` -- loads the correct skill
-3. `any_tool_name` equals `bash` -- model runs a bash command
-4. `any_tool_param_regex` `bash.command` matches `validate\.py` -- bash command runs validate.py
+1. `any_tool_name_recursive` equals `skill` -- skill is invoked at some layer (parent or subagent)
+2. `any_tool_param_value_recursive` `skill.name` equals `validate` -- the correct skill is loaded, at any layer
+3. `any_tool_name_recursive` equals `bash` -- bash happens at some layer
+4. `any_tool_param_regex_recursive` `bash.command` matches `validate\.py` -- some bash call runs validate.py
 5. `text_contains_from_file` -- response reports the validation code from `validate.py` (derived at eval time)
-6. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
+6. `call_schema_valid` -- all tool calls at every layer validate against `data/tool_schemas.json`
 
 ## Shortest path
 
@@ -48,3 +48,4 @@ The file `scripts/validate.py` is a Python script that outputs a validation code
 - Runs `echo` with the validation code instead of `scripts/validate.py` -- fakes the output without running the actual script
 - Runs the script but doesn't report the validation code in the response
 - Can't resolve the relative path `scripts/validate.py` from the skill's base directory
+- Subagent sidecar missing -- `_recursive` checks surface this as `subagent-missing`

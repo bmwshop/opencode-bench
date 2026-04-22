@@ -31,13 +31,13 @@ The fixture includes `src/register.ts` with a non-conforming stub (`register` in
 
 ## Pass criteria (7 checks)
 
-1. `any_tool_name` equals `skill` -- model invokes the skill tool
-2. `any_tool_param_value` `skill.name` equals `api-style` -- loads the correct skill
+1. `any_tool_name_recursive` equals `skill` -- skill is invoked at some layer (parent or subagent)
+2. `any_tool_param_value_recursive` `skill.name` equals `api-style` -- the correct skill is loaded, at any layer
 3. `file_regex` `register.ts` matches `handle[A-Z]` -- function has the required handle prefix
 4. `file_regex` `register.ts` matches `API_HANDLER` -- marker comment is present
 5. `file_regex` `register.ts` matches `ok\s*:` -- return object includes `ok` field (matches both type annotations and runtime values)
-6. `tool_before` read → edit -- read before edit (filetime.assert enforced)
-7. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
+6. `tool_before` read → edit -- deliberately strict at the parent layer: the filetime.assert guard only applies to the main agent's own read/edit ordering
+7. `call_schema_valid` -- all tool calls at every layer validate against `data/tool_schemas.json`
 
 ## Shortest path
 
@@ -49,3 +49,4 @@ The fixture includes `src/register.ts` with a non-conforming stub (`register` in
 - Loads the skill but ignores its rules (no `handle` prefix, missing marker comment, or wrong return shape)
 - Uses a different skill name
 - Skips reading the file before editing (blocked by `filetime.assert`)
+- Subagent sidecar missing -- `_recursive` checks surface this as `subagent-missing`

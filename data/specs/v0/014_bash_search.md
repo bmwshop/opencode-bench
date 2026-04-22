@@ -26,12 +26,12 @@ Same project. The `AGENTS.md` instructs bash-only usage while all tools remain v
 
 ## Pass criteria (6 checks)
 
-1. `any_tool_name` equals `bash` -- model uses bash
-2. `no_tool_name` not `grep` -- does not use the native grep tool
-3. `no_tool_name` not `read` -- does not use the native read tool
-4. `any_tool_param_regex` `bash.command` matches the NEEDLE string -- bash command searches for the actual needle value
+1. `any_tool_name_recursive` equals `bash` -- bash happens at some layer (parent or subagent)
+2. `no_tool_name_recursive` not `grep` -- no native grep at any layer
+3. `no_tool_name_recursive` not `read` -- no native read at any layer
+4. `any_tool_param_regex_recursive` `bash.command` matches the NEEDLE string -- some bash call searches for the actual needle value
 5. `text_contains` `app\.ts` -- response identifies the correct file
-6. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
+6. `call_schema_valid` -- all tool calls at every layer validate against `data/tool_schemas.json`
 
 ## Shortest path
 
@@ -43,3 +43,4 @@ Same project. The `AGENTS.md` instructs bash-only usage while all tools remain v
 - Uses `read` to manually inspect files one by one
 - Runs a bash command that doesn't actually search for the needle string (e.g., hardcodes the answer)
 - Identifies the wrong file
+- Subagent sidecar missing -- `_recursive` checks surface this as `subagent-missing`

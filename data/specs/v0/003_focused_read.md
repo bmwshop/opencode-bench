@@ -33,11 +33,11 @@ The relevant files:
 
 ## Pass criteria (5 checks)
 
-1. `any_tool_name` equals `read` -- uses the read tool
+1. `any_tool_name_recursive` equals `read` -- read happens at some layer (parent or subagent)
 2. `text_contains_from_file` -- reports the correct MARKER value from `src/index.ts` (derived at eval time)
-3. `no_tool_name` not `grep` -- does not grep when the file is already known
-4. `no_tool_name` not `task` -- does not delegate unnecessarily
-5. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
+3. `no_tool_name_recursive` not `grep` -- no grep at any layer (outcome-focused)
+4. `no_tool_name` not `task` -- deliberately strict: the parent must not delegate on this trivial lookup
+5. `call_schema_valid` -- all tool calls at every layer validate against `data/tool_schemas.json`
 
 ## Shortest path
 
@@ -48,4 +48,5 @@ The relevant files:
 - Reads all source files -- ignores "nothing else" and over-explores
 - Reads `src/auth.ts` and reports the wrong marker -- reads the wrong file or reports the distractor marker
 - Greps for "marker" across the project -- unnecessary search when the file is specified
-- Delegates to a subagent -- over-engineering a simple read task
+- Delegates to a subagent -- over-engineering a simple read task (caught by the strict `no_tool_name: task`)
+- Subagent sidecar missing -- `_recursive` checks surface this as `subagent-missing`

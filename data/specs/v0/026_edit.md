@@ -26,10 +26,10 @@ The project contains `src/utils.ts` with a TOKEN constant set to a UUID value.
 
 ## Pass criteria (4 checks)
 
-1. `any_tool_name` equals `edit` -- model calls the `edit` tool
-2. `tool_before` read → edit -- read before edit (filetime.assert enforced)
+1. `any_tool_name_recursive` equals `edit` -- edit happens at some layer (parent or subagent)
+2. `tool_before` read → edit -- deliberately strict at the parent layer: the filetime.assert guard only applies to the main agent's own read/edit ordering
 3. `file_regex` `src/utils.ts` -- file on disk contains the new token value
-4. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
+4. `call_schema_valid` -- all tool calls at every layer validate against `data/tool_schemas.json`
 
 ## Shortest path
 
@@ -41,3 +41,4 @@ The project contains `src/utils.ts` with a TOKEN constant set to a UUID value.
 - Provides incorrect replacement value (file on disk ends up with the wrong UUID)
 - Calls edit with correct params but the edit fails to apply (e.g., oldString doesn't match file content)
 - Emits snake_case (`old_string`) or other unknown params -- caught universally by `call_schema_valid`
+- Subagent sidecar missing -- `_recursive` checks surface this as `subagent-missing`

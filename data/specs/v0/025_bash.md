@@ -26,9 +26,9 @@ No special project files needed. The prompt asks for a simple echo command.
 
 ## Pass criteria (3 checks)
 
-1. `any_tool_name` equals `bash` -- model calls the `bash` tool
+1. `any_tool_name_recursive` equals `bash` -- bash happens at some layer (parent or subagent)
 2. `text_contains` -- output includes the echoed UUID from the prompt
-3. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
+3. `call_schema_valid` -- all tool calls at every layer validate against `data/tool_schemas.json`
 
 ## Shortest path
 
@@ -38,3 +38,4 @@ No special project files needed. The prompt asks for a simple echo command.
 
 - Omits the `description` parameter (which is required by opencode's bash tool schema)
 - Doesn't call bash at all and just responds with text
+- Subagent sidecar missing -- `_recursive` checks surface this as `subagent-missing`

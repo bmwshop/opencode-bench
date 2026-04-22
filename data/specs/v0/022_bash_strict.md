@@ -26,9 +26,11 @@ The project's `opencode.json` sets root permissions to deny all tools except `ba
 
 ## Pass criteria (3 checks)
 
-1. `any_tool_name` equals `bash` -- model uses bash
+1. `any_tool_name_recursive` equals `bash` -- bash happens at some layer (parent or subagent)
 2. `text_contains` `app\.ts` -- response identifies the correct file
-3. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
+3. `call_schema_valid` -- all tool calls at every layer validate against `data/tool_schemas.json`
+
+Note: `task` is denied at the permission layer here, so no subagent can actually spawn. The recursive check is defensive but in practice matches the strict version.
 
 ## Shortest path
 
