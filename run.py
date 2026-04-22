@@ -57,6 +57,56 @@ from common import (
 
 DEFAULT_TIMEOUT = 180
 DEFAULT_MAX_OUTPUT_TOKENS = 8192
+
+
+def _assert_fixture_clean(src: Path, auto_repair: bool = True) -> None:
+    """Guard against seeding a run from a contaminated source tree.
+
+    v1 fixtures are git submodules; nothing in the bench ever writes to them,
+    but IDE autosave / formatters / stray agent edits / `__pycache__` have
+    contaminated them before (see run 2026-04-22T05-18-24 for #4). A dirty
+    source silently poisons every run that copies it, so we check up-front.
+
+    ``git status --porcelain`` returns empty output for a clean working tree
+    (tracked modifications + untracked files; ignored files not included).
+    When the tree is dirty, behavior depends on ``auto_repair``:
+
+    - ``auto_repair=True`` (default): print a WARNING with the diff, then run
+      ``git checkout -- . && git clean -fdx`` to reset to HEAD, then continue.
+      Fixtures are meant to be immutable; any working-tree drift is junk.
+    - ``auto_repair=False``: raise ``RuntimeError``. The unhandled exception
+      propagates out of the ThreadPoolExecutor / main(), aborting the entire
+      eval (not just the current sample) — we want loud failure, not partial
+      runs against a contaminated fixture.
+
+    No-op if ``src`` is not a git repo (e.g., v0 fixtures at projects/v0/NNN/).
+    """
+    if not (src / ".git").exists():
+        return
+    r = subprocess.run(
+        ["git", "-C", str(src), "status", "--porcelain"],
+        capture_output=True, text=True, check=True,
+    )
+    dirty = r.stdout.strip()
+    if not dirty:
+        return
+    if auto_repair:
+        print(
+            f"  WARNING: fixture {src} was dirty; auto-repairing to HEAD.\n"
+            f"  Dropped working-tree state:\n{dirty}",
+            flush=True,
+        )
+        subprocess.run(["git", "-C", str(src), "checkout", "--", "."], check=True)
+        subprocess.run(["git", "-C", str(src), "clean", "-fdx"], check=True)
+        return
+    raise RuntimeError(
+        f"Fixture {src} is dirty; refusing to seed a run from a contaminated "
+        f"source tree. ABORTING ENTIRE EVAL.\n\n"
+        f"Working-tree status:\n{dirty}\n\n"
+        f"Fix options:\n"
+        f"  (1) rerun without --no-auto-repair-fixtures (default auto-repairs to HEAD)\n"
+        f"  (2) manually reset:  git -C {src} checkout -- . && git -C {src} clean -fdx"
+    )
 # Guards `_capture_subagents` against runaway recursion (a subagent spawning
 # another subagent etc.). Independent of opencode's own runtime limits.
 MAX_SUBAGENT_DEPTH = 8
@@ -301,7 +351,7 @@ def _capture_subagents(trace_path, cwd, argv):
 def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
         vllm_url=None, vllm_model_id=None, vllm_api_key="EMPTY",
         max_output_tokens=DEFAULT_MAX_OUTPUT_TOKENS,
-        retry_on_timeout=0, cap_src=None):
+        retry_on_timeout=0, cap_src=None, auto_repair_fixtures=False):
     sid = sample["id"]
     name = sample.get("name", str(sid))
     src = project_dir(sample)
@@ -310,6 +360,8 @@ def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
         rel = src.relative_to(ROOT) if src.is_absolute() else src
         print(f"  SKIP #{sid} {name}: {rel}/ not found", flush=True)
         return None
+
+    _assert_fixture_clean(src, auto_repair=auto_repair_fixtures)
 
     cwd = run_dir / "projects" / run_project_name(sample)
     if cwd.exists():
@@ -584,6 +636,15 @@ def main():
              "runtime doesn't match data/tool_schemas.json (only enforced "
              "when any sample uses call_schema_valid).",
     )
+    parser.add_argument(
+        "--auto-repair-fixtures",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="If the fixture source tree (projects/<version>/<repo>/) is dirty, "
+             "print a WARNING and reset it to HEAD (git checkout -- . && git "
+             "clean -fdx) before copying. Default: on. Pass --no-auto-repair-fixtures "
+             "to fail loudly instead (aborts the entire eval, not just the sample).",
+    )
     args = parser.parse_args()
 
     if args.vllm and args.proxy:
@@ -729,6 +790,7 @@ def main():
                 max_output_tokens=args.max_output_tokens,
                 retry_on_timeout=args.retry_on_timeout,
                 cap_src=cap_src,
+                auto_repair_fixtures=args.auto_repair_fixtures,
             )
             for sample in samples
         ]

@@ -28,14 +28,17 @@ The per-run fixture is a pinned copy of `karpathy/autoresearch`. Only the three 
 
 > In train.py, change WARMUP_RATIO from 0.0 to 0.05 and FINAL_LR_FRAC from 0.0 to 0.1. Keep WARMDOWN_RATIO at 0.5. Minimal changes only.
 
-## Pass criteria (4 checks)
+## Pass criteria (3 checks)
 
-1. `any_tool_name_recursive` `edit` — the `edit` tool was invoked at least once (parent or subagent). Recursive wrapper so delegation is not penalized.
-2. `file_regex` `train.py` `WARMUP_RATIO\s*=\s*0\.05\b` — hard fact: the new warmup value is exactly `0.05`.
-3. `file_regex` `train.py` `FINAL_LR_FRAC\s*=\s*0\.1\b` — hard fact: the new final-LR fraction is exactly `0.1`.
-4. `call_schema_valid` — every tool call in the trace matches opencode's canonical JSON schemas.
+1. `file_regex_disk` `train.py` `WARMUP_RATIO\s*=\s*0\.05\b` — hard fact: the new warmup value is exactly `0.05`.
+2. `file_regex_disk` `train.py` `FINAL_LR_FRAC\s*=\s*0\.1\b` — hard fact: the new final-LR fraction is exactly `0.1`.
+3. `call_schema_valid` — every tool call in the trace matches opencode's canonical JSON schemas.
 
-Note on the dropped WARMDOWN preservation anchor: the `file_regex` evaluator scans concatenated `newString` values from `write`/`edit` calls against the target path (and only falls back to the disk file when *no* such calls touched it). Because a correct minimal edit of `train.py` touches only the WARMUP and FINAL lines, the WARMDOWN line never appears in any `newString`, so an anchor on `WARMDOWN_RATIO = 0.5` would false-fail on a correct model and also fail on an over-edit that mutated WARMDOWN — no discriminative power either way. Dropping it leaves correctness-testing on exactly the two values the model was asked to change. The `^` line-start anchors were also dropped from anchors 2 and 3 for the same concatenation reason: successive edit `newString`s are glued without a separator, so `^` under `re.MULTILINE` cannot land between them. `\b` at the end of each numeric literal is sufficient to prevent `0.05` from matching `0.050` / `0.1` from matching `0.10`.
+Note on anchor design: these use `file_regex_disk`, which reads the final on-disk file at `_project_dir / path` and applies the regex with `re.MULTILINE`. A `\b` terminator on each numeric literal prevents `0.05` from matching `0.050` / `0.1` from matching `0.10`. A WARMDOWN preservation anchor (e.g. `WARMDOWN_RATIO\s*=\s*0\.5\b`) is now viable under `file_regex_disk` because the disk read sees the full unchanged file; it is not added in this revision, but is tracked as a future anchor-strength upgrade.
+
+### Dropped: `any_tool_name_recursive: edit`
+
+The tool-name check was removed in favor of pure results-oriented scoring. Rationale: the two hard-fact disk anchors already verify the outcome (the file on disk contains the correct numeric literals). *How* the model got there — `edit` tool, `write` tool, or even `bash sed -i` — is operationally uninteresting when the end state is correct. Keeping the anchor only penalized valid alternative paths without adding correctness signal. `call_schema_valid` remains to catch malformed tool arguments on any path actually taken.
 
 ## Shortest path
 
@@ -43,7 +46,7 @@ Note on the dropped WARMDOWN preservation anchor: the `file_regex` evaluator sca
 
 ## Fail modes
 
-- Model edits via `bash sed -i` — `any_tool_name_recursive: edit` fails because no edit tool was invoked. (The prior explicit `no_tool_name_recursive: bash` guard was dropped as redundant: if bash-sed was used instead of `edit`, the edit-name check already fails.)
 - Wrong value written (e.g. `WARMUP_RATIO = 0.5`) — the corresponding hard-fact regex fails.
-- Over-edit that changes `WARMDOWN_RATIO` away from `0.5` — not directly checked statically (residual ceiling: the evaluator concatenates edit `newString`s only, so a preservation anchor on an untouched line can't distinguish correct silence from silent damage). Flagged for a future evaluator upgrade that also ORs against the final on-disk file.
-- Malformed `edit` args (wrong parameter names) — `call_schema_valid` fails.
+- Model never modified the file (e.g. stopped mid-turn, answered conversationally) — both hard-fact regexes fail because the disk state still has the original `0.0` values.
+- Over-edit that changes `WARMDOWN_RATIO` away from `0.5` — not directly checked in this revision, but now trivially addable via a `file_regex_disk` anchor on `WARMDOWN_RATIO\s*=\s*0\.5\b` because the evaluator reads final disk state.
+- Malformed tool args on whatever path was taken — `call_schema_valid` fails.

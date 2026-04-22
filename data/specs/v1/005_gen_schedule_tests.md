@@ -28,16 +28,19 @@ The per-run fixture is a pinned copy of `karpathy/autoresearch`. The `tests/` di
 
 > Create tests/test_schedule.py that imports get_lr_multiplier from train and uses plain assert statements to verify: (a) get_lr_multiplier(0.0) == 1.0, (b) get_lr_multiplier(1.0) == FINAL_LR_FRAC (import it too), (c) get_lr_multiplier(0.25) == 1.0. Runnable as `python tests/test_schedule.py`; print "ok" on success.
 
-## Pass criteria (6 checks)
+## Pass criteria (5 checks)
 
-1. `any_tool_name_recursive` `write` — the `write` tool was invoked to create `tests/test_schedule.py`.
-2. `file_regex` `tests/test_schedule.py` `from\s+train\s+import[^\n]*get_lr_multiplier` — the script imports the target symbol from `train`. (An import of `FINAL_LR_FRAC` is also required semantically; we rely on the next check's source-level reference to `FINAL_LR_FRAC` to indirectly verify its presence. A dedicated `FINAL_LR_FRAC` import regex was dropped as redundant with that reference.)
-3. `file_regex` `tests/test_schedule.py` `assert\s+get_lr_multiplier\(\s*0\.25\s*\)\s*==\s*1(?:\.0)?` — **hard-fact anchor**: the assertion encodes the ground truth that `get_lr_multiplier(0.25) == 1.0` (plateau; requires knowing the plateau extends to `1.0 - WARMDOWN_RATIO = 0.5`).
-4. `file_regex` `tests/test_schedule.py` `assert\s+get_lr_multiplier\(\s*1(?:\.0)?\s*\)\s*==\s*FINAL_LR_FRAC` — **hard-fact anchor**: the assertion encodes the endpoint fact `get_lr_multiplier(1.0) == FINAL_LR_FRAC` and forces the test to reference `FINAL_LR_FRAC` symbolically (implying the import was performed).
-5. `file_regex` `tests/test_schedule.py` `print\(["']ok["']\)` — the success indicator as specified in the prompt.
-6. `call_schema_valid` — every tool call in the trace matches opencode's canonical JSON schemas.
+1. `file_regex_disk` `tests/test_schedule.py` `from\s+train\s+import[^\n]*get_lr_multiplier` — the script imports the target symbol from `train`. (An import of `FINAL_LR_FRAC` is also required semantically; we rely on the next check's source-level reference to `FINAL_LR_FRAC` to indirectly verify its presence. A dedicated `FINAL_LR_FRAC` import regex was dropped as redundant with that reference.)
+2. `file_regex_disk` `tests/test_schedule.py` `assert\s+get_lr_multiplier\(\s*0\.25\s*\)\s*==\s*1(?:\.0)?` — **hard-fact anchor**: the assertion encodes the ground truth that `get_lr_multiplier(0.25) == 1.0` (plateau; requires knowing the plateau extends to `1.0 - WARMDOWN_RATIO = 0.5`).
+3. `file_regex_disk` `tests/test_schedule.py` `assert\s+get_lr_multiplier\(\s*1(?:\.0)?\s*\)\s*==\s*FINAL_LR_FRAC` — **hard-fact anchor**: the assertion encodes the endpoint fact `get_lr_multiplier(1.0) == FINAL_LR_FRAC` and forces the test to reference `FINAL_LR_FRAC` symbolically (implying the import was performed).
+4. `file_regex_disk` `tests/test_schedule.py` `print\(["']ok["']\)` — the success indicator as specified in the prompt.
+5. `call_schema_valid` — every tool call in the trace matches opencode's canonical JSON schemas.
 
 Note on drops vs the initial draft: the `assert get_lr_multiplier(0.0) == 1.0` anchor from the prompt is not checked, because it's trivially satisfied (every reasonable LR schedule returns `1.0` at progress `0.0`). The two kept assertions are the distinctive hard facts.
+
+### Dropped: `any_tool_name_recursive: write`
+
+The tool-name check was removed in favor of pure results-oriented scoring. The four `file_regex_disk` anchors already verify that `tests/test_schedule.py` exists on disk with the required content. *How* the model created it — `write`, `edit` with empty `oldString`, or even `bash cat > ...` redirection — is irrelevant when the final file is correct. `call_schema_valid` still catches malformed calls on whatever path was taken.
 
 ## Shortest path
 
@@ -45,9 +48,9 @@ Note on drops vs the initial draft: the `assert get_lr_multiplier(0.0) == 1.0` a
 
 ## Fail modes
 
-- No file created — check 1 (and then all content checks) fail.
-- Import missing or wrong path (e.g., `from get_lr_multiplier import ...`) — check 2 fails.
-- Assertion for `progress=0.25` encodes a wrong value (e.g., `== 0.75`) — check 3 fails. This is the discriminative anchor: a model that hallucinated a cosine schedule would put a non-`1.0` value here.
-- Assertion for `progress=1.0` uses a literal `0.0` instead of `FINAL_LR_FRAC` — check 4 fails. Even though the literal `0.0` equals the ground-truth value, the regex requires the symbolic form, which forces the import.
-- Missing `print("ok")` — check 5 fails.
-- Malformed `write` args — `call_schema_valid` fails.
+- No file created — all content checks fail because the disk file is missing.
+- Import missing or wrong path (e.g., `from get_lr_multiplier import ...`) — check 1 fails.
+- Assertion for `progress=0.25` encodes a wrong value (e.g., `== 0.75`) — check 2 fails. This is the discriminative anchor: a model that hallucinated a cosine schedule would put a non-`1.0` value here.
+- Assertion for `progress=1.0` uses a literal `0.0` instead of `FINAL_LR_FRAC` — check 3 fails. Even though the literal `0.0` equals the ground-truth value, the regex requires the symbolic form, which forces the import.
+- Missing `print("ok")` — check 4 fails.
+- Malformed tool args on whatever path was taken — `call_schema_valid` fails.
