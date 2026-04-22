@@ -121,7 +121,26 @@ def build_parser():
     cluster.add_argument("--reuse-code", action="store_true", help="Reuse code from previous experiment")
     cluster.add_argument(
         "--dependent-jobs", type=int, default=0,
-        help="Number of dependent sequential jobs (total = 1 + this value)",
+        help=(
+            "Number of dependent sequential jobs, chained inside each experiment "
+            "via Slurm dependencies (total sequential jobs per experiment = "
+            "1 + this value). Combines with --parallel-jobs: the total number "
+            "of Slurm jobs submitted is parallel_jobs * (1 + dependent_jobs)."
+        ),
+    )
+    cluster.add_argument(
+        "--parallel-jobs", type=int, default=1,
+        help=(
+            "Number of independent copies of the benchmark to launch in parallel "
+            "(default: 1, i.e. no parallelization). Each copy runs as its own "
+            "Slurm experiment with a `-NNN` suffix on --expname, its own vLLM "
+            "sidecar (when --server-gpus is set), and its own mounted output "
+            "subdirectory (`{output_dir}/{expname}-{NNN}`) so the timestamped "
+            "run dirs that run.py creates cannot collide across copies. Useful "
+            "for variance estimation or running N configurations concurrently. "
+            "Combines with --dependent-jobs (each copy becomes its own "
+            "dependency chain)."
+        ),
     )
 
     # -- Server ----------------------------------------------------------
@@ -321,62 +340,100 @@ def main():
     else:
         server_url = f"http://localhost:{DEFAULT_SERVER_PORT}/v1"
 
-    # -- Mount handling --------------------------------------------------
-    # Append expname to output_dir (e.g. /lustre/.../runs/my-exp)
-    # and mount that as /runs inside the container.  The benchmark
-    # command sets OPENCODE_BENCH_RUNS=/runs so that common.py
-    # writes directly to the mounted cluster storage.
-    runs_dir = os.path.join(args.output_dir.rstrip("/"), args.expname)
-    log_dir = args.log_dir if args.log_dir else os.path.join(runs_dir, "logs")
-
-    # Create the runs and log directories on the cluster before
-    # submitting so the mount sources exist when Slurm starts the container.
-    if not args.dry_run:
-        cluster_config = get_cluster_config(args.cluster, args.config_dir)
-        create_remote_directory([runs_dir, log_dir], cluster_config)
-
-    output_mount = f"{runs_dir}:/runs"
-    if args.mount_paths:
-        mount_paths = f"{args.mount_paths},{output_mount}"
+    # -- Parallel-jobs expansion -----------------------------------------
+    # For each parallel copy, pick a distinct expname (and therefore a
+    # distinct runs_dir / log_dir / mount) so nothing collides.  A single
+    # copy keeps the original expname verbatim for backward compatibility.
+    if args.parallel_jobs < 1:
+        parser.error("--parallel-jobs must be >= 1")
+    if args.parallel_jobs == 1:
+        expnames = [args.expname]
     else:
-        mount_paths = output_mount
+        width = max(2, len(str(args.parallel_jobs - 1)))
+        expnames = [f"{args.expname}-{i:0{width}d}" for i in range(args.parallel_jobs)]
 
-    # Resolve log_dir to its container path (e.g. /runs/logs) so that
-    # run_cmd writes Slurm logs to the mounted volume.
+    # -- Mount / log / benchmark-cmd plan per copy -----------------------
+    # Build the same (runs_dir, log_dir, mount_paths, bench_cmd) that the
+    # single-job path used, but one per parallel copy.
     cluster_cfg = get_cluster_config(args.cluster, args.config_dir)
-    resolve_mount_paths(cluster_cfg, mount_paths)
-    mounted_log_dir = get_mounted_path(cluster_cfg, log_dir)
 
-    # -- Build in-container command --------------------------------------
-    bench_cmd = build_benchmark_command(
-        opencode_model=opencode_model,
-        provider=args.provider,
-        server_url=server_url,
-        timeout=args.timeout,
-        benchmark_ids=args.benchmark_id,
-        benchmark_categories=args.benchmark_category,
-        max_output_tokens=args.max_output_tokens,
-        extra_run_args=extra_run_args,
-    )
+    copies = []
+    for copy_expname in expnames:
+        runs_dir = os.path.join(args.output_dir.rstrip("/"), copy_expname)
+        if args.log_dir:
+            # Keep user-specified --log-dir distinct per copy to avoid log
+            # interleaving across parallel Slurm jobs.
+            log_dir = (
+                args.log_dir if args.parallel_jobs == 1
+                else os.path.join(args.log_dir, copy_expname)
+            )
+        else:
+            log_dir = os.path.join(runs_dir, "logs")
+
+        if not args.dry_run:
+            create_remote_directory([runs_dir, log_dir], cluster_cfg)
+
+        output_mount = f"{runs_dir}:/runs"
+        mount_paths = (
+            f"{args.mount_paths},{output_mount}"
+            if args.mount_paths else output_mount
+        )
+
+        # resolve_mount_paths mutates cluster_cfg in place; re-resolve for
+        # each copy so get_mounted_path sees this copy's runs_dir.
+        resolve_mount_paths(cluster_cfg, mount_paths)
+        mounted_log_dir = get_mounted_path(cluster_cfg, log_dir)
+
+        bench_cmd = build_benchmark_command(
+            opencode_model=opencode_model,
+            provider=args.provider,
+            server_url=server_url,
+            timeout=args.timeout,
+            benchmark_ids=args.benchmark_id,
+            benchmark_categories=args.benchmark_category,
+            max_output_tokens=args.max_output_tokens,
+            extra_run_args=extra_run_args,
+        )
+
+        copies.append({
+            "expname": copy_expname,
+            "runs_dir": runs_dir,
+            "log_dir": log_dir,
+            "mount_paths": mount_paths,
+            "mounted_log_dir": mounted_log_dir,
+            "bench_cmd": bench_cmd,
+        })
 
     # -- Print summary ---------------------------------------------------
     print("=" * 72)
     print("opencode-bench cluster launcher")
     print("=" * 72)
     print(f"  Cluster:        {args.cluster}")
-    print(f"  Experiment:     {args.expname}")
+    if args.parallel_jobs == 1:
+        print(f"  Experiment:     {args.expname}")
+    else:
+        print(f"  Experiment:     {args.expname}  (x{args.parallel_jobs} parallel copies)")
     print(f"  Model (HF):     {args.model}")
     print(f"  Model (OC):     {opencode_model}")
     print(f"  Model ID:       {model_id}")
     print(f"  Server URL:     {server_url}")
     if args.server_gpus:
-        print(f"  Server GPUs:    {args.server_gpus} (x{args.server_nodes} node(s))")
+        print(f"  Server GPUs:    {args.server_gpus} (x{args.server_nodes} node(s))"
+              + (f"  per copy" if args.parallel_jobs > 1 else ""))
     elif args.server_address:
         print(f"  Server addr:    {args.server_address} (external)")
     print(f"  Output dir:     {args.output_dir}")
-    print(f"  Runs dir:       {runs_dir}")
-    print(f"  Log dir:        {log_dir}")
-    print(f"  Mount paths:    {mount_paths}")
+    if args.parallel_jobs == 1:
+        print(f"  Runs dir:       {copies[0]['runs_dir']}")
+        print(f"  Log dir:        {copies[0]['log_dir']}")
+        print(f"  Mount paths:    {copies[0]['mount_paths']}")
+    else:
+        print(f"  Runs dirs:")
+        for c in copies:
+            print(f"    - {c['runs_dir']}")
+    if args.dependent_jobs:
+        print(f"  Dependent jobs: {args.dependent_jobs} "
+              f"(chain length = {1 + args.dependent_jobs} per copy)")
     print(f"  Timeout:        {args.timeout}s per sample")
     print(f"  Max output:     {args.max_output_tokens} tokens "
           f"(context auto-detected from /v1/models at runtime)")
@@ -391,69 +448,78 @@ def main():
     if args.dry_run:
         print(f"  ** DRY RUN **")
     print("=" * 72)
-    print(f"\nIn-container command:\n{bench_cmd}\n")
+    print(f"\nIn-container command:\n{copies[0]['bench_cmd']}\n")
 
-    # -- Build run_cmd kwargs --------------------------------------------
-    run_cmd_kwargs = {
-        "cluster": args.cluster,
-        "command": bench_cmd,
-        "container": args.container,
-        "expname": args.expname,
-        "num_nodes": args.num_nodes,
-        "dry_run": args.dry_run,
-        "dependent_jobs": args.dependent_jobs,
-        "reuse_code": args.reuse_code,
-        "mount_paths": mount_paths,
-        "log_dir": mounted_log_dir,
-    }
+    # -- Submit one run_cmd call per parallel copy -----------------------
+    # Each call is an independent Slurm experiment with its own vLLM
+    # sidecar; they all queue immediately so Slurm schedules them in
+    # parallel (subject to account/QoS limits).  --dependent-jobs still
+    # applies *within* each copy: chain length = 1 + dependent_jobs.
+    results = []
+    for idx, c in enumerate(copies):
+        run_cmd_kwargs = {
+            "cluster": args.cluster,
+            "command": c["bench_cmd"],
+            "container": args.container,
+            "expname": c["expname"],
+            "num_nodes": args.num_nodes,
+            "dry_run": args.dry_run,
+            "dependent_jobs": args.dependent_jobs,
+            "reuse_code": args.reuse_code,
+            "mount_paths": c["mount_paths"],
+            "log_dir": c["mounted_log_dir"],
+        }
 
-    # Server sidecar (only when hosting the model ourselves)
-    if args.server_gpus:
-        # NeMo-Skills' serve_vllm.py sets --served-model-name to the full
-        # filesystem path by default.  Override it with model_id so vLLM
-        # serves the model under the short name that opencode expects.
-        server_args = args.server_args or ""
-        if "--served-model-name" not in server_args:
-            server_args = f'{server_args} --served-model-name="{model_id}"'.strip()
+        if args.server_gpus:
+            # NeMo-Skills' serve_vllm.py sets --served-model-name to the full
+            # filesystem path by default.  Override it with model_id so vLLM
+            # serves the model under the short name that opencode expects.
+            server_args = args.server_args or ""
+            if "--served-model-name" not in server_args:
+                server_args = f'{server_args} --served-model-name="{model_id}"'.strip()
 
-        run_cmd_kwargs.update(
-            model=args.model,
-            server_gpus=args.server_gpus,
-            server_nodes=args.server_nodes,
-            server_type=args.server_type,
-            server_args=server_args,
-        )
-    elif args.server_address:
-        run_cmd_kwargs.update(
-            model=args.model,
-            server_address=args.server_address,
-        )
+            run_cmd_kwargs.update(
+                model=args.model,
+                server_gpus=args.server_gpus,
+                server_nodes=args.server_nodes,
+                server_type=args.server_type,
+                server_args=server_args,
+            )
+        elif args.server_address:
+            run_cmd_kwargs.update(
+                model=args.model,
+                server_address=args.server_address,
+            )
 
-    # Installation command (Node.js + opencode)
-    if not args.skip_opencode_install:
-        run_cmd_kwargs["installation_command"] = args.opencode_install_cmd
+        if not args.skip_opencode_install:
+            run_cmd_kwargs["installation_command"] = args.opencode_install_cmd
 
-    # Optional kwargs (only pass when set to avoid overriding run_cmd defaults)
-    for attr in ("config_dir", "num_gpus", "partition", "qos", "time_min"):
-        val = getattr(args, attr.replace("-", "_"), None)
-        if val is not None:
-            run_cmd_kwargs[attr] = val
+        # Optional kwargs (only pass when set to avoid overriding run_cmd defaults)
+        for attr in ("config_dir", "num_gpus", "partition", "qos", "time_min"):
+            val = getattr(args, attr.replace("-", "_"), None)
+            if val is not None:
+                run_cmd_kwargs[attr] = val
 
-    # -- Submit ----------------------------------------------------------
-    try:
-        ctx = wrap_arguments("")
-        result = run_cmd(ctx=ctx, **run_cmd_kwargs)
+        if args.parallel_jobs > 1:
+            print(f"--- Submitting copy {idx + 1}/{args.parallel_jobs}: {c['expname']} ---")
 
-        if args.dry_run:
-            print("\nDry run completed successfully.")
-        else:
-            print(f"\nJob submitted successfully: {result}")
+        try:
+            ctx = wrap_arguments("")
+            results.append(run_cmd(ctx=ctx, **run_cmd_kwargs))
+        except Exception as e:
+            print(f"\nError submitting {c['expname']}: {e}", file=sys.stderr)
+            import traceback
+            traceback.print_exc()
+            sys.exit(1)
 
-    except Exception as e:
-        print(f"\nError submitting job: {e}", file=sys.stderr)
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
+    if args.dry_run:
+        print("\nDry run completed successfully.")
+    elif args.parallel_jobs == 1:
+        print(f"\nJob submitted successfully: {results[0]}")
+    else:
+        print(f"\n{args.parallel_jobs} parallel job(s) submitted successfully:")
+        for c, r in zip(copies, results):
+            print(f"  {c['expname']}: {r}")
 
 
 if __name__ == "__main__":
