@@ -431,7 +431,6 @@ def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
     lines = [l for l in stdout.strip().split("\n") if l.strip()]
     tools = sum(1 for l in lines if '"tool_use"' in l)
 
-    print(header, flush=True)
     _capture_subagents(out, cwd, argv)
 
     sub_tools = 0
@@ -444,7 +443,9 @@ def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
         for msg in data.get("messages", []):
             sub_tools += sum(1 for p in msg.get("parts", []) if p.get("type") == "tool")
     suffix = f" (+{sub_tools} in {len(sidecars)} subagent(s))" if sidecars else ""
-    print(f"         {len(lines)} events, {tools} tool calls{suffix}", flush=True)
+    # Single write so `--workers > 1` can't splice header and stats across
+    # samples. POSIX guarantees writes <= PIPE_BUF are atomic.
+    print(f"{header}\n         {len(lines)} events, {tools} tool calls{suffix}", flush=True)
 
     return out
 
