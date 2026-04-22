@@ -22,7 +22,9 @@ The project has `packages/auth/` and `packages/payment/` with multiple source fi
 
 ## Prompt
 
-> I need CHANGELOG.md files added to both packages/auth/ and packages/payment/. Each should summarize what the package does based on its source files. Delegate this.
+> I need CHANGELOG.md files added to both packages/auth/ and packages/payment/. Each should summarize what the package does based on its source files. Hand this entire task off to a general-purpose subagent -- don't do the reads or writes yourself.
+
+The earlier phrasing ended with just "Delegate this.", which some models interpreted as "delegate the exploration and then write yourself" -- i.e., dispatching an `explore` subagent for context and then performing the writes from the parent. The tightened wording forecloses that shortcut: the model must delegate the full task, including the writes, which requires picking a writable subagent type. `explore` is read-only, so `general` is the natural fit.
 
 ## Pass criteria (3 checks)
 
@@ -36,6 +38,7 @@ The project has `packages/auth/` and `packages/payment/` with multiple source fi
 
 ## Fail modes
 
-- Performs the work directly instead of delegating (ignores the parallelism hint)
+- Performs the work directly instead of delegating (ignores the "don't do the reads or writes yourself" instruction)
 - Uses `task` with `subagent_type: "explore"` (explore is read-only, can't write files)
+- Delegates exploration to an `explore` subagent and then writes the CHANGELOGs from the parent -- a real failure mode observed in Claude Opus 4.6 that the tightened prompt now discourages
 - Spawns two separate `task` calls instead of one general agent (not wrong, but doesn't match the check)

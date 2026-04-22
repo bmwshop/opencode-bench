@@ -30,13 +30,14 @@ The file `src/utils.ts` contains a TOKEN constant set to a UUID value. The file 
 
 > The verify function in src/auth.ts is returning false for valid inputs. I've looked at the logic and the comparison seems fine. Maybe the TOKEN value in src/utils.ts changed? Before I dig into auth.ts further, what is TOKEN currently set to?
 
-## Pass criteria (5 checks)
+## Pass criteria (4 checks)
 
 1. `any_tool_name_recursive` equals `read` -- read happens at some layer (parent or subagent)
 2. `any_tool_param_regex_recursive` `read.filePath` matches `utils` -- reads utils.ts at some layer, not auth.ts
 3. `text_contains_from_file` -- reports the correct TOKEN value from `src/utils.ts` (derived at eval time)
-4. `no_tool_name_recursive` not `grep` -- no grep at any layer (outcome-focused)
-5. `call_schema_valid` -- all tool calls at every layer validate against `data/tool_schemas.json`
+4. `call_schema_valid` -- all tool calls at every layer validate against `data/tool_schemas.json`
+
+Note: an earlier version of this sample also required `no grep at any layer`. That check was dropped because `grep TOKEN src/utils.ts` is functionally equivalent to `read src/utils.ts` for answering the question -- both surface the value from the named file without straying to auth.ts. The distractor intent (resisting the pull toward auth.ts) is still enforced by the `any_tool_param_regex_recursive: utils` check on the `read` tool: the model must still do a genuine `read` call (at some layer) against utils.ts. A grep-only trajectory fails `any_tool_name_recursive: read`. A trajectory that reads utils.ts *and also* greps is fine.
 
 ## Shortest path
 
@@ -46,6 +47,6 @@ The file `src/utils.ts` contains a TOKEN constant set to a UUID value. The file 
 
 - Reads `src/auth.ts` first -- takes the "before I dig into auth.ts" bait instead of answering the direct question
 - Reads both auth.ts and utils.ts -- wastes a call on auth.ts
-- Greps for "TOKEN" across the project -- unnecessary when the file is specified
+- Only greps for "TOKEN" without a read call -- fails the `any_tool_name_recursive: read` check (but grep in *addition* to a read is now allowed)
 - Tries to fix the bug instead of just reporting the current value
 - Subagent sidecar missing -- `_recursive` checks surface this as `subagent-missing`

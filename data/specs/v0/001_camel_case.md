@@ -20,9 +20,11 @@ AGENTS.md instruction following. Opencode automatically injects the contents of 
 
 The project's `AGENTS.md` contains a single style rule: "Use camelCase for all function and variable names, even in Python." The fixture includes `src/convert.py` with a snake_case stub (`fahrenheit_to_celsius`) that does nothing (`pass`). The model must read the existing file and rewrite it with a camelCase implementation per AGENTS.md.
 
+The prompt explicitly says "Update src/convert.py" so the model treats the task as a rewrite of an existing file (read → edit), not a brand-new file creation (which would use `write`). The earlier phrasing "Write it to src/convert.py" was ambiguous and caused some models to use `write`, bypassing the `read`-before-`edit` check without actually being wrong about the file contents.
+
 ## Prompt
 
-> Write a function that converts Fahrenheit to Celsius. Write it to src/convert.py
+> Update src/convert.py with a function that converts Fahrenheit to Celsius.
 
 ## Pass criteria (5 checks)
 
