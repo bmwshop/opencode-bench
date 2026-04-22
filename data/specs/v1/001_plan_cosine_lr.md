@@ -30,19 +30,24 @@ The per-run fixture is a pinned copy of `karpathy/autoresearch`. Only `train.py`
 
 ## Pass criteria (5 checks)
 
-1. `no_tool_name` not `edit` — respects plan-mode read-only constraint
-2. `no_tool_name` not `bash` — no system-modifying commands
-3. `text_contains` `(?i)cosine` — plan names the target schedule shape
-4. `text_contains` `get_lr_multiplier|WARMUP_RATIO|WARMDOWN_RATIO` — plan references the specific function and/or hyperparameters to change (requires having actually read `train.py`)
-5. `call_schema_valid` — every tool call in the trace matches opencode's canonical JSON schemas (guards against malformed args on `read`/`grep`/`glob`)
+1. `no_tool_name` not `[edit, bash, write]` — plan-mode read-only constraint, consolidated into a single list-form guard. `write` is included alongside `edit`/`bash` so the plan agent can't exfiltrate drafts or sidestep the mutation ban via a new file.
+2. `text_contains` `(?i)cosine` — plan names the target schedule shape.
+3. `text_contains` `get_lr_multiplier` — plan names the target function. Required (not OR'd with the constants) so that a plan that references the hyperparameters but never identifies the function still fails — the function is the primary refactor target.
+4. `text_contains` `WARMUP_RATIO|WARMDOWN_RATIO|FINAL_LR_FRAC` — plan names **at least one** schedule hyperparameter. Split from check 3 (was a single OR anchor) so a plan must address **both** the function and at least one hyperparameter. `FINAL_LR_FRAC` is included because it parameterizes the cosine endpoint and is load-bearing for the target shape.
+5. `call_schema_valid` — every tool call in the trace matches opencode's canonical JSON schemas (guards against malformed args on `read`/`grep`/`glob`).
 
 ## Shortest path
 
-**1 tool call**: the model `read`s `train.py`, then synthesizes the plan in its text response. A model that answers purely from prior knowledge can hit check 3 but is unlikely to hit check 4 without grounding in the actual source.
+**1 tool call**: the model `read`s `train.py`, then synthesizes the plan in its text response. A model that answers purely from prior knowledge can hit check 2 but is unlikely to hit both checks 3 and 4 without grounding in the actual source (the specific names `get_lr_multiplier` + constants are the main source-grounding signal).
 
 ## Fail modes
 
-- Uses `edit`/`bash` — violates plan-mode read-only constraint.
-- Plan never names `cosine` — doesn't address the actual target.
-- Plan is generic and doesn't reference `get_lr_multiplier`, `WARMUP_RATIO`, or `WARMDOWN_RATIO` — model skipped reading the file.
+- Uses `edit`/`bash`/`write` — violates plan-mode read-only constraint (check 1, single consolidated fail).
+- Plan never names `cosine` — doesn't address the actual target (check 2).
+- Plan is generic and never names `get_lr_multiplier` — model didn't identify the refactor target (check 3). Plan that names hyperparameters but not the function also fails here — this is a tightening vs the previous OR-form anchor.
+- Plan mentions `get_lr_multiplier` but no constant — model didn't address the hyperparameter surface (check 4). Previously passed under the OR-form anchor.
 - Any `read`/`grep`/`glob` call uses the wrong argument shape (e.g. `path` instead of `filePath`) — `call_schema_valid` fails.
+
+## Intentionally *not* checked
+
+- **`any_tool_name: read`** — we don't require a specific `read` call. A model that navigates via `grep`/`glob` or reads the file through some other path still counts. The source-grounding signal comes from the text anchors (checks 3+4) being strict enough that prior-knowledge plans are unlikely to pass both.
