@@ -34,6 +34,7 @@ Usage:
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -56,6 +57,13 @@ from common import (
 
 DEFAULT_TIMEOUT = 180
 DEFAULT_MAX_OUTPUT_TOKENS = 8192
+# Guards `_capture_subagents` against runaway recursion (a subagent spawning
+# another subagent etc.). Independent of opencode's own runtime limits.
+MAX_SUBAGENT_DEPTH = 8
+# `task` tool outputs begin with `task_id: ses_XXX (for resuming ...)\n\n...`
+# (see packages/opencode/src/tool/task.ts). First capture group is the child
+# session id that `opencode export` can read back from the SQLite store.
+_TASK_ID_RE = re.compile(r"^task_id:\s*(ses_\w+)", re.M)
 # Fallback context window used when /v1/models doesn't expose max_model_len
 # (or the server is unreachable). Kept conservative so opencode still sends
 # a sane max_tokens rather than its hardcoded 32000 default, which routinely
@@ -194,6 +202,102 @@ def _inject_vllm_config(cwd, provider, model_id, server_url, api_key="EMPTY",
     path.write_text(json.dumps(cfg, indent=2))
 
 
+def _scan_parent_for_task_sids(text):
+    """Return [(child_sid, parent_sid), ...] for each `task` tool_use in a
+    run.py parent trace (JSONL from `opencode run --format json`)."""
+    out = []
+    for line in text.strip().split("\n"):
+        if not line.strip():
+            continue
+        try:
+            evt = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if evt.get("type") != "tool_use":
+            continue
+        part = evt.get("part", {})
+        if part.get("tool") != "task":
+            continue
+        output = part.get("state", {}).get("output", "")
+        m = _TASK_ID_RE.search(output)
+        if m:
+            out.append((m.group(1), evt.get("sessionID", "")))
+    return out
+
+
+def _scan_sidecar_for_task_sids(text):
+    """Return [(child_sid, parent_sid), ...] for each `task` part in an
+    exported session JSON (stdout of `opencode export <sid>`)."""
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return []
+    parent_sid = data.get("info", {}).get("id", "")
+    out = []
+    for msg in data.get("messages", []):
+        for p in msg.get("parts", []):
+            if p.get("type") != "tool":
+                continue
+            if p.get("tool") != "task":
+                continue
+            m = _TASK_ID_RE.search(p.get("state", {}).get("output", ""))
+            if m:
+                out.append((m.group(1), parent_sid))
+    return out
+
+
+def _capture_subagents(trace_path, cwd, argv):
+    """BFS over task tool calls in the parent trace + any emitted sidecars.
+    Exports each unseen subagent session via `opencode export` and writes a
+    sidecar at `{stem}.subagent-{sid[-10:]}.json` next to the trace. A visited
+    set guards cycles; MAX_SUBAGENT_DEPTH guards runaways. Best-effort: any
+    per-sid failure is logged and does not abort the caller."""
+    try:
+        parent_text = trace_path.read_text()
+    except OSError:
+        return
+    # Prefilter: samples without delegation pay zero cost.
+    if '"tool":"task"' not in parent_text:
+        return
+
+    stem = trace_path.stem
+    tag = f"#{stem.split('_', 1)[0]}"
+    queue = [(sid, 1, psid) for sid, psid in _scan_parent_for_task_sids(parent_text)]
+    visited = set()
+    while queue:
+        sid, depth, parent_sid = queue.pop(0)
+        if sid in visited:
+            continue
+        visited.add(sid)
+        if depth >= MAX_SUBAGENT_DEPTH:
+            print(f"WARN  {tag} subagent depth cap hit at {sid} (depth {depth})", flush=True)
+            continue
+        sidecar = trace_path.with_name(f"{stem}.subagent-{sid[-10:]}.json")
+        # Route stdout directly to the sidecar file (not through subprocess.PIPE):
+        # `opencode export` exits without awaiting the pipe drain event, so any
+        # output past the OS's ~64KiB pipe buffer is silently dropped when we
+        # read via PIPE. Writing straight to a file bypasses the pipe entirely.
+        try:
+            with open(sidecar, "wb") as fh:
+                proc = subprocess.run(
+                    [*argv, "export", sid],
+                    cwd=cwd,
+                    stdout=fh, stderr=subprocess.PIPE,
+                    timeout=60, check=False,
+                )
+            if proc.returncode != 0:
+                stderr_tail = (proc.stderr or b"").decode("utf-8", errors="replace").strip().splitlines()[-1:]
+                raise RuntimeError(f"rc={proc.returncode} {stderr_tail}")
+            sidecar_text = sidecar.read_text()
+        except Exception as e:
+            print(f"WARN  {tag} subagent export failed: {sid} (depth {depth}): {e}", flush=True)
+            # Leave a partial file rather than delete it -- easier to inspect.
+            continue
+        for child_sid, child_parent in _scan_sidecar_for_task_sids(sidecar_text):
+            if child_sid not in visited:
+                queue.append((child_sid, depth + 1, child_parent))
+
+
 def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
         vllm_url=None, vllm_model_id=None, vllm_api_key="EMPTY",
         max_output_tokens=DEFAULT_MAX_OUTPUT_TOKENS,
@@ -326,7 +430,21 @@ def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
 
     lines = [l for l in stdout.strip().split("\n") if l.strip()]
     tools = sum(1 for l in lines if '"tool_use"' in l)
-    print(f"{header}\n         {len(lines)} events, {tools} tool calls", flush=True)
+
+    print(header, flush=True)
+    _capture_subagents(out, cwd, argv)
+
+    sub_tools = 0
+    sidecars = sorted(run_dir.glob(f"{stem}.subagent-*.json"))
+    for sc in sidecars:
+        try:
+            data = json.loads(sc.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        for msg in data.get("messages", []):
+            sub_tools += sum(1 for p in msg.get("parts", []) if p.get("type") == "tool")
+    suffix = f" (+{sub_tools} in {len(sidecars)} subagent(s))" if sidecars else ""
+    print(f"         {len(lines)} events, {tools} tool calls{suffix}", flush=True)
 
     return out
 

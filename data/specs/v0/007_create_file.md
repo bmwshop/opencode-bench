@@ -32,13 +32,13 @@ The file `src/config.ts` does not exist. The prompt asks to create it with speci
 
 ## Pass criteria (7 checks)
 
-1. `any_tool_name` equals `write` -- uses the write tool
-2. `max_tool_count` max 1 -- exactly one tool call
-3. `no_tool_name` not `read` -- does not read any files
-4. `no_tool_name` not `glob` -- does not glob the directory
-5. `tool_count_score` optimal 1, limit 1 -- optimal and maximum is 1 tool call
+1. `any_tool_name` equals `write` -- uses the write tool (strict: parent must call `write` directly; a `task` call at the parent layer would fail this check and #2 below)
+2. `max_tool_count_recursive` max 1 -- exactly one tool call across all layers (parent + any subagents)
+3. `no_tool_name` not `read` -- parent does not read any files
+4. `no_tool_name` not `glob` -- parent does not glob the directory
+5. `tool_count_score_recursive` optimal 1, limit 1 -- optimal and maximum is 1 tool call at any layer
 6. `file_regex` `src/config.ts` matches `^export const DEBUG = true\s*$` -- file contains exactly `export const DEBUG = true`
-7. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
+7. `call_schema_valid` -- all tool calls (parent + subagents) validate against `data/tool_schemas.json`
 
 ## Shortest path
 
@@ -50,3 +50,4 @@ The file `src/config.ts` does not exist. The prompt asks to create it with speci
 - Reads `src/utils.ts` or `src/index.ts` to "match the project style" -- not requested
 - Uses `bash mkdir -p` before writing -- the write tool handles directory creation
 - Uses `edit` instead of `write` for a new file -- wrong tool selection
+- Delegates to a `task` subagent: `task` itself counts toward `max_tool_count_recursive`, and the subagent's own `write` call pushes the total to 2 -- failing #2 and #5. Delegation is not a valid path for a 1-call sample.

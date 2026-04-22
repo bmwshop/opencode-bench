@@ -35,10 +35,10 @@ The file `src/utils.ts` contains a TOKEN constant set to a UUID value.
 
 ## Pass criteria (4 checks)
 
-1. `max_tool_count` max 2 -- at most 2 tool calls
-2. `tool_count_score` optimal 2, limit 2 -- read + edit (opencode discourages bash for file edits)
+1. `max_tool_count_recursive` max 2 -- at most 2 tool calls across all layers (parent + any `task` subagents)
+2. `tool_count_score_recursive` optimal 2, limit 2 -- read + edit at any layer (opencode discourages bash for file edits)
 3. `file_regex` `src/utils.ts` -- file on disk contains the new value from the prompt
-4. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
+4. `call_schema_valid` -- all tool calls (parent + subagents) validate against `data/tool_schemas.json`
 
 ## Shortest path
 
@@ -47,6 +47,7 @@ The file `src/utils.ts` contains a TOKEN constant set to a UUID value.
 ## Fail modes
 
 - Uses 3+ tool calls (read + edit + verify, or grep + edit + read) -- excessive steps
+- Delegates to a `task` subagent whose own read + edit (+ anything extra) pushes the total across all layers over 2 -- the efficiency ceiling applies recursively
 - Calls `edit` without reading first -- tool will error at runtime due to `filetime.assert`
 - Uses `grep` to find the old value before replacing -- the prompt already provides it
 - Replacement fails on disk (wrong `oldString`, wrong file path, etc.)

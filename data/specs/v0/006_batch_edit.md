@@ -35,11 +35,11 @@ The file `src/auth.ts` contains a NEEDLE comment and a MARKER comment (both with
 
 ## Pass criteria (5 checks)
 
-1. `max_tool_count` max 3 -- at most 3 tool calls
-2. `tool_count_score` optimal 3, limit 3 -- read + 2 edits (opencode discourages bash for file edits)
+1. `max_tool_count_recursive` max 3 -- at most 3 tool calls across all layers (parent + any `task` subagents)
+2. `tool_count_score_recursive` optimal 3, limit 3 -- read + 2 edits at any layer (opencode discourages bash for file edits)
 3. `file_regex` `src/auth.ts` matches `NEEDLE_updated` -- first replacement applied on disk
 4. `file_regex` `src/auth.ts` matches `MARKER: updated` -- second replacement applied on disk
-5. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
+5. `call_schema_valid` -- all tool calls (parent + subagents) validate against `data/tool_schemas.json`
 
 ## Shortest path
 
@@ -48,6 +48,7 @@ The file `src/auth.ts` contains a NEEDLE comment and a MARKER comment (both with
 ## Fail modes
 
 - Uses 4+ tool calls (read-edit-read-edit or similar) -- excessive procedural overhead
+- Delegates the edits to a `task` subagent whose own tool calls (the subagent's read + edit + edit + any extras) push the total over 3 -- the efficiency ceiling applies across all layers, so delegation is not an escape hatch
 - Makes only one replacement and misses the second
 - Calls read between the two edits to "verify" the first change
 - Fails to apply the replacements on disk (tool errors out)

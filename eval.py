@@ -26,6 +26,7 @@ import pkgutil
 from dataclasses import dataclass, field
 
 import evaluators
+from evaluators._recursive import _collect_recursive_tools, _real_tools
 from common import (
     PROJECTS, RUNS, SCHEMAS_PATH,
     load, resolve_run, list_runs, model_slug, version_of,
@@ -88,6 +89,8 @@ class Result:
     passed: list = field(default_factory=list)
     failed: list = field(default_factory=list)
     completed: bool = True
+    min_calls: int | None = None
+    tool_calls_recursive: int | None = None
 
     @property
     def ok(self):
@@ -150,13 +153,21 @@ def evaluate(sample, run_dir):
         except (ValueError, AssertionError):
             pass
     result = Result(label, sample["category"])
+    result.min_calls = sample.get("min_calls")
+    result.tool_calls_recursive = len(_real_tools(_collect_recursive_tools(trace)))
     for chk in sample.get("checks", []):
         fn = evaluators.get(chk["type"])
         if not fn:
             result.failed.append(f"unknown check type: {chk['type']!r}")
             continue
         chk["_project_dir"] = str(project)
-        ok, reason = fn(tools, texts, chk)
+        # `_recursive` wrappers and the recurse-by-default `call_schema_valid`
+        # need the trace path so they can walk `{stem}.subagent-*.json` sidecars.
+        # Strict evaluators take 3 positional args and would reject a kwarg.
+        if chk["type"].endswith("_recursive") or chk["type"] == "call_schema_valid":
+            ok, reason = fn(tools, texts, chk, trace_path=trace)
+        else:
+            ok, reason = fn(tools, texts, chk)
         desc = chk.get("description", chk["type"])
         if ok:
             result.passed.append(desc)
@@ -168,6 +179,20 @@ def evaluate(sample, run_dir):
 
 def _checks(r):
     return len(r.passed) + len(r.failed)
+
+
+def _efficiency(results):
+    """Mean of min(min_calls / tool_calls_recursive, 1.0) over strict-passing
+    samples with a declared min_calls > 0 and a positive observed recursive
+    count. Returns (mean_in_[0,1] or None, n_contributing)."""
+    vals = [
+        min(r.min_calls / r.tool_calls_recursive, 1.0)
+        for r in results
+        if r.ok
+        and r.min_calls and r.min_calls > 0
+        and r.tool_calls_recursive and r.tool_calls_recursive > 0
+    ]
+    return (sum(vals) / len(vals) if vals else None), len(vals)
 
 
 def build(results, meta=None):
@@ -196,11 +221,16 @@ def build(results, meta=None):
                 "checks_total": _checks(r),
                 "passed": r.passed,
                 "failed": r.failed,
+                "min_calls": r.min_calls,
+                "tool_calls_recursive": r.tool_calls_recursive,
             })
+        cat_eff, cat_eff_n = _efficiency(rs)
         categories[cat] = {
             "strict": cat_strict,
             "total": len(rs),
             "partial": round(cat_partial, 4),
+            "efficiency": round(cat_eff, 4) if cat_eff is not None else None,
+            "efficiency_n": cat_eff_n,
             "checks_passed": cat_passed,
             "checks_total": cat_checks,
             "samples": samples,
@@ -224,6 +254,8 @@ def build(results, meta=None):
         if total_completed else 0.0
     )
 
+    eff, eff_n = _efficiency(results)
+
     data = {
         "strict": sum_strict,
         "total": total,
@@ -231,6 +263,8 @@ def build(results, meta=None):
         "strict_completed": strict_completed,
         "total_completed": total_completed,
         "partial_completed": round(partial_completed, 4),
+        "efficiency": round(eff, 4) if eff is not None else None,
+        "efficiency_n": eff_n,
         "timed_out": total - total_completed,
         "checks_passed": all_passed,
         "checks_total": all_checks,
@@ -260,8 +294,12 @@ def format_text(data):
 
     for cat, info in sorted(data["categories"].items()):
         lines.append(f"\n{'='*60}")
+        eff_tok = (
+            f", efficiency {info['efficiency']:.0%} (n={info['efficiency_n']})"
+            if info.get("efficiency") is not None else ""
+        )
         lines.append(f"  {cat}  (strict {info['strict']}/{info['total']}, "
-                      f"partial {info['partial']:.0%}, "
+                      f"partial {info['partial']:.0%}{eff_tok}, "
                       f"checks {info['checks_passed']}/{info['checks_total']})")
         lines.append(f"{'='*60}")
         for s in info["samples"]:
@@ -276,6 +314,12 @@ def format_text(data):
         lines.append(f"  Strict score:      {data['strict']}/{data['total']} samples fully passed "
                       f"({data['strict']/data['total']:.0%})")
         lines.append(f"  Partial score:     {data['partial']:.1%} average across all samples")
+        if data.get("efficiency") is not None:
+            lines.append(
+                f"  Efficiency:        {data['efficiency']:.1%} across "
+                f"{data['efficiency_n']} strict-passing sample(s) "
+                f"(mean of min(min_calls / tool_calls_recursive, 1.0))"
+            )
         tc = data.get("total_completed", data["total"])
         if tc and tc != data["total"]:
             sc = data["strict_completed"]
