@@ -185,6 +185,27 @@ python run_cluster.py \
   --time-min 04:00:00
 ```
 
+### Parallel jobs
+
+Launch N independent copies of the same benchmark in parallel (e.g. for
+variance estimation). Each copy gets its own vLLM sidecar, its own
+mounted output subdirectory (`{output_dir}/{expname}-{NNN}`), and its own
+Slurm experiment — they queue immediately so Slurm schedules them
+concurrently:
+
+```bash
+python run_cluster.py \
+  --cluster oci-iad \
+  --model /hf_models/Qwen/Qwen2.5-32B-Instruct \
+  --server-gpus 8 \
+  --output-dir /lustre/fsw/.../results \
+  --expname qwen-32b-trials \
+  --parallel-jobs 5
+```
+
+Combines with `--dependent-jobs`: `--parallel-jobs 3 --dependent-jobs 1`
+submits 3 parallel chains of 2 sequential jobs each (6 Slurm jobs total).
+
 ## Arguments Reference
 
 ### Cluster
@@ -204,7 +225,8 @@ python run_cluster.py \
 | `--log-dir` | `None` | Custom location for Slurm logs |
 | `--dry-run` | `false` | Validate arguments without submitting |
 | `--reuse-code` | `false` | Reuse code from a previous experiment |
-| `--dependent-jobs` | `0` | Number of dependent sequential jobs |
+| `--dependent-jobs` | `0` | Number of dependent sequential jobs per parallel copy (chain length = 1 + this value) |
+| `--parallel-jobs` | `1` | Number of independent copies to launch in parallel; each gets a distinct `-NNN` suffix on `--expname`, its own vLLM sidecar, and its own mounted output subdirectory |
 
 ### Server (vLLM sidecar)
 
