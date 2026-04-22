@@ -26,10 +26,10 @@ No special project files needed beyond the project. The prompt references `src/a
 
 ## Pass criteria (4 checks)
 
-1. `any_tool_name` equals `todowrite` -- model calls the todowrite tool
-2. `any_tool_param_array_min` `todowrite.todos` min 4 -- array contains all 4 requested items
-3. `any_tool_param_array_item_fields` `todowrite.todos` fields `["content", "status", "priority"]` -- each item has the correct object shape
-4. `call_schema_valid` -- all tool calls validate against `data/tool_schemas.json`
+1. `any_tool_name_recursive` equals `todowrite` -- model (or a subagent it delegates to) calls the todowrite tool
+2. `any_tool_param_array_min_recursive` `todowrite.todos` min 4 -- array contains all 4 requested items, at any layer
+3. `any_tool_param_array_item_fields_recursive` `todowrite.todos` fields `["content", "status", "priority"]` -- each item has the correct object shape, at any layer
+4. `call_schema_valid` -- all tool calls at every layer validate against `data/tool_schemas.json`
 
 ## Shortest path
 
@@ -38,6 +38,11 @@ No special project files needed beyond the project. The prompt references `src/a
 ## Fail modes
 
 - Responds with a text-based bullet list instead of calling the `todowrite` tool
-- Calls `todowrite` but with an empty or undersized `todos` array
+- Calls `todowrite` (parent or subagent) but with an empty or undersized `todos` array
 - Passes a flat array of strings instead of objects with `{content, status, priority}`
 - Starts executing the refactoring tasks instead of just creating the todo list
+- Subagent sidecar missing, leaving a capture gap the `_recursive` checks surface as `subagent-missing`
+
+## Notes
+
+Delegating the todowrite call to a subagent is an unusual (and inefficient) choice for this prompt, but the recursive checks make it a legal pass: what matters is that the right tool + shape happens somewhere in the call tree.
