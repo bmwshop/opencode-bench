@@ -26,7 +26,13 @@ The per-run fixture is a pinned copy of `karpathy/autoresearch`. The `tests/` di
 
 ## Prompt
 
-> Create tests/test_schedule.py that imports get_lr_multiplier from train and uses plain assert statements to verify: (a) get_lr_multiplier(0.0) == 1.0, (b) get_lr_multiplier(1.0) == FINAL_LR_FRAC (import it too), (c) get_lr_multiplier(0.25) == 1.0. Runnable as `python tests/test_schedule.py`; print "ok" on success.
+> Create tests/test_schedule.py that imports get_lr_multiplier from train (via a plain `from train import get_lr_multiplier` statement -- do not AST-parse, reflectively extract, or otherwise bypass a normal import) and uses plain assert statements to verify: (a) get_lr_multiplier(0.0) == 1.0, (b) get_lr_multiplier(1.0) == FINAL_LR_FRAC (import it too), (c) get_lr_multiplier(0.25) == 1.0. Runnable as `python tests/test_schedule.py`; print "ok" on success. If train.py has import-time side effects that prevent the import from succeeding in the test environment, that is acceptable -- the goal is the test file shape, not that the tests execute.
+
+### Prompt design note
+
+The "do not AST-parse / reflectively extract" clause is load-bearing. `train.py` has side-effectful top-level code (CUDA init, model construction, data loading) that makes a plain `import train` crash in the bench test environment. A sufficiently careful model (observed behavior: Claude Opus 4.6 in the `2026-04-22T20-29-24` run) will notice this and reach for `ast.parse` + `exec` of just the `get_lr_multiplier` function — a mechanically correct and arguably more robust solution that nonetheless fails the `from\s+train\s+import[^\n]*get_lr_multiplier` anchor.
+
+We resolve that by forbidding the workaround explicitly and adding an escape clause that the import *need not succeed at runtime* — the sample is about test-file **shape** (presence of the canonical import + the three assertions + `print("ok")`), not execution. This keeps the anchor a cheap regex and keeps the comparison fair across models that all write the same idiomatic shape.
 
 ## Pass criteria (5 checks)
 
@@ -50,6 +56,7 @@ The tool-name check was removed in favor of pure results-oriented scoring. The f
 
 - No file created — all content checks fail because the disk file is missing.
 - Import missing or wrong path (e.g., `from get_lr_multiplier import ...`) — check 1 fails.
+- Model bypasses the import via `ast.parse` + `exec` / `importlib` / `compile` / `getattr` on a reflectively loaded module (to dodge `train.py`'s top-level side effects) — check 1 fails. The prompt now explicitly forbids this; the escape clause "imports need not succeed at runtime" removes the motivation for the workaround.
 - Assertion for `progress=0.25` encodes a wrong value (e.g., `== 0.75`) — check 2 fails. This is the discriminative anchor: a model that hallucinated a cosine schedule would put a non-`1.0` value here.
 - Assertion for `progress=1.0` uses a literal `0.0` instead of `FINAL_LR_FRAC` — check 3 fails. Even though the literal `0.0` equals the ground-truth value, the regex requires the symbolic form, which forces the import.
 - Missing `print("ok")` — check 4 fails.
