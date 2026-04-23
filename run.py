@@ -64,7 +64,7 @@ def _assert_fixture_clean(src: Path, auto_repair: bool = True) -> None:
 
     v1 fixtures are git submodules; nothing in the bench ever writes to them,
     but IDE autosave / formatters / stray agent edits / `__pycache__` have
-    contaminated them before (see run 2026-04-22T05-18-24 for #4). A dirty
+    contaminated them before (see run 2026-04-22T05-18-24 for #12, formerly #4). A dirty
     source silently poisons every run that copies it, so we check up-front.
 
     ``git status --porcelain`` returns empty output for a clean working tree
