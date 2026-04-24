@@ -14,8 +14,9 @@ The canonical projects/ tree is read-only at runtime.
 
 Usage:
     python run.py                    # run all v1 code_localization samples (default)
-    python run.py --version v0       # run all v0 samples
-    python run.py --category all     # disable the default category filter (run every v1 sample)
+    python run.py --version v0       # run all v0 samples (every category)
+    python run.py --version v1       # run all v1 samples (every category)
+    python run.py --category all     # disable the default category filter on v1
     python run.py --id 21            # run one sample (within selected version/category)
     python run.py --id 21 --id 22    # run multiple samples
     python run.py --category tool_schema
@@ -561,10 +562,10 @@ def main():
     parser.add_argument(
         "--category",
         action="append",
-        help="Run all samples in a category. Defaults to 'code_localization' "
-             "when neither --id nor --category is specified. Pass "
-             "--category all to opt out of the default and run every sample "
-             "in the selected version.",
+        help="Run all samples in a category. When none of --id, --category, "
+             "or --version is passed, defaults to 'code_localization' (v1 "
+             "focus area). Passing --version (even --version v1) disables "
+             "this default; pass --category all to opt out explicitly.",
     )
     parser.add_argument(
         "--version",
@@ -655,11 +656,18 @@ def main():
     )
     args = parser.parse_args()
 
-    # Default category selection: if the caller did not pass --id or
-    # --category, fall back to code_localization (the v1 focus area).
-    # Passing `--category all` explicitly opts out of the default so
-    # every sample in the selected version is eligible.
-    if not args.id and not args.category:
+    # Default category selection: if the caller accepted both defaults
+    # (no --id, no --category, no --version) fall back to code_localization
+    # (the v1 focus area). When the caller explicitly names a version they
+    # usually want the full suite for that version, so we skip the filter
+    # — this also avoids a zero-match trap for `python run.py --version v0`
+    # since v0 has no code_localization samples. `--category all` remains
+    # an explicit way to opt out of the default on v1.
+    version_explicit = any(
+        arg == "--version" or arg.startswith("--version=")
+        for arg in sys.argv[1:]
+    )
+    if not args.id and not args.category and not version_explicit:
         args.category = ["code_localization"]
     elif args.category and "all" in args.category:
         args.category = None
