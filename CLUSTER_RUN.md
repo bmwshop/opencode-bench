@@ -43,6 +43,48 @@ The exact variable names depend on the cluster configs you use. Check the releva
 
 **Important:** NeMo-Skills packages only git-tracked files when staging code to the cluster. If you have local changes to samples, evaluators, project fixtures, or any other files, you must `git commit` them before running `run_cluster.py` -- uncommitted changes will not be present inside the container.
 
+### Hydrating v1 repos in a staged container
+
+For v1 runs, the staged `/nemo_run/code` tree may contain the files from
+`projects/v1/*` without the submodules' own `.git` metadata. When that happens,
+`run.py` fails its pin preflight with an error like:
+
+```text
+ERROR: could not read submodule HEAD for 'requests'
+```
+
+Use the standalone hydrator inside the container to recreate clean pinned git
+checkouts under `projects/v1/*` before running `run.py`:
+
+```bash
+cd /nemo_run/code
+python scripts/hydrate_v1_repos.py
+```
+
+Useful variants:
+
+```bash
+# inspect without modifying projects/v1/*
+python scripts/hydrate_v1_repos.py --dry-run
+
+# repair only one repo from data/v1_repos.json
+python scripts/hydrate_v1_repos.py --repo requests
+```
+
+Then run the benchmark normally, for example:
+
+```bash
+cd /nemo_run/code
+python run.py --version v1
+python eval.py --version v1
+```
+
+Notes:
+- The script is standalone; `run_cluster.py` does not invoke it automatically.
+- It is optional for v0-only runs because v0 does not use `projects/v1/*`.
+- It needs network access from the container so `git clone` can fetch the
+  upstream repos declared in `data/v1_repos.json`.
+
 ## Quick Start
 
 ```bash
