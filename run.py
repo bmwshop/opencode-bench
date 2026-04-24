@@ -13,10 +13,11 @@ Each invocation writes to runs/{version}/{model_slug}/{timestamp}/ with:
 The canonical projects/ tree is read-only at runtime.
 
 Usage:
-    python run.py                    # run all v0 samples (default)
-    python run.py --version v1       # run all v1 samples (all repos)
-    python run.py --id 1             # run one sample (within selected version)
-    python run.py --id 1 --id 2      # run multiple samples
+    python run.py                    # run all v1 code_localization samples (default)
+    python run.py --version v0       # run all v0 samples
+    python run.py --category all     # disable the default category filter (run every v1 sample)
+    python run.py --id 21            # run one sample (within selected version/category)
+    python run.py --id 21 --id 22    # run multiple samples
     python run.py --category tool_schema
     python run.py --category tool_schema --category subagent
     python run.py --model provider/model-name
@@ -557,13 +558,20 @@ def _check_v1_pins(samples):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--id", action="append", help="Run specific sample(s) by ID")
-    parser.add_argument("--category", action="append", help="Run all samples in a category")
+    parser.add_argument(
+        "--category",
+        action="append",
+        help="Run all samples in a category. Defaults to 'code_localization' "
+             "when neither --id nor --category is specified. Pass "
+             "--category all to opt out of the default and run every sample "
+             "in the selected version.",
+    )
     parser.add_argument(
         "--version",
         choices=["v0", "v1"],
-        default="v0",
+        default="v1",
         help="Benchmark version to run. A single run targets exactly one "
-             "version (default: v0). Run v1 separately with --version v1.",
+             "version (default: v1). Run v0 separately with --version v0.",
     )
     parser.add_argument("--clean", action="store_true", help="Wipe runs/ first")
     parser.add_argument(
@@ -646,6 +654,15 @@ def main():
              "to fail loudly instead (aborts the entire eval, not just the sample).",
     )
     args = parser.parse_args()
+
+    # Default category selection: if the caller did not pass --id or
+    # --category, fall back to code_localization (the v1 focus area).
+    # Passing `--category all` explicitly opts out of the default so
+    # every sample in the selected version is eligible.
+    if not args.id and not args.category:
+        args.category = ["code_localization"]
+    elif args.category and "all" in args.category:
+        args.category = None
 
     if args.vllm and args.proxy:
         print("ERROR: --vllm and --proxy are mutually exclusive")

@@ -1,0 +1,701 @@
+{
+  "_comment": "Structured-output localization manifest for v1 samples #21-#30 (v3c family). Every entry is a natural-language prompt requiring `file::QualifiedName` output. Ground truth is derived mechanically by scripts/derive_0NN_ground_truth.py on top of the shared scripts/localization_oracle.py (AST walk + `rg` cross-check + dotted-qualname emit). Two templates are used: T1 (anchor + direct callers) and T2 (callers-of-set). Deliberate divergence from both arXiv:2604.05013 (semantic file-level localization, too ambiguous) and the earlier criterion-anchored `rg -l -w` design (mechanical but too easy for top-tier models). Ground-truth determinism is preserved by the oracle; the natural-language prompt stresses reading comprehension, structured output, and tool-use hygiene. Each sample exposes a `difficulty` tier (easy/medium/hard) and a `structural_signature` guaranteeing every sample is structurally distinct from the others in its tier (see convert_22-30_v3c_tiered plan for the diversity argument). The `legacy_tokens` field preserves the pre-v3c `rg -l -w` token lists for historical reference only and has no effect on generation.",
+  "_pin": "79f4df84cf77a2fee873809821dfbd786de05b97",
+  "_repo": "requests",
+  "samples": [
+    {
+      "id": 21,
+      "name": "locate_cookie_tokens",
+      "type": "structured_output",
+      "template": "T1",
+      "difficulty": "easy",
+      "structural_signature": {
+        "template": "T1",
+        "scope_kind": "two_files",
+        "anchor_kind": "module_level",
+        "answer_entries": 3,
+        "answer_files": 2,
+        "unique_trait": "baseline_dotted_qualname_retrofit"
+      },
+      "scope": ["src/requests/cookies.py", "src/requests/sessions.py"],
+      "anchor": {"file": "src/requests/cookies.py", "name": "merge_cookies", "module_level": true},
+      "prompt_domain": "a `Session` merges per-request cookies with session-level cookies before dispatching a prepared request",
+      "prompt_anchor_description": "the module-level function in `src/requests/cookies.py` that performs the cookie merge",
+      "prompt_scope_description": "every function defined in `src/requests/sessions.py` (any nesting depth, including methods on classes and mixins) whose body directly calls that function",
+      "legacy_tokens": [
+        "RequestsCookieJar",
+        "cookiejar_from_dict",
+        "extract_cookies_to_jar",
+        "merge_cookies",
+        "MockRequest"
+      ]
+    },
+    {
+      "id": 22,
+      "name": "locate_ssl_verify_tokens",
+      "type": "structured_output",
+      "template": "T1",
+      "difficulty": "easy",
+      "structural_signature": {
+        "template": "T1",
+        "scope_kind": "single_file",
+        "anchor_kind": "instance_method",
+        "answer_entries": 2,
+        "answer_files": 1,
+        "unique_trait": "same_class_prefix_both_entries"
+      },
+      "scope": ["src/requests/adapters.py"],
+      "anchor": {"file": "src/requests/adapters.py", "name": "cert_verify", "module_level": false},
+      "prompt_domain": "the built-in HTTP adapter installs SSL/TLS verification settings on a connection before using it to dispatch a request",
+      "prompt_anchor_description": "the instance method in `src/requests/adapters.py` that installs the SSL/TLS verification settings on a connection",
+      "prompt_scope_description": "every function defined in `src/requests/adapters.py` (any nesting depth, including methods on classes) whose body directly calls that method",
+      "legacy_tokens": [
+        "SSLError",
+        "DEFAULT_CA_BUNDLE_PATH",
+        "cert_verify",
+        "certifi",
+        "InsecureRequestWarning"
+      ]
+    },
+    {
+      "id": 23,
+      "name": "locate_proxy_tokens",
+      "type": "structured_output",
+      "template": "T1",
+      "difficulty": "medium",
+      "structural_signature": {
+        "template": "T1",
+        "scope_kind": "two_files",
+        "anchor_kind": "module_level",
+        "answer_entries": 4,
+        "answer_files": 2,
+        "unique_trait": "all_callers_in_single_class_HTTPAdapter"
+      },
+      "scope": ["src/requests/utils.py", "src/requests/adapters.py"],
+      "anchor": {"file": "src/requests/utils.py", "name": "select_proxy", "module_level": true},
+      "prompt_domain": "a utility helper picks the right proxy URL for a given outgoing request URL out of a proxy-mapping dict",
+      "prompt_anchor_description": "the module-level utility function in `src/requests/utils.py` that performs this proxy selection",
+      "prompt_scope_description": "every function defined in `src/requests/adapters.py` or `src/requests/utils.py` (any nesting depth, including methods on classes) whose body directly calls that utility",
+      "legacy_tokens": [
+        "proxy_manager_for",
+        "proxy_headers",
+        "select_proxy",
+        "resolve_proxies",
+        "ProxyError",
+        "proxy_bypass"
+      ]
+    },
+    {
+      "id": 24,
+      "name": "locate_redirect_tokens",
+      "type": "structured_output",
+      "template": "T1",
+      "difficulty": "easy",
+      "structural_signature": {
+        "template": "T1",
+        "scope_kind": "single_file",
+        "anchor_kind": "mixin_method",
+        "answer_entries": 2,
+        "answer_files": 1,
+        "unique_trait": "mixin_plus_subclass_method_pair"
+      },
+      "scope": ["src/requests/sessions.py"],
+      "anchor": {"file": "src/requests/sessions.py", "name": "resolve_redirects", "module_level": false},
+      "prompt_domain": "a mixin class in the sessions module defines the method that iteratively follows HTTP redirects, yielding each intermediate prepared response",
+      "prompt_anchor_description": "the mixin method in `src/requests/sessions.py` that performs the redirect iteration",
+      "prompt_scope_description": "every function defined in `src/requests/sessions.py` (any nesting depth, including methods on classes and mixins) whose body directly calls that method",
+      "legacy_tokens": [
+        "resolve_redirects",
+        "rebuild_auth",
+        "rebuild_proxies",
+        "rebuild_method",
+        "TooManyRedirects",
+        "REDIRECT_STATI",
+        "is_redirect"
+      ]
+    },
+    {
+      "id": 25,
+      "name": "locate_auth_tokens",
+      "type": "structured_output",
+      "template": "T1",
+      "difficulty": "medium",
+      "structural_signature": {
+        "template": "T1",
+        "scope_kind": "two_files",
+        "anchor_kind": "module_level",
+        "answer_entries": 3,
+        "answer_files": 2,
+        "unique_trait": "callers_scattered_across_subclass_and_mixin"
+      },
+      "scope": ["src/requests/utils.py", "src/requests/sessions.py"],
+      "anchor": {"file": "src/requests/utils.py", "name": "get_netrc_auth", "module_level": true},
+      "prompt_domain": "a utility helper looks up credentials for a URL from the user's `~/.netrc` file and returns a `(user, password)` tuple when a matching entry exists",
+      "prompt_anchor_description": "the module-level helper in `src/requests/utils.py` that performs this netrc lookup",
+      "prompt_scope_description": "every function defined in `src/requests/utils.py` or `src/requests/sessions.py` (any nesting depth, including methods on classes and mixins) whose body directly calls that helper",
+      "legacy_tokens": [
+        "HTTPBasicAuth",
+        "HTTPDigestAuth",
+        "AuthBase",
+        "HTTPProxyAuth",
+        "_basic_auth_str",
+        "get_netrc_auth"
+      ]
+    },
+    {
+      "id": 26,
+      "name": "locate_hook_dispatch_tokens",
+      "type": "structured_output",
+      "template": "T1",
+      "difficulty": "easy",
+      "structural_signature": {
+        "template": "T1",
+        "scope_kind": "two_files",
+        "anchor_kind": "module_level",
+        "answer_entries": 2,
+        "answer_files": 2,
+        "unique_trait": "cross_file_module_level_anchor_with_method_caller"
+      },
+      "scope": ["src/requests/hooks.py", "src/requests/sessions.py"],
+      "anchor": {"file": "src/requests/hooks.py", "name": "dispatch_hook", "module_level": true},
+      "prompt_domain": "a module-level helper fires the registered user-hooks for a given event key, passing the event data to each hook callable and replacing the data with the callable's return value when non-None",
+      "prompt_anchor_description": "the module-level helper in `src/requests/hooks.py` that performs this hook dispatch",
+      "prompt_scope_description": "every function defined in `src/requests/hooks.py` or `src/requests/sessions.py` (any nesting depth, including methods on classes and mixins) whose body directly calls that helper",
+      "_theme_migration_note": "renamed from `locate_request_prep_tokens` in v3c. The earlier predicate (prepare_*) produced a structural clone of #22 (same-file same-class 2-entry T1). Replaced with a cross-file module-level anchor to preserve Easy-tier diversity. The legacy rg-token list is preserved below for historical reference.",
+      "legacy_tokens": [
+        "prepare_method",
+        "prepare_headers",
+        "prepare_body",
+        "prepare_content_length",
+        "prepare_hooks",
+        "default_hooks",
+        "dispatch_hook",
+        "HEADER_VALIDATORS",
+        "to_key_val_list",
+        "super_len"
+      ]
+    },
+    {
+      "id": 27,
+      "name": "locate_streaming_tokens",
+      "type": "structured_output",
+      "template": "T2",
+      "difficulty": "hard",
+      "structural_signature": {
+        "template": "T2",
+        "scope_kind": "any_file",
+        "target_kind": "instance_methods",
+        "answer_entries": 8,
+        "answer_files": 4,
+        "unique_trait": "attribute_call_resolution_at_scale"
+      },
+      "scope": "src/requests/",
+      "targets": ["iter_content", "iter_lines", "raise_for_status", "close"],
+      "prompt_domain": "a `Response` object exposes four instance methods for consuming, inspecting, or finalizing a streaming response body: `iter_content` (yields raw chunks), `iter_lines` (yields newline-delimited text chunks), `raise_for_status` (raises when the HTTP status is 4xx/5xx), and `close` (releases the underlying connection)",
+      "prompt_target_description": "any of those four methods",
+      "legacy_tokens": [
+        "iter_content",
+        "iter_lines",
+        "stream_decode_response_unicode",
+        "ChunkedEncodingError",
+        "StreamConsumedError",
+        "ContentDecodingError",
+        "iter_slices",
+        "charset_normalizer"
+      ]
+    },
+    {
+      "id": 28,
+      "name": "locate_exception_tokens",
+      "type": "structured_output",
+      "template": "T2",
+      "difficulty": "hard",
+      "structural_signature": {
+        "template": "T2",
+        "scope_kind": "any_file",
+        "target_kind": "exception_classes",
+        "answer_entries": 8,
+        "answer_files": 4,
+        "unique_trait": "constructor_semantics_plus_nested_closure"
+      },
+      "scope": "src/requests/",
+      "targets": ["ConnectionError", "HTTPError", "InvalidURL", "TooManyRedirects"],
+      "prompt_domain": "four exception classes in `src/requests/exceptions.py` represent the most common request-level failure modes: `ConnectionError`, `HTTPError`, `InvalidURL`, and `TooManyRedirects`",
+      "prompt_target_description": "any of those four classes (i.e. the class is instantiated / called, typically in `raise X(...)` positions)",
+      "legacy_tokens": [
+        "RequestException",
+        "HTTPError",
+        "ConnectionError",
+        "Timeout",
+        "TooManyRedirects"
+      ]
+    },
+    {
+      "id": 29,
+      "name": "locate_url_prep_tokens",
+      "type": "structured_output",
+      "template": "T2",
+      "difficulty": "hard",
+      "structural_signature": {
+        "template": "T2",
+        "scope_kind": "any_file",
+        "target_kind": "module_level_functions",
+        "answer_entries": 8,
+        "answer_files": 4,
+        "unique_trait": "widest_scope_module_level_target_set"
+      },
+      "scope": "src/requests/",
+      "targets": ["requote_uri", "urldefragauth", "super_len", "extract_cookies_to_jar"],
+      "prompt_domain": "four module-level utility functions are exposed for URL and cookie normalization during request preparation: `requote_uri`, `urldefragauth`, `super_len`, and `extract_cookies_to_jar`",
+      "prompt_target_description": "any of those four functions",
+      "legacy_tokens": [
+        "prepare_url",
+        "InvalidURL",
+        "MissingSchema",
+        "requote_uri",
+        "urldefragauth"
+      ]
+    },
+    {
+      "id": 30,
+      "name": "locate_session_merge_tokens",
+      "type": "structured_output",
+      "template": "T1",
+      "difficulty": "medium",
+      "structural_signature": {
+        "template": "T1",
+        "scope_kind": "single_file",
+        "anchor_kind": "module_level",
+        "answer_entries": 4,
+        "answer_files": 1,
+        "unique_trait": "intra_file_definer_plus_module_and_class_callers"
+      },
+      "scope": ["src/requests/sessions.py"],
+      "anchor": {"file": "src/requests/sessions.py", "name": "merge_setting", "module_level": true},
+      "prompt_domain": "a module-level helper in `src/requests/sessions.py` merges a per-request setting with a session-level default, respecting `None` on either side",
+      "prompt_anchor_description": "the module-level merge helper itself (the one that performs the core per-setting merge)",
+      "prompt_scope_description": "every function defined in `src/requests/sessions.py` (any nesting depth, including module-level helpers and methods on classes) whose body directly calls that helper",
+      "legacy_tokens": [
+        "merge_setting",
+        "merge_hooks",
+        "merge_environment_settings",
+        "CaseInsensitiveDict",
+        "to_key_val_list"
+      ]
+    },
+    {
+      "id": 31,
+      "name": "locate_auth_prep_tokens",
+      "type": "structured_output",
+      "template": "T1",
+      "difficulty": "easy",
+      "structural_signature": {
+        "template": "T1",
+        "scope_kind": "two_files",
+        "anchor_kind": "instance_method",
+        "answer_entries": 3,
+        "answer_files": 2,
+        "unique_trait": "instance_method_anchor_own_class_plus_session_caller"
+      },
+      "scope": ["src/requests/models.py", "src/requests/sessions.py"],
+      "anchor": {"file": "src/requests/models.py", "name": "prepare_auth", "module_level": false},
+      "prompt_domain": "a `PreparedRequest` attaches HTTP auth credentials to itself after body preparation, delegating to the user's auth callable (e.g. `HTTPBasicAuth`) and re-running Content-Length preparation if the auth hook mutates the body"
+      ,
+      "prompt_anchor_description": "the instance method on `PreparedRequest` in `src/requests/models.py` that attaches the auth credentials to the prepared request",
+      "prompt_scope_description": "every function defined in `src/requests/models.py` or `src/requests/sessions.py` (any nesting depth, including methods on classes and mixins) whose body directly calls that method"
+    },
+    {
+      "id": 32,
+      "name": "locate_cookie_cleanup_tokens",
+      "type": "structured_output",
+      "template": "T1",
+      "difficulty": "easy",
+      "structural_signature": {
+        "template": "T1",
+        "scope_kind": "single_file",
+        "anchor_kind": "module_level",
+        "answer_entries": 3,
+        "answer_files": 1,
+        "unique_trait": "module_level_helper_used_by_cookiejar_api_methods"
+      },
+      "scope": ["src/requests/cookies.py"],
+      "anchor": {"file": "src/requests/cookies.py", "name": "remove_cookie_by_name", "module_level": true},
+      "prompt_domain": "a module-level cookie helper in `src/requests/cookies.py` removes every cookie matching a given name from a cookie jar (optionally scoped by domain and path), returning nothing"
+      ,
+      "prompt_anchor_description": "the module-level helper in `src/requests/cookies.py` that performs this name-based cookie removal",
+      "prompt_scope_description": "every function defined in `src/requests/cookies.py` (any nesting depth, including methods on classes and mixins) whose body directly calls that helper"
+    },
+    {
+      "id": 33,
+      "name": "locate_poolmgr_init_tokens",
+      "type": "structured_output",
+      "template": "T1",
+      "difficulty": "easy",
+      "structural_signature": {
+        "template": "T1",
+        "scope_kind": "single_file",
+        "anchor_kind": "instance_method",
+        "answer_entries": 3,
+        "answer_files": 1,
+        "unique_trait": "adapter_init_method_called_on_construct_unpickle_and_reinit"
+      },
+      "scope": ["src/requests/adapters.py"],
+      "anchor": {"file": "src/requests/adapters.py", "name": "init_poolmanager", "module_level": false},
+      "prompt_domain": "the built-in `HTTPAdapter` initializes its underlying urllib3 `PoolManager` on construction, on `__setstate__` restoration when the adapter is unpickled, and when the instance performs a post-construction reinit"
+      ,
+      "prompt_anchor_description": "the instance method on `HTTPAdapter` in `src/requests/adapters.py` that initializes the urllib3 pool manager",
+      "prompt_scope_description": "every function defined in `src/requests/adapters.py` (any nesting depth, including methods on classes and mixins) whose body directly calls that method"
+    },
+    {
+      "id": 34,
+      "name": "locate_default_factory_tokens",
+      "type": "structured_output",
+      "template": "T2",
+      "difficulty": "easy",
+      "structural_signature": {
+        "template": "T2",
+        "scope_kind": "any_file",
+        "target_kind": "module_level_functions",
+        "answer_entries": 3,
+        "answer_files": 2,
+        "unique_trait": "easy_tier_three_default_factories_cluster"
+      },
+      "scope": "src/requests/",
+      "targets": ["default_headers", "default_hooks", "default_user_agent"],
+      "prompt_domain": "three module-level factory helpers produce the default HTTP headers, default event-hook mapping, and default `User-Agent` string used when a `Session` is constructed without explicit overrides: `default_headers`, `default_hooks`, and `default_user_agent` (defined in `src/requests/utils.py` and `src/requests/hooks.py`)"
+      ,
+      "prompt_target_description": "any of those three helpers"
+    },
+    {
+      "id": 35,
+      "name": "locate_mock_jar_tokens",
+      "type": "structured_output",
+      "template": "T1",
+      "difficulty": "easy",
+      "structural_signature": {
+        "template": "T1",
+        "scope_kind": "single_file",
+        "anchor_kind": "instance_method",
+        "answer_entries": 3,
+        "answer_files": 1,
+        "unique_trait": "mock_request_facade_host_access_reused_within_same_class"
+      },
+      "scope": ["src/requests/cookies.py"],
+      "anchor": {"file": "src/requests/cookies.py", "name": "get_host", "module_level": false},
+      "prompt_domain": "the cookies module defines a `MockRequest` adapter class that satisfies the stdlib `http.cookiejar` API surface; one of its methods returns the host portion of the wrapped request URL and is consulted by sibling methods on the same facade"
+      ,
+      "prompt_anchor_description": "the instance method on `MockRequest` in `src/requests/cookies.py` that returns the host of the wrapped request",
+      "prompt_scope_description": "every function defined in `src/requests/cookies.py` (any nesting depth, including methods on classes and mixins) whose body directly calls that method"
+    },
+    {
+      "id": 36,
+      "name": "locate_socks_fallback_tokens",
+      "type": "structured_output",
+      "template": "T1",
+      "difficulty": "easy",
+      "structural_signature": {
+        "template": "T1",
+        "scope_kind": "single_file",
+        "anchor_kind": "module_level",
+        "answer_entries": 2,
+        "answer_files": 1,
+        "unique_trait": "module_level_import_fallback_with_single_adapter_caller"
+      },
+      "scope": ["src/requests/adapters.py"],
+      "anchor": {"file": "src/requests/adapters.py", "name": "SOCKSProxyManager", "module_level": true},
+      "prompt_domain": "the `adapters` module defines a module-level fallback SOCKS pool-manager factory that is used only when `urllib3.contrib.socks` cannot be imported; a single `HTTPAdapter` method instantiates it whenever it sees a `socks://` proxy URL"
+      ,
+      "prompt_anchor_description": "the module-level fallback factory itself (the one defined inside the `except ImportError` branch, whose name matches the urllib3 symbol it substitutes for)",
+      "prompt_scope_description": "every function defined in `src/requests/adapters.py` (any nesting depth, including methods on classes and mixins) whose body directly calls that factory"
+    },
+    {
+      "id": 37,
+      "name": "locate_user_agent_tokens",
+      "type": "structured_output",
+      "template": "T1",
+      "difficulty": "easy",
+      "structural_signature": {
+        "template": "T1",
+        "scope_kind": "single_file",
+        "anchor_kind": "module_level",
+        "answer_entries": 2,
+        "answer_files": 1,
+        "unique_trait": "utils_composed_with_sibling_default_factory"
+      },
+      "scope": ["src/requests/utils.py"],
+      "anchor": {"file": "src/requests/utils.py", "name": "default_user_agent", "module_level": true},
+      "prompt_domain": "a module-level utility in `src/requests/utils.py` composes a `User-Agent` string of the form `python-requests/<version>` and is consumed by a sibling factory defined in the same module when assembling the default HTTP headers"
+      ,
+      "prompt_anchor_description": "the module-level utility in `src/requests/utils.py` that composes the default user-agent string",
+      "prompt_scope_description": "every function defined in `src/requests/utils.py` (any nesting depth, including methods on classes and mixins) whose body directly calls that utility"
+    },
+    {
+      "id": 38,
+      "name": "locate_basic_auth_str_tokens",
+      "type": "structured_output",
+      "template": "T1",
+      "difficulty": "medium",
+      "structural_signature": {
+        "template": "T1",
+        "scope_kind": "three_files",
+        "anchor_kind": "module_level",
+        "answer_entries": 5,
+        "answer_files": 3,
+        "unique_trait": "basic_auth_string_builder_fanin_across_auth_adapter_session"
+      },
+      "scope": ["src/requests/adapters.py", "src/requests/auth.py", "src/requests/sessions.py"],
+      "anchor": {"file": "src/requests/auth.py", "name": "_basic_auth_str", "module_level": true},
+      "prompt_domain": "a module-level helper in `src/requests/auth.py` encodes a `(user, password)` pair into the exact `Basic <base64>` string written into the `Authorization` header; several unrelated callers — the HTTP basic and proxy auth classes, the HTTP adapter's proxy-headers builder, and the session's URL-credential extraction — all rely on it"
+      ,
+      "prompt_anchor_description": "the module-level helper in `src/requests/auth.py` that builds the `Basic <base64>` auth string",
+      "prompt_scope_description": "every function defined in `src/requests/auth.py`, `src/requests/adapters.py`, or `src/requests/sessions.py` (any nesting depth, including methods on classes and mixins) whose body directly calls that helper"
+    },
+    {
+      "id": 39,
+      "name": "locate_prepare_cookies_tokens",
+      "type": "structured_output",
+      "template": "T1",
+      "difficulty": "medium",
+      "structural_signature": {
+        "template": "T1",
+        "scope_kind": "three_files",
+        "anchor_kind": "instance_method",
+        "answer_entries": 4,
+        "answer_files": 3,
+        "unique_trait": "prepared_request_cookies_reprep_fanin_from_auth_and_redirect"
+      },
+      "scope": ["src/requests/auth.py", "src/requests/models.py", "src/requests/sessions.py"],
+      "anchor": {"file": "src/requests/models.py", "name": "prepare_cookies", "module_level": false},
+      "prompt_domain": "a `PreparedRequest` builds the outgoing `Cookie` header from a merged cookie jar; the same method is re-invoked from auth flows (digest challenge retry) and from the session's redirect-following loop to refresh the header after the request target changes"
+      ,
+      "prompt_anchor_description": "the instance method on `PreparedRequest` in `src/requests/models.py` that builds the `Cookie` header for the outgoing request",
+      "prompt_scope_description": "every function defined in `src/requests/auth.py`, `src/requests/models.py`, or `src/requests/sessions.py` (any nesting depth, including methods on classes and mixins) whose body directly calls that method"
+    },
+    {
+      "id": 40,
+      "name": "locate_set_cookie_tokens",
+      "type": "structured_output",
+      "template": "T1",
+      "difficulty": "medium",
+      "structural_signature": {
+        "template": "T1",
+        "scope_kind": "single_file",
+        "anchor_kind": "instance_method",
+        "answer_entries": 6,
+        "answer_files": 1,
+        "unique_trait": "cookiejar_internal_fanin_six_entries_single_file"
+      },
+      "scope": ["src/requests/cookies.py"],
+      "anchor": {"file": "src/requests/cookies.py", "name": "set_cookie", "module_level": false},
+      "prompt_domain": "a `RequestsCookieJar` method inserts a single cookie into the jar; it is used heavily by the jar's own public API (indexed set, update, deserialize, etc.) as the single mutation entry-point that flows through the underlying cookielib container"
+      ,
+      "prompt_anchor_description": "the `RequestsCookieJar` instance method in `src/requests/cookies.py` that performs the single-cookie insertion",
+      "prompt_scope_description": "every function defined in `src/requests/cookies.py` (any nesting depth, including methods on classes and mixins) whose body directly calls that method"
+    },
+    {
+      "id": 41,
+      "name": "locate_register_hook_tokens",
+      "type": "structured_output",
+      "template": "T1",
+      "difficulty": "medium",
+      "structural_signature": {
+        "template": "T1",
+        "scope_kind": "two_files",
+        "anchor_kind": "mixin_method",
+        "answer_entries": 4,
+        "answer_files": 2,
+        "unique_trait": "mixin_hook_registration_with_cross_file_auth_caller"
+      },
+      "scope": ["src/requests/auth.py", "src/requests/models.py"],
+      "anchor": {"file": "src/requests/models.py", "name": "register_hook", "module_level": false},
+      "prompt_domain": "a mixin class in `src/requests/models.py` exposes a method that appends a user-callback to the request's hook registry; its own `register_hook`/`deregister_hook` pair, the `Request` subclass's constructor, and an `HTTPDigestAuth` init helper all rely on that single registration entry-point"
+      ,
+      "prompt_anchor_description": "the mixin method in `src/requests/models.py` that appends a callback to the hook registry",
+      "prompt_scope_description": "every function defined in `src/requests/models.py` or `src/requests/auth.py` (any nesting depth, including methods on classes and mixins) whose body directly calls that method"
+    },
+    {
+      "id": 42,
+      "name": "locate_default_hooks_tokens",
+      "type": "structured_output",
+      "template": "T1",
+      "difficulty": "medium",
+      "structural_signature": {
+        "template": "T1",
+        "scope_kind": "three_files",
+        "anchor_kind": "module_level",
+        "answer_entries": 4,
+        "answer_files": 3,
+        "unique_trait": "hooks_default_factory_fanin_across_hooks_models_sessions"
+      },
+      "scope": ["src/requests/hooks.py", "src/requests/models.py", "src/requests/sessions.py"],
+      "anchor": {"file": "src/requests/hooks.py", "name": "default_hooks", "module_level": true},
+      "prompt_domain": "a module-level helper in `src/requests/hooks.py` returns the default per-event hook mapping (`{event: []}`); it is used by every place that newly constructs a request hook registry — the `RequestHooksMixin` init helper, the session's hook-merge helper, and itself-as-default in a sibling dispatch path"
+      ,
+      "prompt_anchor_description": "the module-level helper in `src/requests/hooks.py` that returns the default hook mapping",
+      "prompt_scope_description": "every function defined in `src/requests/hooks.py`, `src/requests/models.py`, or `src/requests/sessions.py` (any nesting depth, including methods on classes and mixins) whose body directly calls that helper"
+    },
+    {
+      "id": 43,
+      "name": "locate_proxy_resolution_tokens",
+      "type": "structured_output",
+      "template": "T2",
+      "difficulty": "medium",
+      "structural_signature": {
+        "template": "T2",
+        "scope_kind": "any_file",
+        "target_kind": "module_level_functions",
+        "answer_entries": 6,
+        "answer_files": 3,
+        "unique_trait": "medium_tier_proxy_resolution_three_helper_cluster"
+      },
+      "scope": "src/requests/",
+      "targets": ["resolve_proxies", "select_proxy", "should_bypass_proxies"],
+      "prompt_domain": "three module-level helpers in `src/requests/utils.py` cooperate to resolve the proxy URL for an outgoing request: `resolve_proxies` merges environment and session proxies, `select_proxy` picks the one matching the request URL, and `should_bypass_proxies` decides whether the URL is in the user's no-proxy list"
+      ,
+      "prompt_target_description": "any of those three helpers"
+    },
+    {
+      "id": 44,
+      "name": "locate_header_parse_tokens",
+      "type": "structured_output",
+      "template": "T2",
+      "difficulty": "medium",
+      "structural_signature": {
+        "template": "T2",
+        "scope_kind": "any_file",
+        "target_kind": "module_level_functions",
+        "answer_entries": 3,
+        "answer_files": 3,
+        "unique_trait": "medium_tier_header_parsing_four_function_cluster"
+      },
+      "scope": "src/requests/",
+      "targets": ["parse_header_links", "parse_list_header", "parse_dict_header", "_parse_content_type_header"],
+      "prompt_domain": "four module-level parsers in `src/requests/utils.py` tokenize RFC-7230 HTTP header values: `parse_header_links` (the `Link:` header), `parse_list_header` / `parse_dict_header` (quoted comma-separated pairs), and `_parse_content_type_header` (the media type with parameters)"
+      ,
+      "prompt_target_description": "any of those four parsers"
+    },
+    {
+      "id": 45,
+      "name": "locate_jar_update_tokens",
+      "type": "structured_output",
+      "template": "T1",
+      "difficulty": "hard",
+      "structural_signature": {
+        "template": "T1",
+        "scope_kind": "four_files",
+        "anchor_kind": "instance_method",
+        "answer_entries": 9,
+        "answer_files": 4,
+        "unique_trait": "cookiejar_update_nine_entry_cross_file_fanin"
+      },
+      "scope": ["src/requests/cookies.py", "src/requests/models.py", "src/requests/sessions.py", "src/requests/structures.py"],
+      "anchor": {"file": "src/requests/cookies.py", "name": "update", "module_level": false},
+      "prompt_domain": "a `RequestsCookieJar` method merges cookies from another jar or dict into itself; the library's request preparation, session-level jar setup, and several internal cookielib facade methods all go through this single merging entry-point when a cookie source crosses trust boundaries"
+      ,
+      "prompt_anchor_description": "the `RequestsCookieJar` instance method in `src/requests/cookies.py` that merges another cookie source into the jar",
+      "prompt_scope_description": "every function defined in `src/requests/cookies.py`, `src/requests/models.py`, `src/requests/sessions.py`, or `src/requests/structures.py` (any nesting depth, including methods on classes and mixins) whose body directly calls that method"
+    },
+    {
+      "id": 46,
+      "name": "locate_native_string_tokens",
+      "type": "structured_output",
+      "template": "T1",
+      "difficulty": "hard",
+      "structural_signature": {
+        "template": "T1",
+        "scope_kind": "any_file",
+        "anchor_kind": "module_level",
+        "answer_entries": 8,
+        "answer_files": 5,
+        "unique_trait": "internal_utility_widest_module_level_fanin"
+      },
+      "scope": ["src/requests/_internal_utils.py", "src/requests/auth.py", "src/requests/cookies.py", "src/requests/models.py", "src/requests/sessions.py"],
+      "anchor": {"file": "src/requests/_internal_utils.py", "name": "to_native_string", "module_level": true},
+      "prompt_domain": "an internal utility in `src/requests/_internal_utils.py` converts any bytes-like or text input into the platform's native `str` type (always `str` on Python 3); it is invoked wherever the library normalizes unstable mixed-type inputs — auth encoding, cookie header construction, URL preparation, and session request preparation all depend on it"
+      ,
+      "prompt_anchor_description": "the module-level utility in `src/requests/_internal_utils.py` that performs the native-string normalization",
+      "prompt_scope_description": "every function defined in `src/requests/_internal_utils.py`, `src/requests/auth.py`, `src/requests/cookies.py`, `src/requests/models.py`, or `src/requests/sessions.py` (any nesting depth, including methods on classes and mixins) whose body directly calls that utility"
+    },
+    {
+      "id": 47,
+      "name": "locate_cookiejar_builder_tokens",
+      "type": "structured_output",
+      "template": "T1",
+      "difficulty": "hard",
+      "structural_signature": {
+        "template": "T1",
+        "scope_kind": "four_files",
+        "anchor_kind": "module_level",
+        "answer_entries": 7,
+        "answer_files": 4,
+        "unique_trait": "module_level_builder_plus_model_and_session_lifecycle_fanin"
+      },
+      "scope": ["src/requests/cookies.py", "src/requests/models.py", "src/requests/sessions.py", "src/requests/utils.py"],
+      "anchor": {"file": "src/requests/cookies.py", "name": "cookiejar_from_dict", "module_level": true},
+      "prompt_domain": "a module-level helper in `src/requests/cookies.py` converts a plain dict (or `None`) into a `RequestsCookieJar`; it is the single construction path used to materialize session-level, request-level, and response-level cookie containers across the library, and a sibling cookie-merge helper and a utility API alias delegate to it directly"
+      ,
+      "prompt_anchor_description": "the module-level helper in `src/requests/cookies.py` that constructs a `RequestsCookieJar` from a dict",
+      "prompt_scope_description": "every function defined in `src/requests/cookies.py`, `src/requests/models.py`, `src/requests/sessions.py`, or `src/requests/utils.py` (any nesting depth, including methods on classes and mixins) whose body directly calls that helper"
+    },
+    {
+      "id": 48,
+      "name": "locate_iter_content_tokens",
+      "type": "structured_output",
+      "template": "T1",
+      "difficulty": "hard",
+      "structural_signature": {
+        "template": "T1",
+        "scope_kind": "single_file",
+        "anchor_kind": "instance_method",
+        "answer_entries": 4,
+        "answer_files": 1,
+        "unique_trait": "anchor_with_nested_generate_closure_not_itself_a_caller"
+      },
+      "scope": ["src/requests/models.py"],
+      "anchor": {"file": "src/requests/models.py", "name": "iter_content", "module_level": false},
+      "prompt_domain": "a `Response` method streams the body as raw chunks; it is the underlying primitive for line-level streaming, full-content decoding, and the iterator-protocol wrapper on the response — all of which live on the same class. The method also defines a nested generator closure named `generate` to produce the chunks, which is *not* itself a caller of the streaming primitive",
+      "prompt_anchor_description": "the `Response` instance method in `src/requests/models.py` that yields the raw streamed body chunks",
+      "prompt_scope_description": "every function defined in `src/requests/models.py` (any nesting depth, including methods on classes, mixins, and nested closures) whose body directly calls that method"
+    },
+    {
+      "id": 49,
+      "name": "locate_digest_header_tokens",
+      "type": "structured_output",
+      "template": "T1",
+      "difficulty": "hard",
+      "structural_signature": {
+        "template": "T1",
+        "scope_kind": "single_file",
+        "anchor_kind": "instance_method",
+        "answer_entries": 3,
+        "answer_files": 1,
+        "unique_trait": "digest_header_builder_with_nested_sha_helper_and_challenge_retry"
+      },
+      "scope": ["src/requests/auth.py"],
+      "anchor": {"file": "src/requests/auth.py", "name": "build_digest_header", "module_level": false},
+      "prompt_domain": "an `HTTPDigestAuth` method builds the full `Authorization: Digest ...` header value for a given request and a previously parsed `WWW-Authenticate` challenge; the class's `__call__` entry-point relies on it on the first attempt, and its `handle_401` 401-retry path re-invokes it after parsing the challenge. The method also defines a small nested `sha_utf8` helper that is *not* itself a caller",
+      "prompt_anchor_description": "the `HTTPDigestAuth` instance method in `src/requests/auth.py` that builds the `Digest` auth header value",
+      "prompt_scope_description": "every function defined in `src/requests/auth.py` (any nesting depth, including methods on classes, mixins, and nested closures) whose body directly calls that method"
+    },
+    {
+      "id": 50,
+      "name": "locate_utils_get_cluster_tokens",
+      "type": "structured_output",
+      "template": "T2",
+      "difficulty": "hard",
+      "structural_signature": {
+        "template": "T2",
+        "scope_kind": "any_file",
+        "target_kind": "module_level_functions",
+        "answer_entries": 7,
+        "answer_files": 3,
+        "unique_trait": "hard_tier_five_get_helpers_cross_file_fanin"
+      },
+      "scope": "src/requests/",
+      "targets": ["get_auth_from_url", "get_netrc_auth", "get_encoding_from_headers", "get_unicode_from_response", "get_encodings_from_content"],
+      "prompt_domain": "five module-level helpers in `src/requests/utils.py` cooperate to extract request/response metadata: `get_auth_from_url` (pulls `user:pass` out of a URL), `get_netrc_auth` (looks up credentials in the user's `~/.netrc`), `get_encoding_from_headers` (picks the body encoding from the `Content-Type` header), `get_unicode_from_response` (decodes the response body using that encoding), and `get_encodings_from_content` (guesses encodings from HTML/XML body markup)"
+      ,
+      "prompt_target_description": "any of those five helpers"
+    }
+  ]
+}

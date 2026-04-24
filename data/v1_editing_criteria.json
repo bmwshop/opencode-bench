@@ -1,0 +1,630 @@
+{
+  "_comment": "Criterion-anchored editing manifest for v1 samples #51-#60. Each entry declares (a) a target function in the pinned requests checkout, (b) a reference edit (oldString -> newString) that implements the required behavior change, (c) a classified list of asserts that the patched function must satisfy, and (d) a set of discovery probes (rg patterns the authoring gate uses to verify the prompt's behavior terms hit 2-4 files in src/requests/ without the file name being leaked in the prompt). The manifest is the single source of truth; scripts/regen_editing.py re-derives the spec markdown and the samples_v1.jsonl rows from it, and scripts/audit_editing.py validates every authoring gate and runs both in-process and end-to-end evaluations. See each entry's prompt for the exact pinned inputs, outputs, and exception classes.",
+  "_pin": "79f4df84cf77a2fee873809821dfbd786de05b97",
+  "_repo": "requests",
+  "samples": [
+    {
+      "id": 51,
+      "name": "edit_iter_slices_require_positive",
+      "file": "src/requests/utils.py",
+      "functions": [
+        "iter_slices"
+      ],
+      "constants": [],
+      "imports": [],
+      "reference_edit": {
+        "oldString": "def iter_slices(string, slice_length):\n    \"\"\"Iterate over slices of a string.\"\"\"\n    pos = 0\n    if slice_length is None or slice_length <= 0:\n        slice_length = len(string)\n    while pos < len(string):\n        yield string[pos : pos + slice_length]\n        pos += slice_length\n",
+        "newString": "def iter_slices(string, slice_length):\n    \"\"\"Iterate over slices of a string.\"\"\"\n    pos = 0\n    if slice_length is None:\n        slice_length = len(string)\n    elif not isinstance(slice_length, int) or slice_length <= 0:\n        raise ValueError(\"iter_slices: slice_length must be a positive int or None\")\n    while pos < len(string):\n        yield string[pos : pos + slice_length]\n        pos += slice_length\n"
+      },
+      "discovery_probes": [
+        "def iter_slices",
+        "iter_slices",
+        "slice.*length|length.*slice",
+        "Iterate over slices"
+      ],
+      "asserts": [
+        {
+          "expr": "list(iter_slices('abcdef', 2)) == ['ab', 'cd', 'ef']",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "list(iter_slices('', 3)) == []",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "list(iter_slices('abc', None)) == ['abc']",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "list(iter_slices('abcdefg', 3)) == ['abc', 'def', 'g']",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "setup": "raised = None\ntry:\n    list(iter_slices('abc', 0))\nexcept ValueError as e:\n    raised = e",
+          "expr": "raised is not None and 'slice_length' in str(raised)",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "setup": "raised = None\ntry:\n    list(iter_slices('abc', -1))\nexcept ValueError as e:\n    raised = e",
+          "expr": "raised is not None and 'slice_length' in str(raised)",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target is the small pure-Python helper that lazily yields fixed-size chunks of a string (used internally to stream request/response bodies). It is defined in the `requests` utilities module.",
+      "prompt_fail_modes": [
+        "Leaves the `slice_length <= 0` branch silently defaulting to the full string length (`no-change`).",
+        "Raises on every non-positive value but also rejects `None`, breaking the 'None means whole string' regression case (`over-edit`).",
+        "Raises `TypeError` or a bare `Exception` instead of `ValueError`, or omits the `slice_length` substring from the error message (`partial-edit`)."
+      ]
+    },
+    {
+      "id": 52,
+      "name": "edit_unicode_is_ascii_accept_bytes",
+      "file": "src/requests/_internal_utils.py",
+      "functions": [
+        "unicode_is_ascii"
+      ],
+      "constants": [],
+      "imports": [],
+      "reference_edit": {
+        "oldString": "def unicode_is_ascii(u_string):\n    \"\"\"Determine if unicode string only contains ASCII characters.\n\n    :param str u_string: unicode string to check. Must be unicode\n        and not Python 2 `str`.\n    :rtype: bool\n    \"\"\"\n    assert isinstance(u_string, str)\n    try:\n        u_string.encode(\"ascii\")\n        return True\n    except UnicodeEncodeError:\n        return False\n",
+        "newString": "def unicode_is_ascii(u_string):\n    \"\"\"Determine if unicode string only contains ASCII characters.\n\n    :param str u_string: unicode string to check. Must be unicode\n        and not Python 2 `str`.\n    :rtype: bool\n    \"\"\"\n    if isinstance(u_string, (bytes, bytearray)):\n        return all(b < 128 for b in u_string)\n    assert isinstance(u_string, str)\n    try:\n        u_string.encode(\"ascii\")\n        return True\n    except UnicodeEncodeError:\n        return False\n"
+      },
+      "discovery_probes": [
+        "def unicode_is_ascii",
+        "unicode_is_ascii",
+        "ASCII|ascii",
+        "encode\\(['\\\"]ascii"
+      ],
+      "asserts": [
+        {
+          "expr": "unicode_is_ascii('hello') is True",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "unicode_is_ascii('h\u00e9llo') is False",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "unicode_is_ascii('') is True",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "unicode_is_ascii(b'hello') is True",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "unicode_is_ascii(b'h\\xc3\\xa9llo') is False",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "unicode_is_ascii(b'') is True",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "unicode_is_ascii(bytearray(b'ok')) is True",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target is the internal helper that tests whether a text value contains only ASCII characters. It lives in a small internal-utilities module shared across the requests package.",
+      "prompt_fail_modes": [
+        "Leaves the `assert isinstance(u_string, str)` guard in place, so bytes inputs still fail the assertion (`no-change`).",
+        "Accepts bytes but also changes the str path (e.g. now returns `True` for non-ASCII str because of a wrong `all(...)` predicate), breaking regression asserts (`over-edit`).",
+        "Handles `bytes` but forgets `bytearray`, or uses a wrong threshold like `b < 127` (`partial-edit`)."
+      ]
+    },
+    {
+      "id": 53,
+      "name": "edit_to_native_string_reject_unknown",
+      "file": "src/requests/_internal_utils.py",
+      "functions": [
+        "to_native_string"
+      ],
+      "constants": [],
+      "imports": [],
+      "reference_edit": {
+        "oldString": "def to_native_string(string, encoding=\"ascii\"):\n    \"\"\"Given a string object, regardless of type, returns a representation of\n    that string in the native string type, encoding and decoding where\n    necessary. This assumes ASCII unless told otherwise.\n    \"\"\"\n    if isinstance(string, builtin_str):\n        out = string\n    else:\n        out = string.decode(encoding)\n\n    return out\n",
+        "newString": "def to_native_string(string, encoding=\"ascii\"):\n    \"\"\"Given a string object, regardless of type, returns a representation of\n    that string in the native string type, encoding and decoding where\n    necessary. This assumes ASCII unless told otherwise.\n    \"\"\"\n    if isinstance(string, builtin_str):\n        return string\n    if isinstance(string, (bytes, bytearray)):\n        return bytes(string).decode(encoding)\n    raise TypeError(\n        f\"to_native_string expected str or bytes, got {type(string).__name__}\"\n    )\n"
+      },
+      "discovery_probes": [
+        "def to_native_string",
+        "native string",
+        "builtin_str"
+      ],
+      "asserts": [
+        {
+          "setup": "builtin_str = str",
+          "expr": "to_native_string('hello') == 'hello'",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "setup": "builtin_str = str",
+          "expr": "to_native_string(b'hello') == 'hello'",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "setup": "builtin_str = str",
+          "expr": "to_native_string(b'h\\xc3\\xa9', encoding='utf-8') == 'h\u00e9'",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "setup": "builtin_str = str\nraised = None\ntry:\n    to_native_string(42)\nexcept TypeError as e:\n    raised = e",
+          "expr": "raised is not None and 'str or bytes' in str(raised)",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "setup": "builtin_str = str\nraised = None\ntry:\n    to_native_string(None)\nexcept TypeError as e:\n    raised = e",
+          "expr": "raised is not None and 'str or bytes' in str(raised)",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "setup": "builtin_str = str\nraised = None\ntry:\n    to_native_string([1, 2, 3])\nexcept TypeError as e:\n    raised = e",
+          "expr": "raised is not None and 'str or bytes' in str(raised)",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target is the internal helper that coerces a str or bytes value into the native `str` type. It lives in a small internal-utilities module shared across the requests package. The module already binds `builtin_str` to `str` via its imports.",
+      "prompt_fail_modes": [
+        "Leaves the `else: out = string.decode(encoding)` path, so non-str/bytes inputs raise `AttributeError` instead of `TypeError` (`no-change`).",
+        "Raises `TypeError` for bytes as well, breaking the `b'hello'` regression case (`over-edit`).",
+        "Raises `TypeError` but omits the `str or bytes` substring, or uses a `ValueError` instead (`partial-edit`)."
+      ]
+    },
+    {
+      "id": 54,
+      "name": "edit_unquote_header_value_none_returns_empty",
+      "file": "src/requests/utils.py",
+      "functions": [
+        "unquote_header_value"
+      ],
+      "constants": [],
+      "imports": [],
+      "reference_edit": {
+        "oldString": "def unquote_header_value(value, is_filename=False):\n    r\"\"\"Unquotes a header value.  (Reversal of :func:`quote_header_value`).\n    This does not use the real unquoting but what browsers are actually\n    using for quoting.\n\n    :param value: the header value to unquote.\n    :rtype: str\n    \"\"\"\n    if value and value[0] == value[-1] == '\"':",
+        "newString": "def unquote_header_value(value, is_filename=False):\n    r\"\"\"Unquotes a header value.  (Reversal of :func:`quote_header_value`).\n    This does not use the real unquoting but what browsers are actually\n    using for quoting.\n\n    :param value: the header value to unquote.\n    :rtype: str\n    \"\"\"\n    if value is None:\n        return \"\"\n    if value and value[0] == value[-1] == '\"':"
+      },
+      "discovery_probes": [
+        "def unquote_header_value",
+        "unquote_header_value",
+        "header value|header_value",
+        "unquote"
+      ],
+      "asserts": [
+        {
+          "expr": "unquote_header_value('\"hello\"') == 'hello'",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "unquote_header_value('hello') == 'hello'",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "unquote_header_value('') == ''",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "unquote_header_value('\"hello world\"') == 'hello world'",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "unquote_header_value(None) == ''",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "unquote_header_value(None, is_filename=True) == ''",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target is the internal helper that reverses `quote_header_value`, stripping the surrounding double quotes and unescaping `\\\\` and `\\\"` inside them. It lives in the `requests` utilities module and is invoked while parsing HTTP list-style headers.",
+      "prompt_fail_modes": [
+        "Leaves the function unchanged, so `None` input returns `None` rather than `\"\"` (`no-change`).",
+        "Adds a top-level `if not value: return \"\"`, which changes the behavior for `\"\"` (still `\"\"`) but also silently discards any falsy-but-non-None exotic inputs (`over-edit`).",
+        "Handles `None` but only for the default `is_filename=False` path, leaving `unquote_header_value(None, is_filename=True)` still returning `None` (`partial-edit`)."
+      ]
+    },
+    {
+      "id": 55,
+      "name": "edit_dotted_netmask_reject_out_of_range",
+      "file": "src/requests/utils.py",
+      "functions": [
+        "dotted_netmask"
+      ],
+      "constants": [],
+      "imports": [
+        "socket",
+        "struct"
+      ],
+      "reference_edit": {
+        "oldString": "def dotted_netmask(mask):\n    \"\"\"Converts mask from /xx format to xxx.xxx.xxx.xxx\n\n    Example: if mask is 24 function returns 255.255.255.0\n\n    :rtype: str\n    \"\"\"\n    bits = 0xFFFFFFFF ^ (1 << 32 - mask) - 1\n    return socket.inet_ntoa(struct.pack(\">I\", bits))\n",
+        "newString": "def dotted_netmask(mask):\n    \"\"\"Converts mask from /xx format to xxx.xxx.xxx.xxx\n\n    Example: if mask is 24 function returns 255.255.255.0\n\n    :rtype: str\n    \"\"\"\n    if not isinstance(mask, int) or isinstance(mask, bool) or mask < 0 or mask > 32:\n        raise ValueError(f\"dotted_netmask: mask must be an int in [0, 32], got {mask!r}\")\n    if mask == 0:\n        bits = 0\n    else:\n        bits = 0xFFFFFFFF ^ (1 << 32 - mask) - 1\n    return socket.inet_ntoa(struct.pack(\">I\", bits))\n"
+      },
+      "discovery_probes": [
+        "def dotted_netmask",
+        "netmask",
+        "network"
+      ],
+      "asserts": [
+        {
+          "expr": "dotted_netmask(24) == '255.255.255.0'",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "dotted_netmask(16) == '255.255.0.0'",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "dotted_netmask(32) == '255.255.255.255'",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "dotted_netmask(0) == '0.0.0.0'",
+          "kind": "regression",
+          "misstep": "partial-edit"
+        },
+        {
+          "setup": "raised = None\ntry:\n    dotted_netmask(-1)\nexcept ValueError as e:\n    raised = e",
+          "expr": "raised is not None and 'mask' in str(raised)",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "setup": "raised = None\ntry:\n    dotted_netmask(33)\nexcept ValueError as e:\n    raised = e",
+          "expr": "raised is not None and 'mask' in str(raised)",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target converts an integer CIDR mask length (e.g. 24) into its dotted-quad representation (e.g. `'255.255.255.0'`). It lives in the `requests` utilities module alongside other small IP-address helpers.",
+      "prompt_fail_modes": [
+        "Leaves the function unchanged, so out-of-range masks silently produce garbage (no ValueError) (`no-change`).",
+        "Adds a range check but also restricts the valid range (e.g. `[1, 32]` rather than `[0, 32]`), breaking the `dotted_netmask(0) == '0.0.0.0'` assert (`partial-edit`).",
+        "Raises `ValueError` but forgets to also return `'0.0.0.0'` for mask 0 (the bit-twiddling `1 << 32` overflows or produces wrong bits on `mask=0`) (`partial-edit`)."
+      ]
+    },
+    {
+      "id": 56,
+      "name": "edit_is_ipv4_address_nonstr_returns_false",
+      "file": "src/requests/utils.py",
+      "functions": [
+        "is_ipv4_address"
+      ],
+      "constants": [],
+      "imports": [
+        "socket"
+      ],
+      "reference_edit": {
+        "oldString": "def is_ipv4_address(string_ip):\n    \"\"\"\n    :rtype: bool\n    \"\"\"\n    try:\n        socket.inet_aton(string_ip)\n    except OSError:\n        return False\n    return True\n",
+        "newString": "def is_ipv4_address(string_ip):\n    \"\"\"\n    :rtype: bool\n    \"\"\"\n    if not isinstance(string_ip, str):\n        return False\n    try:\n        socket.inet_aton(string_ip)\n    except OSError:\n        return False\n    return True\n"
+      },
+      "discovery_probes": [
+        "def is_ipv4_address",
+        "IPv4",
+        "network"
+      ],
+      "asserts": [
+        {
+          "expr": "is_ipv4_address('192.168.1.1') is True",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "is_ipv4_address('10.0.0.0') is True",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "is_ipv4_address('not-an-ip') is False",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "is_ipv4_address('256.1.1.1') is False",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "is_ipv4_address(None) is False",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "is_ipv4_address(123) is False",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "is_ipv4_address(b'192.168.1.1') is False",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target is the predicate that tests whether a value is a valid textual IPv4 address. It lives in the `requests` utilities module alongside other small IP-address helpers.",
+      "prompt_fail_modes": [
+        "Leaves the function unchanged, so passing `None`/`int`/`bytes` crashes with `TypeError` instead of returning False (`no-change`).",
+        "Catches all exceptions (`except Exception`) to mask the bug, which also silences genuine bugs in the body (`over-edit`).",
+        "Accepts `bytes` as valid (because `socket.inet_aton` does accept bytes on some platforms) instead of rejecting everything that's not `str` (`partial-edit`)."
+      ]
+    },
+    {
+      "id": 57,
+      "name": "edit_is_valid_cidr_accept_zero_mask",
+      "file": "src/requests/utils.py",
+      "functions": [
+        "is_valid_cidr"
+      ],
+      "constants": [],
+      "imports": [
+        "socket"
+      ],
+      "reference_edit": {
+        "oldString": "        if mask < 1 or mask > 32:\n            return False\n",
+        "newString": "        if mask < 0 or mask > 32:\n            return False\n"
+      },
+      "discovery_probes": [
+        "def is_valid_cidr",
+        "CIDR",
+        "no_proxy"
+      ],
+      "asserts": [
+        {
+          "expr": "is_valid_cidr('192.168.1.0/24') is True",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "is_valid_cidr('10.0.0.0/8') is True",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "is_valid_cidr('192.168.1.0/33') is False",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "is_valid_cidr('not-a-cidr') is False",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "is_valid_cidr('192.168.1.0') is False",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "is_valid_cidr('0.0.0.0/0') is True",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "is_valid_cidr('10.0.0.0/0') is True",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "is_valid_cidr('192.168.1.0/-1') is False",
+          "kind": "new_behavior",
+          "misstep": "over-edit"
+        }
+      ],
+      "prompt_capability": "The target is the predicate used by `no_proxy` matching to check whether a string looks like a valid CIDR network (e.g. `10.0.0.0/8`). It lives in the `requests` utilities module alongside other small IP-address helpers.",
+      "prompt_fail_modes": [
+        "Leaves the function unchanged, so `/0` is still rejected (`no-change`).",
+        "Accepts `/0` but also silently accepts `/-1` (e.g. by dropping the lower bound entirely) (`over-edit`).",
+        "Accepts `/0` only for `0.0.0.0` but still rejects `10.0.0.0/0`, e.g. by coupling the change to the IP value rather than the mask (`partial-edit`)."
+      ]
+    },
+    {
+      "id": 58,
+      "name": "edit_default_hooks_include_request",
+      "file": "src/requests/hooks.py",
+      "functions": [
+        "default_hooks"
+      ],
+      "constants": [
+        "HOOKS"
+      ],
+      "imports": [],
+      "reference_edit": {
+        "oldString": "HOOKS = [\"response\"]\n\n\ndef default_hooks():\n    return {event: [] for event in HOOKS}\n",
+        "newString": "HOOKS = [\"response\", \"request\"]\n\n\ndef default_hooks():\n    return {event: [] for event in HOOKS}\n"
+      },
+      "discovery_probes": [
+        "def default_hooks",
+        "default_hooks|HOOKS",
+        "hook",
+        "response.*event|event.*hook"
+      ],
+      "asserts": [
+        {
+          "expr": "'response' in default_hooks()",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "default_hooks()['response'] == []",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "'request' in default_hooks()",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "default_hooks()['request'] == []",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "len(default_hooks()) == 2",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "'response' in HOOKS and 'request' in HOOKS and len(HOOKS) == 2",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target is the tiny hooks module that declares the list of hook event names and returns a default, empty hook registry. The file already defines a module-level list of supported hook names; the default hook registry is built as a dict comprehension over that list.",
+      "prompt_fail_modes": [
+        "Leaves the module unchanged, so `'request' not in default_hooks()` (`no-change`).",
+        "Adds `'request'` to the registry but as a non-empty list (e.g. a default callback), breaking the `== []` assert (`over-edit`).",
+        "Adds `'request'` only to the returned dict via a hardcoded key, without updating the module-level list of hook names, so the new-behavior assert on the list fails (`partial-edit`)."
+      ]
+    },
+    {
+      "id": 59,
+      "name": "edit_dispatch_hook_skip_none_hooks",
+      "file": "src/requests/hooks.py",
+      "functions": [
+        "dispatch_hook"
+      ],
+      "constants": [],
+      "imports": [],
+      "reference_edit": {
+        "oldString": "def dispatch_hook(key, hooks, hook_data, **kwargs):\n    \"\"\"Dispatches a hook dictionary on a given piece of data.\"\"\"\n    hooks = hooks or {}\n    hooks = hooks.get(key)\n    if hooks:\n        if hasattr(hooks, \"__call__\"):\n            hooks = [hooks]\n        for hook in hooks:\n            _hook_data = hook(hook_data, **kwargs)\n            if _hook_data is not None:\n                hook_data = _hook_data\n    return hook_data\n",
+        "newString": "def dispatch_hook(key, hooks, hook_data, **kwargs):\n    \"\"\"Dispatches a hook dictionary on a given piece of data.\"\"\"\n    hooks = hooks or {}\n    hooks = hooks.get(key)\n    if hooks:\n        if hasattr(hooks, \"__call__\"):\n            hooks = [hooks]\n        for hook in hooks:\n            if hook is None:\n                continue\n            _hook_data = hook(hook_data, **kwargs)\n            if _hook_data is not None:\n                hook_data = _hook_data\n    return hook_data\n"
+      },
+      "discovery_probes": [
+        "def dispatch_hook",
+        "dispatch_hook",
+        "hook",
+        "hook_data|hooks\\["
+      ],
+      "asserts": [
+        {
+          "expr": "dispatch_hook('response', {'response': [lambda d: d + 1]}, 10) == 11",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "dispatch_hook('response', {}, 10) == 10",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "dispatch_hook('response', None, 10) == 10",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "dispatch_hook('response', {'response': lambda d: d * 2}, 5) == 10",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "dispatch_hook('response', {'response': [None, lambda d: d + 1]}, 10) == 11",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "dispatch_hook('response', {'response': [None]}, 10) == 10",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "dispatch_hook('response', {'response': [lambda d: d + 1, None, lambda d: d * 2]}, 10) == 22",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target is the hook-dispatch utility that runs every registered callback for a given event against a piece of data, using a callback's return value (if not `None`) as the new data. It lives in the tiny hooks module of the `requests` package.",
+      "prompt_fail_modes": [
+        "Leaves the loop unchanged, so a `None` entry in the hook list raises `TypeError: 'NoneType' object is not callable` (`no-change`).",
+        "Skips the entire callback list when any `None` is present (e.g. `if None in hooks: return hook_data`), breaking the mixed-list regression (`over-edit`).",
+        "Skips `None` only in the list-path but not the single-callable path; still fine because the single-callable path never sees `None` -- but a naive fix that converts hooks to `[h for h in hooks if h]` also drops other falsy callbacks (`partial-edit`)."
+      ]
+    },
+    {
+      "id": 60,
+      "name": "edit_address_in_network_invalid_returns_false",
+      "file": "src/requests/utils.py",
+      "functions": [
+        "address_in_network",
+        "dotted_netmask"
+      ],
+      "constants": [],
+      "imports": [
+        "socket",
+        "struct"
+      ],
+      "reference_edit": {
+        "oldString": "def address_in_network(ip, net):\n    \"\"\"This function allows you to check if an IP belongs to a network subnet\n\n    Example: returns True if ip = 192.168.1.1 and net = 192.168.1.0/24\n             returns False if ip = 192.168.1.1 and net = 192.168.100.0/24\n\n    :rtype: bool\n    \"\"\"\n    ipaddr = struct.unpack(\"=L\", socket.inet_aton(ip))[0]\n    netaddr, bits = net.split(\"/\")\n    netmask = struct.unpack(\"=L\", socket.inet_aton(dotted_netmask(int(bits))))[0]\n    network = struct.unpack(\"=L\", socket.inet_aton(netaddr))[0] & netmask\n    return (ipaddr & netmask) == (network & netmask)\n",
+        "newString": "def address_in_network(ip, net):\n    \"\"\"This function allows you to check if an IP belongs to a network subnet\n\n    Example: returns True if ip = 192.168.1.1 and net = 192.168.1.0/24\n             returns False if ip = 192.168.1.1 and net = 192.168.100.0/24\n\n    :rtype: bool\n    \"\"\"\n    try:\n        ipaddr = struct.unpack(\"=L\", socket.inet_aton(ip))[0]\n        netaddr, bits = net.split(\"/\")\n        netmask = struct.unpack(\"=L\", socket.inet_aton(dotted_netmask(int(bits))))[0]\n        network = struct.unpack(\"=L\", socket.inet_aton(netaddr))[0] & netmask\n    except (OSError, ValueError, AttributeError, TypeError):\n        return False\n    return (ipaddr & netmask) == (network & netmask)\n"
+      },
+      "discovery_probes": [
+        "def address_in_network",
+        "subnet",
+        "network"
+      ],
+      "asserts": [
+        {
+          "expr": "address_in_network('192.168.1.1', '192.168.1.0/24') is True",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "address_in_network('192.168.2.1', '192.168.1.0/24') is False",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "address_in_network('10.0.0.5', '10.0.0.0/8') is True",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "address_in_network('not-an-ip', '192.168.1.0/24') is False",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "address_in_network('192.168.1.1', 'not-a-cidr') is False",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "address_in_network('192.168.1.1', '192.168.1.0/not-a-mask') is False",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target tests whether an IPv4 address belongs to a CIDR subnet. It lives in the `requests` utilities module alongside other small IP-address helpers, and delegates the mask conversion to `dotted_netmask`.",
+      "prompt_fail_modes": [
+        "Leaves the function unchanged, so invalid IP/CIDR inputs propagate `OSError` / `ValueError` (`no-change`).",
+        "Catches `Exception` broadly, masking genuine bugs elsewhere in the body (`over-edit`).",
+        "Handles bad IPs but not bad CIDR strings (e.g. catches only `OSError` but not `ValueError` from `int(bits)`) (`partial-edit`)."
+      ]
+    }
+  ]
+}

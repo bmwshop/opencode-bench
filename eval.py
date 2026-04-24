@@ -91,6 +91,7 @@ class Result:
     completed: bool = True
     min_calls: int | None = None
     tool_calls_recursive: int | None = None
+    difficulty: str | None = None
 
     @property
     def ok(self):
@@ -140,11 +141,13 @@ def evaluate(sample, run_dir):
 
     trace = run_dir / f"{trace_name(sample)}.jsonl"
     if not trace.exists():
-        return Result(label, sample["category"], failed=["trace not found"], completed=False)
+        return Result(label, sample["category"], failed=["trace not found"],
+                      completed=False, difficulty=sample.get("difficulty"))
 
     tools, texts = extract(trace)
     if not tools and not texts:
-        return Result(label, sample["category"], failed=["empty trace"], completed=False)
+        return Result(label, sample["category"], failed=["empty trace"],
+                      completed=False, difficulty=sample.get("difficulty"))
 
     project = run_dir / "projects" / run_project_name(sample)
     if not project.is_dir():
@@ -155,6 +158,7 @@ def evaluate(sample, run_dir):
     result = Result(label, sample["category"])
     result.min_calls = sample.get("min_calls")
     result.tool_calls_recursive = len(_real_tools(_collect_recursive_tools(trace)))
+    result.difficulty = sample.get("difficulty")
     for chk in sample.get("checks", []):
         fn = evaluators.get(chk["type"])
         if not fn:
@@ -179,6 +183,49 @@ def evaluate(sample, run_dir):
 
 def _checks(r):
     return len(r.passed) + len(r.failed)
+
+
+_DIFFICULTY_ORDER = ["easy", "medium", "hard"]
+
+
+def _bucket_by_difficulty(results):
+    """Return {tier: {strict: int, total: int, partial: float}} over a list of
+    Result objects. Only buckets tiers that have at least one sample. Samples
+    without a `difficulty` attribute are placed under `None` and omitted from
+    the returned mapping (so this is a no-op for legacy categories like
+    `plan_mode`).
+    """
+    buckets: dict[str, list] = {}
+    for r in results:
+        if not r.difficulty:
+            continue
+        buckets.setdefault(r.difficulty, []).append(r)
+    out: dict[str, dict] = {}
+    for tier in _DIFFICULTY_ORDER:
+        rs = buckets.get(tier)
+        if not rs:
+            continue
+        total = len(rs)
+        strict = sum(1 for r in rs if r.ok)
+        partial = sum(r.score for r in rs) / total
+        out[tier] = {
+            "strict": strict,
+            "total": total,
+            "partial": round(partial, 4),
+        }
+    # Surface any unexpected tier values (future-proofing).
+    for tier, rs in buckets.items():
+        if tier in out or tier not in _DIFFICULTY_ORDER:
+            if tier not in out:
+                total = len(rs)
+                strict = sum(1 for r in rs if r.ok)
+                partial = sum(r.score for r in rs) / total
+                out[tier] = {
+                    "strict": strict,
+                    "total": total,
+                    "partial": round(partial, 4),
+                }
+    return out
 
 
 def _efficiency(results):
@@ -223,6 +270,7 @@ def build(results, meta=None):
                 "failed": r.failed,
                 "min_calls": r.min_calls,
                 "tool_calls_recursive": r.tool_calls_recursive,
+                "difficulty": r.difficulty,
             })
         cat_eff, cat_eff_n = _efficiency(rs)
         categories[cat] = {
@@ -233,6 +281,7 @@ def build(results, meta=None):
             "efficiency_n": cat_eff_n,
             "checks_passed": cat_passed,
             "checks_total": cat_checks,
+            "by_difficulty": _bucket_by_difficulty(rs),
             "samples": samples,
         }
         sum_strict += cat_strict
@@ -301,10 +350,23 @@ def format_text(data):
         lines.append(f"  {cat}  (strict {info['strict']}/{info['total']}, "
                       f"partial {info['partial']:.0%}{eff_tok}, "
                       f"checks {info['checks_passed']}/{info['checks_total']})")
+        by_diff = info.get("by_difficulty") or {}
+        if by_diff:
+            parts = [
+                f"{tier} {b['strict']}/{b['total']} ({b['partial']:.0%})"
+                for tier in ("easy", "medium", "hard") if (b := by_diff.get(tier))
+            ]
+            # Append any non-standard tiers to preserve forward-compat.
+            for tier, b in by_diff.items():
+                if tier not in ("easy", "medium", "hard"):
+                    parts.append(f"{tier} {b['strict']}/{b['total']} ({b['partial']:.0%})")
+            if parts:
+                lines.append(f"    by difficulty: {', '.join(parts)}")
         lines.append(f"{'='*60}")
         for s in info["samples"]:
             icon = "PASS" if s["pass"] else "FAIL"
-            lines.append(f"  [{icon}] {s['label']} "
+            diff_tag = f" [{s['difficulty']}]" if s.get("difficulty") else ""
+            lines.append(f"  [{icon}] {s['label']}{diff_tag} "
                          f"({s['checks_passed']}/{s['checks_total']} checks, {s['score']:.0%})")
             for msg in s["failed"]:
                 lines.append(f"         - {msg}")
