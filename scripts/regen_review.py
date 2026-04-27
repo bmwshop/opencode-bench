@@ -65,8 +65,11 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from common import PROJECTS  # noqa: E402
+
 MANIFEST_PATH = ROOT / "data" / "v1_review_criteria.json"
-V1_REQUESTS_ROOT = ROOT / "projects" / "v1" / "requests"
+V1_REQUESTS_ROOT = PROJECTS / "v1" / "requests"
 SPEC_DIR = ROOT / "data" / "specs" / "v1"
 SAMPLES_JSONL = ROOT / "data" / "samples_v1.jsonl"
 

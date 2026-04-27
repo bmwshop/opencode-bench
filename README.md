@@ -19,11 +19,14 @@ git clone --recurse-submodules <repo-url>
 # or, if you already cloned without --recurse-submodules:
 git submodule update --init --recursive
 
-# Run the default v0 tier (curated toy projects)
+# Run all v1 samples against real pinned repos (the default)
 python run.py
 
-# Run v1 against real pinned repos
-python run.py --version v1
+# Run a single category (e.g. code_review) for a smoke test
+python run.py --category code_review
+
+# Run the legacy v0 tier (curated toy projects)
+python run.py --version v0
 
 # Evaluate results
 python eval.py
@@ -37,8 +40,8 @@ To run the benchmark on a Slurm cluster with a GPU-hosted vLLM server, see [CLUS
 
 The bench is split into two tiers:
 
-- **v0** — 33 curated tiny projects under [projects/v0/](projects/v0/). Fast to run, exercises opencode's tool discipline (routing, efficiency, plan-mode adherence, subagents, skills, etc.). This is the default when no `--version` flag is passed.
-- **v1** — tasks against real pinned open-source repos, vendored as git submodules under [projects/v1/](projects/v1/). Each repo is declared once in [data/v1_repos.json](data/v1_repos.json) with its upstream URL and exact pinned SHA. Current repos:
+- **v0** — 33 curated tiny projects under [projects/v0/](projects/v0/). Fast to run, exercises opencode's tool discipline (routing, efficiency, plan-mode adherence, subagents, skills, etc.). Run with `--version v0`.
+- **v1** — tasks against real pinned open-source repos, vendored as git submodules under [projects/v1/](projects/v1/). This is the default when no `--version` flag is passed; `python run.py` runs every v1 sample across every category. Each repo is declared once in [data/v1_repos.json](data/v1_repos.json) with its upstream URL and exact pinned SHA. Current repos:
   - `autoresearch` — [karpathy/autoresearch](https://github.com/karpathy/autoresearch)
   - `requests` — [psf/requests](https://github.com/psf/requests)
 

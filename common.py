@@ -9,8 +9,13 @@ from pathlib import Path
 ROOT = Path(__file__).parent
 SAMPLES_V0 = ROOT / "data" / "samples_v0.jsonl"
 SAMPLES_V1 = ROOT / "data" / "samples_v1.jsonl"
-PROJECTS = ROOT / "projects"
+# Mutable-state roots. Each can be overridden via env var so multiple bench
+# invocations on the same filesystem can run in isolated workspaces (see
+# scripts/run_isolated.sh). Defaults preserve the canonical single-tree
+# behaviour for everyday dev use.
+PROJECTS = Path(os.environ["OPENCODE_BENCH_PROJECTS"]) if "OPENCODE_BENCH_PROJECTS" in os.environ else ROOT / "projects"
 RUNS = Path(os.environ["OPENCODE_BENCH_RUNS"]) if "OPENCODE_BENCH_RUNS" in os.environ else ROOT / "runs"
+CAPTURE_STAGING = Path(os.environ["OPENCODE_BENCH_CAPTURES"]) if "OPENCODE_BENCH_CAPTURES" in os.environ else ROOT / "captures"
 V1_REPOS_PATH = ROOT / "data" / "v1_repos.json"
 
 SAMPLES_FILES = [("v0", SAMPLES_V0), ("v1", SAMPLES_V1)]

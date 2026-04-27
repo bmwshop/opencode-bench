@@ -13,10 +13,10 @@ Each invocation writes to runs/{version}/{model_slug}/{timestamp}/ with:
 The canonical projects/ tree is read-only at runtime.
 
 Usage:
-    python run.py                    # run all v1 code_localization samples (default)
+    python run.py                    # run all v1 samples, every category (default)
     python run.py --version v0       # run all v0 samples (every category)
     python run.py --version v1       # run all v1 samples (every category)
-    python run.py --category all     # disable the default category filter on v1
+    python run.py --category code_review  # narrow to one category
     python run.py --id 21            # run one sample (within selected version/category)
     python run.py --id 21 --id 22    # run multiple samples
     python run.py --category tool_schema
@@ -49,7 +49,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from common import (
-    ROOT, PROJECTS, RUNS,
+    ROOT, PROJECTS, RUNS, CAPTURE_STAGING,
     model_slug, load,
     opencode_meta, opencode_rev_label, resolve_opencode_cmd,
     schema_meta, compare_opencode,
@@ -121,7 +121,7 @@ _TASK_ID_RE = re.compile(r"^task_id:\s*(ses_\w+)", re.M)
 # a sane max_tokens rather than its hardcoded 32000 default, which routinely
 # blows past (max_model_len - input_tokens) and raises ContextOverflowError.
 FALLBACK_CONTEXT_TOKENS = 32768
-CAPTURE_STAGING = ROOT / "captures"
+# CAPTURE_STAGING is imported from common.py; honors OPENCODE_BENCH_CAPTURES.
 
 # Shared across worker threads so multiple parallel run()s don't each hit
 # /v1/models for the same (base_url, model_id) pair.
@@ -562,10 +562,10 @@ def main():
     parser.add_argument(
         "--category",
         action="append",
-        help="Run all samples in a category. When none of --id, --category, "
-             "or --version is passed, defaults to 'code_localization' (v1 "
-             "focus area). Passing --version (even --version v1) disables "
-             "this default; pass --category all to opt out explicitly.",
+        help="Run all samples in a category. May be passed multiple times to "
+             "select a union of categories. When omitted, every category in "
+             "the selected --version runs. Pass `--category all` as an "
+             "explicit no-op equivalent to omitting the flag.",
     )
     parser.add_argument(
         "--version",
@@ -656,20 +656,12 @@ def main():
     )
     args = parser.parse_args()
 
-    # Default category selection: if the caller accepted both defaults
-    # (no --id, no --category, no --version) fall back to code_localization
-    # (the v1 focus area). When the caller explicitly names a version they
-    # usually want the full suite for that version, so we skip the filter
-    # — this also avoids a zero-match trap for `python run.py --version v0`
-    # since v0 has no code_localization samples. `--category all` remains
-    # an explicit way to opt out of the default on v1.
-    version_explicit = any(
-        arg == "--version" or arg.startswith("--version=")
-        for arg in sys.argv[1:]
-    )
-    if not args.id and not args.category and not version_explicit:
-        args.category = ["code_localization"]
-    elif args.category and "all" in args.category:
+    # Default behaviour: with no --id and no --category, run every sample in
+    # the selected --version (default v1). The legacy "default to
+    # code_localization on v1" behaviour was relaxed -- `--version` flag is
+    # now treated identically whether explicit or implicit.
+    # `--category all` remains accepted as an explicit no-op for back-compat.
+    if args.category and "all" in args.category:
         args.category = None
 
     if args.vllm and args.proxy:

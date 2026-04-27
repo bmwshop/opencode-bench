@@ -85,6 +85,31 @@ Notes:
 - It needs network access from the container so `git clone` can fetch the
   upstream repos declared in `data/v1_repos.json`.
 
+### Local parallel runs (without containers): `scripts/run_isolated.sh`
+
+`run_cluster.py` achieves multi-process safety via container isolation: each
+container has its own filesystem and sets `OPENCODE_BENCH_RUNS=/runs` so its
+trace outputs land in a per-container mount. The same pattern works on a
+single machine via env-var-routed workspaces.
+
+The wrapper at `scripts/run_isolated.sh` allocates a fresh `$WORKSPACE` dir,
+exports all three `OPENCODE_BENCH_*` directory overrides
+(`OPENCODE_BENCH_PROJECTS`, `OPENCODE_BENCH_RUNS`, `OPENCODE_BENCH_CAPTURES`),
+runs `hydrate_v1_repos.py` to clone the v1 fixtures into the workspace, and
+finally invokes `run.py`. N parallel invocations get N independent workspaces
+and zero shared mutable state -- the same model `run_cluster.py` uses with
+containers.
+
+```bash
+# 8 parallel runs against the same model on one machine, each in an isolated
+# /tmp/oc-bench-XXXXXX workspace, auto-cleaned on exit:
+for i in 1 2 3 4 5 6 7 8; do
+  bash scripts/run_isolated.sh --version v1 --id 91 --model X &
+done; wait
+```
+
+Use this whenever you need local concurrency without the container plumbing.
+
 ## Quick Start
 
 ```bash

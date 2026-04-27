@@ -22,7 +22,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from common import v1_repos  # noqa: E402
+from common import PROJECTS, v1_repos  # noqa: E402
 
 
 def _run(cmd, cwd=None, check=True, capture_output=True):
@@ -88,7 +88,10 @@ def _target_path(repo, entry):
             f"Repo {repo!r} declares submodule_path={declared!r}; "
             f"expected {expected!r}"
         )
-    return ROOT / declared
+    # Honor OPENCODE_BENCH_PROJECTS override via the PROJECTS constant; the
+    # `projects/` prefix in the manifest's `submodule_path` is implicit
+    # (PROJECTS already points at projects/), so we attach only the "v1/<repo>" tail.
+    return PROJECTS / "v1" / repo
 
 
 def hydrate(repo, entry, dry_run=False):
@@ -147,7 +150,7 @@ def main():
 
     entries = _select_entries(args.repo)
     print(
-        f"Hydrating {len(entries)} v1 repo(s) under {ROOT / 'projects' / 'v1'}"
+        f"Hydrating {len(entries)} v1 repo(s) under {PROJECTS / 'v1'}"
         + (" [dry-run]" if args.dry_run else "")
     )
     for repo, entry in entries:
