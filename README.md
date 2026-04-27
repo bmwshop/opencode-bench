@@ -232,8 +232,8 @@ data/
       ...
       033_write.md
     v1/
-      001_plan_cosine_lr.md
-      002_plan_retry_after.md
+      021_locate_cookie_tokens.md
+      091_pr_review_iter_slices_yes.md
 run.py                   # runner — executes samples via opencode CLI
 eval.py                  # evaluator — scores traces against checks
 common.py                # shared constants, sample loader, path helpers
@@ -313,7 +313,7 @@ Each sample has a `surface` field identifying the opencode capability being test
 
 ## Per-Sample Documentation
 
-Each sample has a detailed spec in `data/specs/` describing the capability under test, project setup, exact prompt, pass criteria, and common failure modes. Specs are namespaced by version — see any spec for the full format, e.g., `data/specs/v0/001_camel_case.md` or `data/specs/v1/001_plan_cosine_lr.md`.
+Each sample has a detailed spec in `data/specs/` describing the capability under test, project setup, exact prompt, pass criteria, and common failure modes. Specs are namespaced by version — see any spec for the full format, e.g., `data/specs/v0/001_camel_case.md` or `data/specs/v1/021_locate_cookie_tokens.md`.
 
 ## Adding a v0 Sample
 
