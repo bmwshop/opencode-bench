@@ -1,11 +1,19 @@
 {
-  "_comment": "Criterion-anchored editing manifest for v1 samples #51-#60. Each entry declares (a) a target function in the pinned requests checkout, (b) a reference edit (oldString -> newString) that implements the required behavior change, (c) a classified list of asserts that the patched function must satisfy, and (d) a set of discovery probes (rg patterns the authoring gate uses to verify the prompt's behavior terms hit 2-4 files in src/requests/ without the file name being leaked in the prompt). The manifest is the single source of truth; scripts/regen_editing.py re-derives the spec markdown and the samples_v1.jsonl rows from it, and scripts/audit_editing.py validates every authoring gate and runs both in-process and end-to-end evaluations. See each entry's prompt for the exact pinned inputs, outputs, and exception classes.",
+  "_comment": "De-leaked criterion-anchored editing manifest for v1 #51-#60. Each entry declares (a) target file(s) and function(s) in the pinned `requests` checkout, (b) reference edit(s) that implement the required behavior change, (c) classified asserts that the patched code must satisfy, (d) discovery probes (rg patterns the audit uses to verify the prompt's behavior cues hit 2-4 files in src/requests/ without leaking the file name), and (e) the de-leak metadata (difficulty, leak_function_name, structural_signature, behavior_prose) that drive the new prompt template. Hard-tier samples use the multi-file `targets` form: each target lists its own functions/constants/imports/reference_edit, optionally `is_new: true` for a synthetic helper the agent must CREATE (such helpers' names are exempt from the function-name hiding gate).",
   "_pin": "79f4df84cf77a2fee873809821dfbd786de05b97",
   "_repo": "requests",
   "samples": [
     {
       "id": 51,
       "name": "edit_iter_slices_require_positive",
+      "difficulty": "medium",
+      "leak_function_name": false,
+      "structural_signature": {
+        "template": "tighten-guard",
+        "scope_kind": "single-file",
+        "answer_shape": "raises-with-substring",
+        "unique_trait": "reject-zero-and-negative-keep-none"
+      },
       "file": "src/requests/utils.py",
       "functions": [
         "iter_slices"
@@ -18,9 +26,8 @@
       },
       "discovery_probes": [
         "def iter_slices",
-        "iter_slices",
-        "slice.*length|length.*slice",
-        "Iterate over slices"
+        "Iterate over slices",
+        "chunked"
       ],
       "asserts": [
         {
@@ -56,7 +63,13 @@
           "misstep": "partial-edit"
         }
       ],
-      "prompt_capability": "The target is the small pure-Python helper that lazily yields fixed-size chunks of a string (used internally to stream request/response bodies). It is defined in the `requests` utilities module.",
+      "prompt_capability": "The target is the small pure-Python helper that lazily yields fixed-size chunks of a string (used internally to stream request and response bodies in chunks). It is defined in the `requests` utilities module.",
+      "behavior_prose": "In this `requests` checkout, the small pure-Python helper that lazily yields fixed-size chunks of a string (used internally to stream request and response bodies) currently silently treats `slice_length=0` and any negative integer as \"use the whole string\". Tighten the helper so that:\n\n- Calling it with `slice_length=0` or any negative integer now raises `ValueError` whose message contains the substring `slice_length`.\n- Calling it with `slice_length=None` continues to mean \"the whole string\": iterating with `None` over `'abc'` still yields exactly `['abc']`.\n- Existing positive-`slice_length` behavior is preserved: chunks of length 2 over `'abcdef'` yield `['ab', 'cd', 'ef']`; chunks of length 3 over `'abcdefg'` yield `['abc', 'def', 'g']`; an empty input string yields `[]`.\n\nThe helper is a top-level generator function under `src/requests/`; locate it by searching the codebase for the docstring `Iterate over slices` or for the parameter named `slice_length`.",
+      "prompt_required_literals": [
+        "['ab', 'cd', 'ef']",
+        "['abc', 'def', 'g']",
+        "[]"
+      ],
       "prompt_fail_modes": [
         "Leaves the `slice_length <= 0` branch silently defaulting to the full string length (`no-change`).",
         "Raises on every non-positive value but also rejects `None`, breaking the 'None means whole string' regression case (`over-edit`).",
@@ -66,6 +79,14 @@
     {
       "id": 52,
       "name": "edit_unicode_is_ascii_accept_bytes",
+      "difficulty": "medium",
+      "leak_function_name": false,
+      "structural_signature": {
+        "template": "extend-acceptance",
+        "scope_kind": "single-file",
+        "answer_shape": "value-equality",
+        "unique_trait": "accept-bytes-and-bytearray"
+      },
       "file": "src/requests/_internal_utils.py",
       "functions": [
         "unicode_is_ascii"
@@ -78,9 +99,8 @@
       },
       "discovery_probes": [
         "def unicode_is_ascii",
-        "unicode_is_ascii",
-        "ASCII|ascii",
-        "encode\\(['\\\"]ascii"
+        "only contains ASCII",
+        "encode\\(\"ascii\"\\)"
       ],
       "asserts": [
         {
@@ -120,29 +140,67 @@
         }
       ],
       "prompt_capability": "The target is the internal helper that tests whether a text value contains only ASCII characters. It lives in a small internal-utilities module shared across the requests package.",
+      "behavior_prose": "In this `requests` checkout, the internal helper that decides whether a text value contains only ASCII characters currently asserts that its argument is a `str` and refuses anything else. Loosen the helper so that:\n\n- Passing a `str` keeps the existing behaviour exactly: `'hello'` returns `True`, `''` returns `True`, and a string containing a non-ASCII codepoint such as `'h\u00e9llo'` returns `False`.\n- Passing a `bytes` value returns `True` iff every byte is strictly less than `128` -- for example `b'hello'` returns `True`, `b''` returns `True`, and `b'h\\xc3\\xa9llo'` returns `False`.\n- Passing a `bytearray` value behaves identically to the equivalent `bytes`: e.g. `bytearray(b'ok')` returns `True`.\n- Any other input continues to fail the existing `isinstance` assertion (i.e. raise `AssertionError`); do NOT broaden acceptance further.\n\nThe helper lives in a small internal-utilities module shared across the `requests` package; locate it by searching the codebase for its docstring (which describes \"only contains ASCII\" characters) or for the parameter named `u_string`.",
+      "prompt_required_literals": [
+        "128",
+        "AssertionError"
+      ],
       "prompt_fail_modes": [
         "Leaves the `assert isinstance(u_string, str)` guard in place, so bytes inputs still fail the assertion (`no-change`).",
         "Accepts bytes but also changes the str path (e.g. now returns `True` for non-ASCII str because of a wrong `all(...)` predicate), breaking regression asserts (`over-edit`).",
         "Handles `bytes` but forgets `bytearray`, or uses a wrong threshold like `b < 127` (`partial-edit`)."
+      ],
+      "mutants": [
+        {
+          "misstep": "partial-edit",
+          "patch": {
+            "oldString": "def unicode_is_ascii(u_string):\n    \"\"\"Determine if unicode string only contains ASCII characters.\n\n    :param str u_string: unicode string to check. Must be unicode\n        and not Python 2 `str`.\n    :rtype: bool\n    \"\"\"\n    assert isinstance(u_string, str)\n    try:\n        u_string.encode(\"ascii\")\n        return True\n    except UnicodeEncodeError:\n        return False\n",
+            "newString": "def unicode_is_ascii(u_string):\n    \"\"\"Determine if unicode string only contains ASCII characters.\n\n    :param str u_string: unicode string to check. Must be unicode\n        and not Python 2 `str`.\n    :rtype: bool\n    \"\"\"\n    if isinstance(u_string, (bytes, bytearray)):\n        return any(b < 128 for b in u_string)\n    assert isinstance(u_string, str)\n    try:\n        u_string.encode(\"ascii\")\n        return True\n    except UnicodeEncodeError:\n        return False\n"
+          }
+        }
       ]
     },
     {
       "id": 53,
-      "name": "edit_to_native_string_reject_unknown",
-      "file": "src/requests/_internal_utils.py",
-      "functions": [
-        "to_native_string"
-      ],
-      "constants": [],
-      "imports": [],
-      "reference_edit": {
-        "oldString": "def to_native_string(string, encoding=\"ascii\"):\n    \"\"\"Given a string object, regardless of type, returns a representation of\n    that string in the native string type, encoding and decoding where\n    necessary. This assumes ASCII unless told otherwise.\n    \"\"\"\n    if isinstance(string, builtin_str):\n        out = string\n    else:\n        out = string.decode(encoding)\n\n    return out\n",
-        "newString": "def to_native_string(string, encoding=\"ascii\"):\n    \"\"\"Given a string object, regardless of type, returns a representation of\n    that string in the native string type, encoding and decoding where\n    necessary. This assumes ASCII unless told otherwise.\n    \"\"\"\n    if isinstance(string, builtin_str):\n        return string\n    if isinstance(string, (bytes, bytearray)):\n        return bytes(string).decode(encoding)\n    raise TypeError(\n        f\"to_native_string expected str or bytes, got {type(string).__name__}\"\n    )\n"
+      "name": "edit_to_native_string_reject_unknown_with_caller",
+      "difficulty": "hard",
+      "leak_function_name": false,
+      "structural_signature": {
+        "template": "cross-file-contract",
+        "scope_kind": "multi-file",
+        "answer_shape": "cross-file-pair",
+        "unique_trait": "impl-rejects-types-caller-rejects-none"
       },
+      "targets": [
+        {
+          "path": "src/requests/_internal_utils.py",
+          "functions": [
+            "to_native_string"
+          ],
+          "constants": [],
+          "imports": [],
+          "reference_edit": {
+            "oldString": "def to_native_string(string, encoding=\"ascii\"):\n    \"\"\"Given a string object, regardless of type, returns a representation of\n    that string in the native string type, encoding and decoding where\n    necessary. This assumes ASCII unless told otherwise.\n    \"\"\"\n    if isinstance(string, builtin_str):\n        out = string\n    else:\n        out = string.decode(encoding)\n\n    return out\n",
+            "newString": "def to_native_string(string, encoding=\"ascii\"):\n    \"\"\"Given a string object, regardless of type, returns a representation of\n    that string in the native string type, encoding and decoding where\n    necessary. This assumes ASCII unless told otherwise.\n    \"\"\"\n    if isinstance(string, builtin_str):\n        return string\n    if isinstance(string, (bytes, bytearray)):\n        return bytes(string).decode(encoding)\n    raise TypeError(\n        f\"to_native_string expected str or bytes, got {type(string).__name__}\"\n    )\n"
+          }
+        },
+        {
+          "path": "src/requests/auth.py",
+          "functions": [
+            "_basic_auth_str"
+          ],
+          "constants": [],
+          "imports": [],
+          "reference_edit": {
+            "oldString": "    if not isinstance(username, basestring):\n        warnings.warn(\n            \"Non-string usernames will no longer be supported in Requests \"\n            f\"3.0.0. Please convert the object you've passed in ({username!r}) to \"\n            \"a string or bytes object in the near future to avoid \"\n            \"problems.\",\n            category=DeprecationWarning,\n        )\n        username = str(username)\n\n    if not isinstance(password, basestring):\n        warnings.warn(\n            \"Non-string passwords will no longer be supported in Requests \"\n            f\"3.0.0. Please convert the object you've passed in ({type(password)!r}) to \"\n            \"a string or bytes object in the near future to avoid \"\n            \"problems.\",\n            category=DeprecationWarning,\n        )\n        password = str(password)",
+            "newString": "    if username is None:\n        username = b\"\"\n    elif not isinstance(username, basestring):\n        warnings.warn(\n            \"Non-string usernames will no longer be supported in Requests \"\n            f\"3.0.0. Please convert the object you've passed in ({username!r}) to \"\n            \"a string or bytes object in the near future to avoid \"\n            \"problems.\",\n            category=DeprecationWarning,\n        )\n        username = str(username)\n\n    if password is None:\n        password = b\"\"\n    elif not isinstance(password, basestring):\n        warnings.warn(\n            \"Non-string passwords will no longer be supported in Requests \"\n            f\"3.0.0. Please convert the object you've passed in ({type(password)!r}) to \"\n            \"a string or bytes object in the near future to avoid \"\n            \"problems.\",\n            category=DeprecationWarning,\n        )\n        password = str(password)"
+          }
+        }
+      ],
       "discovery_probes": [
         "def to_native_string",
-        "native string",
-        "builtin_str"
+        "def _basic_auth_str",
+        "native string type"
       ],
       "asserts": [
         {
@@ -170,28 +228,47 @@
           "misstep": "no-change"
         },
         {
-          "setup": "builtin_str = str\nraised = None\ntry:\n    to_native_string(None)\nexcept TypeError as e:\n    raised = e",
-          "expr": "raised is not None and 'str or bytes' in str(raised)",
+          "setup": "builtin_str = str\nbasestring = (str, bytes)\nimport warnings\nfrom base64 import b64encode",
+          "expr": "_basic_auth_str('user', 'pw') == 'Basic dXNlcjpwdw=='",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "_basic_auth_str(None, 'pw') == 'Basic OnB3'",
           "kind": "new_behavior",
           "misstep": "partial-edit"
         },
         {
-          "setup": "builtin_str = str\nraised = None\ntry:\n    to_native_string([1, 2, 3])\nexcept TypeError as e:\n    raised = e",
-          "expr": "raised is not None and 'str or bytes' in str(raised)",
+          "expr": "_basic_auth_str(None, None) == 'Basic Og=='",
           "kind": "new_behavior",
           "misstep": "partial-edit"
         }
       ],
-      "prompt_capability": "The target is the internal helper that coerces a str or bytes value into the native `str` type. It lives in a small internal-utilities module shared across the requests package. The module already binds `builtin_str` to `str` via its imports.",
+      "prompt_capability": "The target spans two related files: a lower-level coercion helper that converts a `str` or `bytes` value into the native `str` type, and a higher-level helper in a sibling file that uses the lower-level coercion to assemble an HTTP `Basic <token>` authorization header.",
+      "behavior_prose": "In this `requests` checkout, satisfy a defensive contract spread across two related files inside `src/requests/`. The change requires consistent edits in BOTH files; an edit to only one file will not satisfy the hidden grader.\n\nLower-level helper (in a small internal-utilities module of the package):\n\n- The helper today coerces a `str` or `bytes` value into the native `str` type by calling `string.decode(encoding)` blindly on anything that isn't already a `str`, which raises `AttributeError` for non-string inputs (e.g. an `int`).\n- When given a `str`, it must return that `str` unchanged.\n- When given `bytes` or `bytearray`, it must decode using the `encoding` keyword (default `'ascii'`) and return a `str` -- for example `b'hello'` returns `'hello'`, and `b'h\\xc3\\xa9'` decoded as `'utf-8'` returns the single-character accented form `'h\u00e9'`.\n- When given anything else (`int`, `None`, `list`, etc.), it must raise `TypeError` whose message contains the substring `str or bytes`.\n\nHigher-level helper (in a sibling file in the same package -- the basic-authentication helper module):\n\n- There is a top-level helper that builds an HTTP `Basic <token>` authorization header from a username and a password and returns a string of the form `'Basic <base64>'`.\n- For two regular string inputs, it must continue to behave exactly as before -- e.g. `('user', 'pw')` returns `'Basic dXNlcjpwdw=='`.\n- When given `None` for the username, it must now treat the missing username as the empty bytes value `b\"\"` (rather than warning and converting to the literal string `'None'`); concretely `(None, 'pw')` now returns `'Basic OnB3'`.\n- When given `None` for the password, it must symmetrically treat the missing password as `b\"\"`; concretely `(None, None)` now returns `'Basic Og=='`.\n- Any non-`None`, non-string input (e.g. an integer) must continue to fall through to the existing deprecation-warning + `str(...)` coercion path -- do NOT remove that path.\n\nLocate the lower-level helper by searching the codebase for the phrase `native string type`; locate the caller file by searching for the existing top-level builder of HTTP `Basic` authentication strings.",
+      "prompt_required_literals": [
+        "Basic dXNlcjpwdw==",
+        "Basic OnB3",
+        "Basic Og==",
+        "AttributeError"
+      ],
       "prompt_fail_modes": [
-        "Leaves the `else: out = string.decode(encoding)` path, so non-str/bytes inputs raise `AttributeError` instead of `TypeError` (`no-change`).",
-        "Raises `TypeError` for bytes as well, breaking the `b'hello'` regression case (`over-edit`).",
-        "Raises `TypeError` but omits the `str or bytes` substring, or uses a `ValueError` instead (`partial-edit`)."
+        "Edits only the lower-level helper (raises `TypeError` for non-str/bytes) but leaves the higher-level builder unchanged, so `(None, 'pw')` still returns the leaked `'Basic Tm9uZTpwdw=='` (`partial-edit`).",
+        "Edits only the higher-level builder (treats `None` as empty bytes) but leaves the lower-level helper as-is, so non-string inputs still raise `AttributeError` instead of `TypeError` (`partial-edit`).",
+        "Removes the deprecation-warning path from the higher-level builder entirely, so non-`None` non-string inputs no longer go through the existing `str(...)` coercion (`over-edit`)."
       ]
     },
     {
       "id": 54,
       "name": "edit_unquote_header_value_none_returns_empty",
+      "difficulty": "easy",
+      "leak_function_name": true,
+      "structural_signature": {
+        "template": "early-return-on-none",
+        "scope_kind": "single-file",
+        "answer_shape": "value-equality",
+        "unique_trait": "none-input-returns-empty-string"
+      },
       "file": "src/requests/utils.py",
       "functions": [
         "unquote_header_value"
@@ -204,9 +281,8 @@
       },
       "discovery_probes": [
         "def unquote_header_value",
-        "unquote_header_value",
-        "header value|header_value",
-        "unquote"
+        "Reversal of :func:`quote_header_value`",
+        "header value"
       ],
       "asserts": [
         {
@@ -240,78 +316,109 @@
           "misstep": "partial-edit"
         }
       ],
-      "prompt_capability": "The target is the internal helper that reverses `quote_header_value`, stripping the surrounding double quotes and unescaping `\\\\` and `\\\"` inside them. It lives in the `requests` utilities module and is invoked while parsing HTTP list-style headers.",
+      "prompt_capability": "The target is the internal helper `unquote_header_value` that reverses `quote_header_value`, stripping the surrounding double quotes and unescaping `\\\\` and `\\\"` inside them. It lives in the `requests` utilities module and is invoked while parsing HTTP list-style headers.",
+      "behavior_prose": "Modify the function `unquote_header_value` (declared at module scope inside the `requests` utilities module) so that it tolerates `None` inputs without changing any of its existing behaviour:\n\n- Calling `unquote_header_value(None)` now returns `''` (the empty string).\n- Calling `unquote_header_value(None, is_filename=True)` also returns `''`.\n- All existing behaviour on string inputs is preserved exactly: `unquote_header_value('\"hello\"')` returns `'hello'`, `unquote_header_value('hello')` returns `'hello'`, `unquote_header_value('')` returns `''`, and `unquote_header_value('\"hello world\"')` returns `'hello world'`.\n\nThe minimal change is a single early-return guard at the top of the function body; do NOT change the existing quoting/unescaping logic.",
+      "prompt_required_literals": [
+        "is_filename=True"
+      ],
       "prompt_fail_modes": [
         "Leaves the function unchanged, so `None` input returns `None` rather than `\"\"` (`no-change`).",
         "Adds a top-level `if not value: return \"\"`, which changes the behavior for `\"\"` (still `\"\"`) but also silently discards any falsy-but-non-None exotic inputs (`over-edit`).",
         "Handles `None` but only for the default `is_filename=False` path, leaving `unquote_header_value(None, is_filename=True)` still returning `None` (`partial-edit`)."
+      ],
+      "mutants": [
+        {
+          "misstep": "partial-edit",
+          "patch": {
+            "oldString": "def unquote_header_value(value, is_filename=False):\n    r\"\"\"Unquotes a header value.  (Reversal of :func:`quote_header_value`).\n    This does not use the real unquoting but what browsers are actually\n    using for quoting.\n\n    :param value: the header value to unquote.\n    :rtype: str\n    \"\"\"\n    if value and value[0] == value[-1] == '\"':",
+            "newString": "def unquote_header_value(value, is_filename=False):\n    r\"\"\"Unquotes a header value.  (Reversal of :func:`quote_header_value`).\n    This does not use the real unquoting but what browsers are actually\n    using for quoting.\n\n    :param value: the header value to unquote.\n    :rtype: str\n    \"\"\"\n    if value is None:\n        return None\n    if value and value[0] == value[-1] == '\"':"
+          }
+        }
       ]
     },
     {
       "id": 55,
-      "name": "edit_dotted_netmask_reject_out_of_range",
+      "name": "edit_parse_header_links_skip_empty_url",
+      "difficulty": "medium",
+      "leak_function_name": false,
+      "structural_signature": {
+        "template": "extend-comprehension",
+        "scope_kind": "single-file",
+        "answer_shape": "value-equality",
+        "unique_trait": "filter-empty-url-entries-from-link-list"
+      },
       "file": "src/requests/utils.py",
       "functions": [
-        "dotted_netmask"
+        "parse_header_links"
       ],
       "constants": [],
       "imports": [
-        "socket",
-        "struct"
+        "re"
       ],
       "reference_edit": {
-        "oldString": "def dotted_netmask(mask):\n    \"\"\"Converts mask from /xx format to xxx.xxx.xxx.xxx\n\n    Example: if mask is 24 function returns 255.255.255.0\n\n    :rtype: str\n    \"\"\"\n    bits = 0xFFFFFFFF ^ (1 << 32 - mask) - 1\n    return socket.inet_ntoa(struct.pack(\">I\", bits))\n",
-        "newString": "def dotted_netmask(mask):\n    \"\"\"Converts mask from /xx format to xxx.xxx.xxx.xxx\n\n    Example: if mask is 24 function returns 255.255.255.0\n\n    :rtype: str\n    \"\"\"\n    if not isinstance(mask, int) or isinstance(mask, bool) or mask < 0 or mask > 32:\n        raise ValueError(f\"dotted_netmask: mask must be an int in [0, 32], got {mask!r}\")\n    if mask == 0:\n        bits = 0\n    else:\n        bits = 0xFFFFFFFF ^ (1 << 32 - mask) - 1\n    return socket.inet_ntoa(struct.pack(\">I\", bits))\n"
+        "oldString": "    for val in re.split(\", *<\", value):\n        try:\n            url, params = val.split(\";\", 1)\n        except ValueError:\n            url, params = val, \"\"\n\n        link = {\"url\": url.strip(\"<> '\\\"\")}\n\n        for param in params.split(\";\"):\n            try:\n                key, value = param.split(\"=\")\n            except ValueError:\n                break\n\n            link[key.strip(replace_chars)] = value.strip(replace_chars)\n\n        links.append(link)\n\n    return links",
+        "newString": "    for val in re.split(\", *<\", value):\n        try:\n            url, params = val.split(\";\", 1)\n        except ValueError:\n            url, params = val, \"\"\n\n        link = {\"url\": url.strip(\"<> '\\\"\")}\n\n        for param in params.split(\";\"):\n            try:\n                key, value = param.split(\"=\")\n            except ValueError:\n                break\n\n            link[key.strip(replace_chars)] = value.strip(replace_chars)\n\n        if link[\"url\"]:\n            links.append(link)\n\n    return links"
       },
       "discovery_probes": [
-        "def dotted_netmask",
-        "netmask",
-        "network"
+        "def parse_header_links",
+        "header_links",
+        "front.jpeg"
       ],
       "asserts": [
         {
-          "expr": "dotted_netmask(24) == '255.255.255.0'",
+          "expr": "parse_header_links('<http://a.example/x>; rel=next') == [{'url': 'http://a.example/x', 'rel': 'next'}]",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "parse_header_links('') == []",
           "kind": "regression",
           "misstep": "no-change"
         },
         {
-          "expr": "dotted_netmask(16) == '255.255.0.0'",
+          "expr": "parse_header_links('<http://a.example/x>; rel=front; type=\"image/jpeg\", <http://a.example/y>; rel=back; type=\"image/jpeg\"') == [{'url': 'http://a.example/x', 'rel': 'front', 'type': 'image/jpeg'}, {'url': 'http://a.example/y', 'rel': 'back', 'type': 'image/jpeg'}]",
           "kind": "regression",
           "misstep": "over-edit"
         },
         {
-          "expr": "dotted_netmask(32) == '255.255.255.255'",
-          "kind": "regression",
-          "misstep": "over-edit"
-        },
-        {
-          "expr": "dotted_netmask(0) == '0.0.0.0'",
-          "kind": "regression",
-          "misstep": "partial-edit"
-        },
-        {
-          "setup": "raised = None\ntry:\n    dotted_netmask(-1)\nexcept ValueError as e:\n    raised = e",
-          "expr": "raised is not None and 'mask' in str(raised)",
+          "expr": "parse_header_links('<>; rel=empty') == []",
           "kind": "new_behavior",
           "misstep": "no-change"
         },
         {
-          "setup": "raised = None\ntry:\n    dotted_netmask(33)\nexcept ValueError as e:\n    raised = e",
-          "expr": "raised is not None and 'mask' in str(raised)",
+          "expr": "parse_header_links('<http://a.example/x>; rel=front, <>; rel=junk, <http://a.example/y>; rel=back') == [{'url': 'http://a.example/x', 'rel': 'front'}, {'url': 'http://a.example/y', 'rel': 'back'}]",
           "kind": "new_behavior",
           "misstep": "partial-edit"
         }
       ],
-      "prompt_capability": "The target converts an integer CIDR mask length (e.g. 24) into its dotted-quad representation (e.g. `'255.255.255.0'`). It lives in the `requests` utilities module alongside other small IP-address helpers.",
+      "prompt_capability": "The target is the small helper that parses HTTP `Link:` header values into a list of `{'url': ..., <params>}` dictionaries (used by `Response.links`). It lives in the `requests` utilities module alongside the other RFC-2068 header parsers.",
+      "behavior_prose": "In this `requests` checkout, the helper that parses an HTTP `Link:` header value into a list of `{'url': ..., <params>}` dictionaries currently includes entries whose `'url'` field is the empty string -- for example, a malformed header fragment like `<>; rel=junk` produces an entry with `'url': ''` instead of being skipped entirely. Tighten the helper so that:\n\n- Entries whose parsed `'url'` field is the empty string are skipped from the returned list. For example, parsing `<>; rel=empty` returns `[]`. Parsing `<http://a.example/x>; rel=front, <>; rel=junk, <http://a.example/y>; rel=back` returns exactly two entries: `{'url': 'http://a.example/x', 'rel': 'front'}` and `{'url': 'http://a.example/y', 'rel': 'back'}` (the `<>` fragment is silently dropped).\n- Existing behaviour on well-formed inputs is preserved exactly: `<http://a.example/x>; rel=next` parses to `[{'url': 'http://a.example/x', 'rel': 'next'}]`; an empty input string still returns `[]`; a multi-link header carrying typed parameters such as `type=\"image/jpeg\"` still produces both entries with their `'rel'` and `'type'` keys intact -- e.g. parsing the two-link form yields a list whose first dict is `{'url': 'http://a.example/x', 'rel': 'front', 'type': 'image/jpeg'}` and whose second is `{'url': 'http://a.example/y', 'rel': 'back', 'type': 'image/jpeg'}`.\n\nThe helper lives in the `requests` utilities module alongside the other RFC-2068 header parsers; locate it by searching for the docstring example mentioning `front.jpeg`.",
+      "prompt_required_literals": [
+        "[]",
+        "'url'",
+        "'rel'",
+        "'type'",
+        "'image/jpeg'",
+        "'http://a.example/x'",
+        "'http://a.example/y'"
+      ],
       "prompt_fail_modes": [
-        "Leaves the function unchanged, so out-of-range masks silently produce garbage (no ValueError) (`no-change`).",
-        "Adds a range check but also restricts the valid range (e.g. `[1, 32]` rather than `[0, 32]`), breaking the `dotted_netmask(0) == '0.0.0.0'` assert (`partial-edit`).",
-        "Raises `ValueError` but forgets to also return `'0.0.0.0'` for mask 0 (the bit-twiddling `1 << 32` overflows or produces wrong bits on `mask=0`) (`partial-edit`)."
+        "Leaves the function unchanged, so empty-URL entries continue to appear in the returned list (`no-change`).",
+        "Filters too aggressively (e.g. drops entries when any single param value is empty, not just `url`), breaking the multi-link regression case (`over-edit`).",
+        "Filters at the wrong stage (e.g. drops the entire iteration when one entry has empty `url`, instead of just skipping that one entry), so well-formed neighbouring entries are also lost (`partial-edit`)."
       ]
     },
     {
       "id": 56,
       "name": "edit_is_ipv4_address_nonstr_returns_false",
+      "difficulty": "easy",
+      "leak_function_name": true,
+      "structural_signature": {
+        "template": "early-return-type-check",
+        "scope_kind": "single-file",
+        "answer_shape": "value-equality",
+        "unique_trait": "non-string-input-returns-false"
+      },
       "file": "src/requests/utils.py",
       "functions": [
         "is_ipv4_address"
@@ -326,8 +433,8 @@
       },
       "discovery_probes": [
         "def is_ipv4_address",
-        "IPv4",
-        "network"
+        "is_ipv4_address",
+        "should_bypass_proxies"
       ],
       "asserts": [
         {
@@ -366,16 +473,37 @@
           "misstep": "partial-edit"
         }
       ],
-      "prompt_capability": "The target is the predicate that tests whether a value is a valid textual IPv4 address. It lives in the `requests` utilities module alongside other small IP-address helpers.",
+      "prompt_capability": "The target is the predicate `is_ipv4_address` that tests whether a value is a valid textual IPv4 address. It lives in the `requests` utilities module alongside other small IP-address helpers.",
+      "behavior_prose": "Modify the function `is_ipv4_address` (declared at module scope inside the `requests` utilities module) so that it returns `False` (rather than raising `TypeError`) for any non-`str` input, while preserving its existing behaviour on string inputs:\n\n- `is_ipv4_address(None)` now returns `False`.\n- `is_ipv4_address(123)` (any non-string integer) returns `False`.\n- `is_ipv4_address(b'192.168.1.1')` (bytes value) returns `False`.\n- All existing behaviour on string inputs is preserved exactly: `'192.168.1.1'` returns `True`, `'10.0.0.0'` returns `True`, `'not-an-ip'` returns `False`, and `'256.1.1.1'` returns `False`.\n\nThe minimal change is a single early-return guard at the top of the function body that checks `isinstance(string_ip, str)`. Do NOT broaden the guard to use `try`/`except Exception` (that masks genuine bugs).",
+      "prompt_required_literals": [
+        "isinstance(string_ip, str)"
+      ],
       "prompt_fail_modes": [
         "Leaves the function unchanged, so passing `None`/`int`/`bytes` crashes with `TypeError` instead of returning False (`no-change`).",
         "Catches all exceptions (`except Exception`) to mask the bug, which also silences genuine bugs in the body (`over-edit`).",
         "Accepts `bytes` as valid (because `socket.inet_aton` does accept bytes on some platforms) instead of rejecting everything that's not `str` (`partial-edit`)."
+      ],
+      "mutants": [
+        {
+          "misstep": "partial-edit",
+          "patch": {
+            "oldString": "def is_ipv4_address(string_ip):\n    \"\"\"\n    :rtype: bool\n    \"\"\"\n    try:\n        socket.inet_aton(string_ip)\n    except OSError:\n        return False\n    return True\n",
+            "newString": "def is_ipv4_address(string_ip):\n    \"\"\"\n    :rtype: bool\n    \"\"\"\n    if isinstance(string_ip, str):\n        return False\n    try:\n        socket.inet_aton(string_ip)\n    except OSError:\n        return False\n    return True\n"
+          }
+        }
       ]
     },
     {
       "id": 57,
       "name": "edit_is_valid_cidr_accept_zero_mask",
+      "difficulty": "medium",
+      "leak_function_name": false,
+      "structural_signature": {
+        "template": "loosen-bound",
+        "scope_kind": "single-file",
+        "answer_shape": "value-equality",
+        "unique_trait": "accept-zero-mask-reject-negative"
+      },
       "file": "src/requests/utils.py",
       "functions": [
         "is_valid_cidr"
@@ -390,7 +518,7 @@
       },
       "discovery_probes": [
         "def is_valid_cidr",
-        "CIDR",
+        "Very simple check of the cidr format",
         "no_proxy"
       ],
       "asserts": [
@@ -436,6 +564,13 @@
         }
       ],
       "prompt_capability": "The target is the predicate used by `no_proxy` matching to check whether a string looks like a valid CIDR network (e.g. `10.0.0.0/8`). It lives in the `requests` utilities module alongside other small IP-address helpers.",
+      "behavior_prose": "In this `requests` checkout, the predicate used by `no_proxy` matching to validate a CIDR network string (e.g. `10.0.0.0/8`) currently rejects the all-routes mask `/0`. Loosen the predicate so that:\n\n- A mask of `0` is now valid: `'0.0.0.0/0'` returns `True` and `'10.0.0.0/0'` returns `True`.\n- Negative masks remain invalid: `'192.168.1.0/-1'` returns `False`.\n- All existing rejections are preserved: `'192.168.1.0/33'` returns `False`, `'not-a-cidr'` returns `False`, and `'192.168.1.0'` (no mask, no `/`) returns `False`.\n- All existing acceptances are preserved: `'192.168.1.0/24'` returns `True` and `'10.0.0.0/8'` returns `True`.\n\nThe predicate lives in the `requests` utilities module alongside other small IP-address helpers and is invoked while parsing the `no_proxy` environment variable; locate it by searching for the comment about `cidr format` or for the `no_proxy` keyword.",
+      "prompt_required_literals": [
+        "no_proxy",
+        "/0",
+        "10.0.0.0/8",
+        "192.168.1.0/-1"
+      ],
       "prompt_fail_modes": [
         "Leaves the function unchanged, so `/0` is still rejected (`no-change`).",
         "Accepts `/0` but also silently accepts `/-1` (e.g. by dropping the lower bound entirely) (`over-edit`).",
@@ -445,6 +580,14 @@
     {
       "id": 58,
       "name": "edit_default_hooks_include_request",
+      "difficulty": "easy",
+      "leak_function_name": true,
+      "structural_signature": {
+        "template": "extend-registry",
+        "scope_kind": "single-file",
+        "answer_shape": "value-equality",
+        "unique_trait": "extend-module-level-hook-event-list"
+      },
       "file": "src/requests/hooks.py",
       "functions": [
         "default_hooks"
@@ -459,9 +602,8 @@
       },
       "discovery_probes": [
         "def default_hooks",
-        "default_hooks|HOOKS",
-        "hook",
-        "response.*event|event.*hook"
+        "default_hooks",
+        "HOOKS = "
       ],
       "asserts": [
         {
@@ -495,31 +637,71 @@
           "misstep": "partial-edit"
         }
       ],
-      "prompt_capability": "The target is the tiny hooks module that declares the list of hook event names and returns a default, empty hook registry. The file already defines a module-level list of supported hook names; the default hook registry is built as a dict comprehension over that list.",
+      "prompt_capability": "The target is the tiny hooks module that declares the list of hook event names and the helper `default_hooks` that returns a default, empty hook registry. The file already defines a module-level list of supported hook names; the default hook registry is built as a dict comprehension over that list.",
+      "behavior_prose": "Modify the function `default_hooks` and its supporting module-level state (declared in the tiny hooks module of the `requests` package) so that the hook system supports a `'request'` event in addition to the existing `'response'` event:\n\n- The module-level list of hook event names (currently exactly `['response']`) must become exactly `['response', 'request']`, in that order, with length `2`.\n- `default_hooks()` must continue to return a `dict` whose `'response'` key maps to `[]` (the empty list).\n- `default_hooks()` must additionally have a `'request'` key that maps to `[]`.\n- `len(default_hooks())` must equal exactly `2`.\n\nThe minimal change is to extend the module-level list and let the existing dict comprehension propagate the new key automatically. Do NOT hard-code the `'request'` key directly in the comprehension or append a non-empty default callback list.",
+      "prompt_required_literals": [
+        "['response', 'request']",
+        "'response'",
+        "'request'",
+        "[]"
+      ],
       "prompt_fail_modes": [
         "Leaves the module unchanged, so `'request' not in default_hooks()` (`no-change`).",
         "Adds `'request'` to the registry but as a non-empty list (e.g. a default callback), breaking the `== []` assert (`over-edit`).",
         "Adds `'request'` only to the returned dict via a hardcoded key, without updating the module-level list of hook names, so the new-behavior assert on the list fails (`partial-edit`)."
+      ],
+      "mutants": [
+        {
+          "misstep": "partial-edit",
+          "patch": {
+            "oldString": "HOOKS = [\"response\"]\n\n\ndef default_hooks():\n    return {event: [] for event in HOOKS}\n",
+            "newString": "HOOKS = [\"response\"]\nREQUEST_EVENT = \"request\"\n\n\ndef default_hooks():\n    return {event: [] for event in HOOKS}\n"
+          }
+        }
       ]
     },
     {
       "id": 59,
-      "name": "edit_dispatch_hook_skip_none_hooks",
-      "file": "src/requests/hooks.py",
-      "functions": [
-        "dispatch_hook"
-      ],
-      "constants": [],
-      "imports": [],
-      "reference_edit": {
-        "oldString": "def dispatch_hook(key, hooks, hook_data, **kwargs):\n    \"\"\"Dispatches a hook dictionary on a given piece of data.\"\"\"\n    hooks = hooks or {}\n    hooks = hooks.get(key)\n    if hooks:\n        if hasattr(hooks, \"__call__\"):\n            hooks = [hooks]\n        for hook in hooks:\n            _hook_data = hook(hook_data, **kwargs)\n            if _hook_data is not None:\n                hook_data = _hook_data\n    return hook_data\n",
-        "newString": "def dispatch_hook(key, hooks, hook_data, **kwargs):\n    \"\"\"Dispatches a hook dictionary on a given piece of data.\"\"\"\n    hooks = hooks or {}\n    hooks = hooks.get(key)\n    if hooks:\n        if hasattr(hooks, \"__call__\"):\n            hooks = [hooks]\n        for hook in hooks:\n            if hook is None:\n                continue\n            _hook_data = hook(hook_data, **kwargs)\n            if _hook_data is not None:\n                hook_data = _hook_data\n    return hook_data\n"
+      "name": "edit_dispatch_hook_skip_none_with_caller",
+      "difficulty": "hard",
+      "leak_function_name": false,
+      "structural_signature": {
+        "template": "cross-file-contract",
+        "scope_kind": "multi-file",
+        "answer_shape": "cross-file-pair",
+        "unique_trait": "impl-skips-none-caller-validates-shape"
       },
+      "targets": [
+        {
+          "path": "src/requests/hooks.py",
+          "functions": [
+            "dispatch_hook"
+          ],
+          "constants": [],
+          "imports": [],
+          "reference_edit": {
+            "oldString": "def dispatch_hook(key, hooks, hook_data, **kwargs):\n    \"\"\"Dispatches a hook dictionary on a given piece of data.\"\"\"\n    hooks = hooks or {}\n    hooks = hooks.get(key)\n    if hooks:\n        if hasattr(hooks, \"__call__\"):\n            hooks = [hooks]\n        for hook in hooks:\n            _hook_data = hook(hook_data, **kwargs)\n            if _hook_data is not None:\n                hook_data = _hook_data\n    return hook_data\n",
+            "newString": "def dispatch_hook(key, hooks, hook_data, **kwargs):\n    \"\"\"Dispatches a hook dictionary on a given piece of data.\"\"\"\n    hooks = hooks or {}\n    hooks = hooks.get(key)\n    if hooks:\n        if hasattr(hooks, \"__call__\"):\n            hooks = [hooks]\n        for hook in hooks:\n            if hook is None:\n                continue\n            _hook_data = hook(hook_data, **kwargs)\n            if _hook_data is not None:\n                hook_data = _hook_data\n    return hook_data\n"
+          }
+        },
+        {
+          "path": "src/requests/sessions.py",
+          "functions": [
+            "apply_response_hooks"
+          ],
+          "constants": [],
+          "imports": [],
+          "is_new": true,
+          "reference_edit": {
+            "oldString": "    return merge_setting(request_hooks, session_hooks, dict_class)\n\n\nclass SessionRedirectMixin:",
+            "newString": "    return merge_setting(request_hooks, session_hooks, dict_class)\n\n\ndef apply_response_hooks(hooks, response):\n    \"\"\"Defensive wrapper for invoking the 'response' hook chain.\n\n    Returns ``response`` unchanged when ``hooks`` is None, when ``hooks``\n    is not a dict, or when the dict has no ``'response'`` key. Otherwise\n    delegates to :func:`dispatch_hook` with the ``'response'`` event.\n    \"\"\"\n    if hooks is None:\n        return response\n    if not isinstance(hooks, dict):\n        return response\n    if \"response\" not in hooks:\n        return response\n    return dispatch_hook(\"response\", hooks, response)\n\n\nclass SessionRedirectMixin:"
+          }
+        }
+      ],
       "discovery_probes": [
         "def dispatch_hook",
-        "dispatch_hook",
-        "hook",
-        "hook_data|hooks\\["
+        "Dispatches a hook",
+        "merge_hooks"
       ],
       "asserts": [
         {
@@ -553,39 +735,86 @@
           "misstep": "partial-edit"
         },
         {
-          "expr": "dispatch_hook('response', {'response': [lambda d: d + 1, None, lambda d: d * 2]}, 10) == 22",
+          "expr": "apply_response_hooks(None, 'r') == 'r'",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "apply_response_hooks({}, 'r') == 'r'",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "apply_response_hooks([1, 2, 3], 'r') == 'r'",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "apply_response_hooks({'response': [None, lambda d: d.upper()]}, 'hi') == 'HI'",
           "kind": "new_behavior",
           "misstep": "partial-edit"
         }
       ],
-      "prompt_capability": "The target is the hook-dispatch utility that runs every registered callback for a given event against a piece of data, using a callback's return value (if not `None`) as the new data. It lives in the tiny hooks module of the `requests` package.",
+      "prompt_capability": "The target spans two related files: a low-level hook dispatcher in the tiny hooks module, plus a defensive wrapper that the agent must add to the session module that already houses `merge_hooks` and `merge_setting`.",
+      "behavior_prose": "In this `requests` checkout, satisfy a defensive contract spread across two related files inside `src/requests/`. The change requires consistent edits in BOTH files; a single-file edit will not satisfy the hidden grader.\n\nLower-level dispatcher (in the tiny hooks module of the package):\n\n- Today, the dispatcher runs every registered callback for an event against a piece of data, returning the last non-`None` callback result. If the callback list contains a `None` entry the dispatcher crashes (calling `None(...)` raises `TypeError: 'NoneType' object is not callable`).\n- Tighten the dispatcher so a `None` entry in the callback list is silently skipped. Concretely: with `hook_data=10` and the callback list `[lambda d: d + 1]`, the dispatcher must still return `11`; with the same data and the list `[None, lambda d: d + 1]`, the dispatcher must now return `11` (the `None` entry is skipped); with `[None]` it must return `10`.\n- All existing behaviour is preserved exactly: with no hooks the data is returned unchanged; with a hooks dict of `None` or `{}` the data is returned unchanged; a single-callable hook value (not wrapped in a list) is still invoked; chained hooks still propagate the last non-`None` callback result.\n\nHigher-level helper (in the sibling session module that already contains the existing top-level `merge_hooks` and `merge_setting` helpers):\n\n- Add a NEW top-level helper named `apply_response_hooks(hooks, response)` that defends against malformed `hooks` arguments before delegating to the lower-level dispatcher. It must:\n  - Return `response` unchanged when `hooks` is `None`.\n  - Return `response` unchanged when `hooks` is not a `dict` (e.g. a list or any other non-dict value).\n  - Return `response` unchanged when `hooks` is a dict that does not contain the key `'response'`.\n  - Otherwise delegate to the lower-level dispatcher with the event key `'response'` (and return its result).\n- For example: `apply_response_hooks(None, 'r')` returns `'r'`; `apply_response_hooks({}, 'r')` returns `'r'`; and `apply_response_hooks({'response': [None, lambda d: d.upper()]}, 'hi')` returns `'HI'`.\n\nLocate the lower-level dispatcher by searching the codebase for the docstring `Dispatches a hook` or for the callback-iteration loop; locate the sibling caller file by searching for the existing top-level `merge_hooks` helper.",
+      "prompt_required_literals": [
+        "apply_response_hooks(hooks, response)",
+        "merge_hooks",
+        "'response'",
+        "[None, lambda d: d + 1]"
+      ],
       "prompt_fail_modes": [
-        "Leaves the loop unchanged, so a `None` entry in the hook list raises `TypeError: 'NoneType' object is not callable` (`no-change`).",
-        "Skips the entire callback list when any `None` is present (e.g. `if None in hooks: return hook_data`), breaking the mixed-list regression (`over-edit`).",
-        "Skips `None` only in the list-path but not the single-callable path; still fine because the single-callable path never sees `None` -- but a naive fix that converts hooks to `[h for h in hooks if h]` also drops other falsy callbacks (`partial-edit`)."
+        "Edits only the lower-level dispatcher (skips `None` entries) but never adds the new sibling helper, so the new-behavior asserts on `apply_response_hooks` fail (`partial-edit`).",
+        "Adds the sibling helper but doesn't touch the dispatcher, so a `None` entry in a callback list still crashes the dispatcher (`partial-edit`).",
+        "Replaces the callback list with `[h for h in hooks if h]`, which also drops other falsy callbacks instead of just `None` (`over-edit`)."
       ]
     },
     {
       "id": 60,
-      "name": "edit_address_in_network_invalid_returns_false",
-      "file": "src/requests/utils.py",
-      "functions": [
-        "address_in_network",
-        "dotted_netmask"
-      ],
-      "constants": [],
-      "imports": [
-        "socket",
-        "struct"
-      ],
-      "reference_edit": {
-        "oldString": "def address_in_network(ip, net):\n    \"\"\"This function allows you to check if an IP belongs to a network subnet\n\n    Example: returns True if ip = 192.168.1.1 and net = 192.168.1.0/24\n             returns False if ip = 192.168.1.1 and net = 192.168.100.0/24\n\n    :rtype: bool\n    \"\"\"\n    ipaddr = struct.unpack(\"=L\", socket.inet_aton(ip))[0]\n    netaddr, bits = net.split(\"/\")\n    netmask = struct.unpack(\"=L\", socket.inet_aton(dotted_netmask(int(bits))))[0]\n    network = struct.unpack(\"=L\", socket.inet_aton(netaddr))[0] & netmask\n    return (ipaddr & netmask) == (network & netmask)\n",
-        "newString": "def address_in_network(ip, net):\n    \"\"\"This function allows you to check if an IP belongs to a network subnet\n\n    Example: returns True if ip = 192.168.1.1 and net = 192.168.1.0/24\n             returns False if ip = 192.168.1.1 and net = 192.168.100.0/24\n\n    :rtype: bool\n    \"\"\"\n    try:\n        ipaddr = struct.unpack(\"=L\", socket.inet_aton(ip))[0]\n        netaddr, bits = net.split(\"/\")\n        netmask = struct.unpack(\"=L\", socket.inet_aton(dotted_netmask(int(bits))))[0]\n        network = struct.unpack(\"=L\", socket.inet_aton(netaddr))[0] & netmask\n    except (OSError, ValueError, AttributeError, TypeError):\n        return False\n    return (ipaddr & netmask) == (network & netmask)\n"
+      "name": "edit_address_in_network_invalid_with_caller",
+      "difficulty": "hard",
+      "leak_function_name": false,
+      "structural_signature": {
+        "template": "cross-file-contract",
+        "scope_kind": "multi-file",
+        "answer_shape": "cross-file-pair",
+        "unique_trait": "impl-validates-caller-prefilters"
       },
+      "targets": [
+        {
+          "path": "src/requests/utils.py",
+          "functions": [
+            "address_in_network",
+            "dotted_netmask"
+          ],
+          "constants": [],
+          "imports": [
+            "socket",
+            "struct"
+          ],
+          "reference_edit": {
+            "oldString": "def address_in_network(ip, net):\n    \"\"\"This function allows you to check if an IP belongs to a network subnet\n\n    Example: returns True if ip = 192.168.1.1 and net = 192.168.1.0/24\n             returns False if ip = 192.168.1.1 and net = 192.168.100.0/24\n\n    :rtype: bool\n    \"\"\"\n    ipaddr = struct.unpack(\"=L\", socket.inet_aton(ip))[0]\n    netaddr, bits = net.split(\"/\")\n    netmask = struct.unpack(\"=L\", socket.inet_aton(dotted_netmask(int(bits))))[0]\n    network = struct.unpack(\"=L\", socket.inet_aton(netaddr))[0] & netmask\n    return (ipaddr & netmask) == (network & netmask)\n",
+            "newString": "def address_in_network(ip, net):\n    \"\"\"This function allows you to check if an IP belongs to a network subnet\n\n    Example: returns True if ip = 192.168.1.1 and net = 192.168.1.0/24\n             returns False if ip = 192.168.1.1 and net = 192.168.100.0/24\n\n    :rtype: bool\n    \"\"\"\n    try:\n        ipaddr = struct.unpack(\"=L\", socket.inet_aton(ip))[0]\n        netaddr, bits = net.split(\"/\")\n        netmask = struct.unpack(\"=L\", socket.inet_aton(dotted_netmask(int(bits))))[0]\n        network = struct.unpack(\"=L\", socket.inet_aton(netaddr))[0] & netmask\n    except (OSError, ValueError, AttributeError, TypeError):\n        return False\n    return (ipaddr & netmask) == (network & netmask)\n"
+          }
+        },
+        {
+          "path": "src/requests/adapters.py",
+          "functions": [
+            "_proxy_target_in_network"
+          ],
+          "constants": [],
+          "imports": [],
+          "is_new": true,
+          "reference_edit": {
+            "oldString": "DEFAULT_POOLBLOCK = False\nDEFAULT_POOLSIZE = 10\nDEFAULT_RETRIES = 0\nDEFAULT_POOL_TIMEOUT = None\n\n\ndef _urllib3_request_context(",
+            "newString": "DEFAULT_POOLBLOCK = False\nDEFAULT_POOLSIZE = 10\nDEFAULT_RETRIES = 0\nDEFAULT_POOL_TIMEOUT = None\n\n\ndef _proxy_target_in_network(target_ip, cidr):\n    \"\"\"Defensive wrapper for CIDR membership testing in proxy logic.\n\n    Returns ``False`` when either ``target_ip`` or ``cidr`` is ``None``\n    or an empty string, otherwise delegates to ``address_in_network``\n    (which is itself defensive against malformed IP / CIDR strings).\n    \"\"\"\n    if target_ip is None or target_ip == \"\":\n        return False\n    if cidr is None or cidr == \"\":\n        return False\n    return address_in_network(target_ip, cidr)\n\n\ndef _urllib3_request_context("
+          }
+        }
+      ],
       "discovery_probes": [
         "def address_in_network",
-        "subnet",
-        "network"
+        "HTTPAdapter",
+        "DEFAULT_POOLBLOCK"
       ],
       "asserts": [
         {
@@ -617,13 +846,1788 @@
           "expr": "address_in_network('192.168.1.1', '192.168.1.0/not-a-mask') is False",
           "kind": "new_behavior",
           "misstep": "partial-edit"
+        },
+        {
+          "expr": "_proxy_target_in_network(None, '192.168.1.0/24') is False",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "_proxy_target_in_network('', '192.168.1.0/24') is False",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "_proxy_target_in_network('192.168.1.1', None) is False",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "_proxy_target_in_network('192.168.1.1', '192.168.1.0/24') is True",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
         }
       ],
-      "prompt_capability": "The target tests whether an IPv4 address belongs to a CIDR subnet. It lives in the `requests` utilities module alongside other small IP-address helpers, and delegates the mask conversion to `dotted_netmask`.",
+      "prompt_capability": "The target spans two related files: a CIDR-membership test in the `requests` utilities module, and a defensive wrapper the agent must add to the HTTP-adapter module so that proxy logic can call the membership test on potentially malformed inputs.",
+      "behavior_prose": "In this `requests` checkout, satisfy a defensive contract spread across two related files inside `src/requests/`. The change requires consistent edits in BOTH files; a single-file edit will not satisfy the hidden grader.\n\nLower-level helper (in the `requests` utilities module, alongside other small IP-address helpers):\n\n- The helper today tests whether an IPv4 address belongs to a CIDR subnet; for the pair `('192.168.1.1', '192.168.1.0/24')` it returns `True`, and for `('192.168.2.1', '192.168.1.0/24')` it returns `False`. Currently it crashes with `OSError` or `ValueError` whenever the IP or CIDR string is malformed.\n- All existing behaviour on well-formed inputs must be preserved exactly: `('192.168.1.1', '192.168.1.0/24')` returns `True`, `('192.168.2.1', '192.168.1.0/24')` returns `False`, and `('10.0.0.5', '10.0.0.0/8')` returns `True`.\n- When the IP is not a parseable IPv4 string (e.g. `'not-an-ip'`), the helper must now return `False` (no exception escapes).\n- When the CIDR is not a parseable CIDR string (e.g. `'not-a-cidr'` with no `/`, or `'192.168.1.0/not-a-mask'` with a non-integer mask), the helper must now return `False` (no exception escapes).\n\nHigher-level helper (in the sibling HTTP-adapter module that already imports several helpers from the utilities module via `from .utils import (...)`):\n\n- Add a NEW top-level helper named `_proxy_target_in_network(target_ip, cidr)` that prefilters obviously bad arguments before delegating to the lower-level helper:\n  - If `target_ip` is `None` or an empty string, return `False`.\n  - If `cidr` is `None` or an empty string, return `False`.\n  - Otherwise delegate to the lower-level helper, returning whatever it returns.\n- For example: `_proxy_target_in_network(None, '192.168.1.0/24')` returns `False`; `_proxy_target_in_network('192.168.1.1', '192.168.1.0/24')` returns `True`.\n\nLocate the lower-level helper by searching for the docstring phrase `IP belongs to a network subnet`; locate the sibling adapter file by searching for `HTTPAdapter` or for the existing module-level `DEFAULT_POOLBLOCK` constant.",
+      "prompt_required_literals": [
+        "_proxy_target_in_network(target_ip, cidr)",
+        "192.168.1.0/24",
+        "192.168.1.0/not-a-mask",
+        "10.0.0.5",
+        "OSError"
+      ],
       "prompt_fail_modes": [
-        "Leaves the function unchanged, so invalid IP/CIDR inputs propagate `OSError` / `ValueError` (`no-change`).",
-        "Catches `Exception` broadly, masking genuine bugs elsewhere in the body (`over-edit`).",
-        "Handles bad IPs but not bad CIDR strings (e.g. catches only `OSError` but not `ValueError` from `int(bits)`) (`partial-edit`)."
+        "Edits only the lower-level helper (returns `False` on bad inputs) but never adds the sibling adapter wrapper, so the `_proxy_target_in_network` asserts fail (`partial-edit`).",
+        "Adds the sibling wrapper but doesn't touch the lower-level helper, so malformed CIDR/IP strings still propagate `OSError` / `ValueError` from the implementation (`partial-edit`).",
+        "Catches `Exception` broadly inside the lower-level helper, masking genuine bugs in the bit-arithmetic body (`over-edit`)."
+      ],
+      "mutants": [
+        {
+          "misstep": "partial-edit",
+          "path": "src/requests/adapters.py",
+          "patch": {
+            "oldString": "DEFAULT_POOLBLOCK = False\nDEFAULT_POOLSIZE = 10\nDEFAULT_RETRIES = 0\nDEFAULT_POOL_TIMEOUT = None\n\n\ndef _urllib3_request_context(",
+            "newString": "DEFAULT_POOLBLOCK = False\nDEFAULT_POOLSIZE = 10\nDEFAULT_RETRIES = 0\nDEFAULT_POOL_TIMEOUT = None\n\n\ndef _proxy_target_in_network(target_ip, cidr):\n    \"\"\"Defensive wrapper for CIDR membership testing in proxy logic.\n\n    Returns ``False`` when either ``target_ip`` or ``cidr`` is ``None``\n    or an empty string, otherwise delegates to ``address_in_network``\n    (which is itself defensive against malformed IP / CIDR strings).\n    \"\"\"\n    if target_ip is None or target_ip == \"\":\n        return False\n    if cidr is None or cidr == \"\":\n        return False\n    return address_in_network(target_ip, cidr)\n\n\ndef _urllib3_request_context("
+          }
+        }
+      ]
+    },
+    {
+      "id": 61,
+      "name": "edit_is_known_encoding_typecheck",
+      "repo": "httpx",
+      "difficulty": "easy",
+      "leak_function_name": true,
+      "structural_signature": {
+        "template": "add-guard",
+        "scope_kind": "single-file",
+        "answer_shape": "raises-with-substring",
+        "unique_trait": "raise-on-non-str-encoding-keep-codec-lookup"
+      },
+      "file": "httpx/_models.py",
+      "functions": [
+        "_is_known_encoding"
+      ],
+      "constants": [],
+      "imports": [
+        "codecs"
+      ],
+      "reference_edit": {
+        "oldString": "def _is_known_encoding(encoding: str) -> bool:\n    \"\"\"\n    Return `True` if `encoding` is a known codec.\n    \"\"\"\n    try:\n        codecs.lookup(encoding)\n    except LookupError:\n        return False\n    return True",
+        "newString": "def _is_known_encoding(encoding: str) -> bool:\n    \"\"\"\n    Return `True` if `encoding` is a known codec.\n    \"\"\"\n    if not isinstance(encoding, str):\n        raise ValueError(f\"_is_known_encoding: encoding must be a str, got {type(encoding).__name__}\")\n    try:\n        codecs.lookup(encoding)\n    except LookupError:\n        return False\n    return True"
+      },
+      "discovery_probes": [
+        "def _is_known_encoding",
+        "default_encoding",
+        "codecs.lookup"
+      ],
+      "asserts": [
+        {
+          "expr": "_is_known_encoding('utf-8') is True",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "_is_known_encoding('utf-16') is True",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "_is_known_encoding('not-a-real-codec') is False",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "setup": "raised = None\ntry:\n    _is_known_encoding(123)\nexcept ValueError as e:\n    raised = e",
+          "expr": "raised is not None and 'encoding' in str(raised)",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "setup": "raised = None\ntry:\n    _is_known_encoding(None)\nexcept ValueError as e:\n    raised = e",
+          "expr": "raised is not None and 'encoding' in str(raised)",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target is the small private helper `_is_known_encoding` declared at module scope inside `httpx`. It currently accepts any value, calls `codecs.lookup` on it, and returns `True`/`False` based on whether a `LookupError` is raised; with non-string input it instead crashes with `TypeError` from inside `codecs.lookup`.",
+      "behavior_prose": "Modify the function `_is_known_encoding` (declared at module scope inside `httpx`) so that it gracefully rejects non-string inputs:\n\n- Calling `_is_known_encoding(x)` where `x` is not a `str` instance now raises `ValueError` whose message contains the substring `encoding`. For example, `_is_known_encoding(123)` raises `ValueError`, and `_is_known_encoding(None)` raises `ValueError`.\n- Existing behaviour on string inputs is preserved exactly: `_is_known_encoding('utf-8')` returns `True`, `_is_known_encoding('utf-16')` returns `True`, and `_is_known_encoding('not-a-real-codec')` returns `False`.\n\nThe minimal change is a single guard at the top of the function body that runs before `codecs.lookup` is called; do NOT change the existing `codecs.lookup` / `LookupError` logic.",
+      "prompt_required_literals": [
+        "True",
+        "False",
+        "ValueError",
+        "encoding",
+        "'utf-8'",
+        "'utf-16'",
+        "'not-a-real-codec'"
+      ],
+      "prompt_fail_modes": [
+        "Leaves the function unchanged, so non-string input still crashes with TypeError from inside codecs.lookup (`no-change`).",
+        "Catches the TypeError inside the existing try/except instead of raising ValueError up front, returning False on non-string input rather than raising (`partial-edit`).",
+        "Raises ValueError but only for one specific non-string class (e.g. `int`), so other non-string inputs like `None` still crash (`partial-edit`)."
+      ]
+    },
+    {
+      "id": 62,
+      "name": "edit_is_ipv4_hostname_strip_whitespace",
+      "repo": "httpx",
+      "difficulty": "easy",
+      "leak_function_name": true,
+      "structural_signature": {
+        "template": "relax-validator",
+        "scope_kind": "single-file",
+        "answer_shape": "value-equality",
+        "unique_trait": "accept-leading-trailing-whitespace-keep-cidr-strip"
+      },
+      "file": "httpx/_utils.py",
+      "functions": [
+        "is_ipv4_hostname"
+      ],
+      "constants": [],
+      "imports": [
+        "ipaddress"
+      ],
+      "reference_edit": {
+        "oldString": "def is_ipv4_hostname(hostname: str) -> bool:\n    try:\n        ipaddress.IPv4Address(hostname.split(\"/\")[0])\n    except Exception:\n        return False\n    return True",
+        "newString": "def is_ipv4_hostname(hostname: str) -> bool:\n    try:\n        ipaddress.IPv4Address(hostname.strip().split(\"/\")[0])\n    except Exception:\n        return False\n    return True"
+      },
+      "discovery_probes": [
+        "def is_ipv4_hostname",
+        "ipaddress.IPv4Address",
+        "is_ipv6_hostname"
+      ],
+      "asserts": [
+        {
+          "expr": "is_ipv4_hostname('1.2.3.4') is True",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "is_ipv4_hostname('1.2.3.4/32') is True",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "is_ipv4_hostname('not-an-ip') is False",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "is_ipv4_hostname('') is False",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "is_ipv4_hostname('   1.2.3.4   ') is True",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "is_ipv4_hostname('\\t1.2.3.4/32\\n') is True",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target is the small `is_ipv4_hostname` predicate declared at module scope inside `httpx`. It currently calls `hostname.split('/')[0]` directly; the `IPv4Address` parser then rejects any input with stray leading/trailing whitespace, so an otherwise-valid hostname like `'  1.2.3.4  '` returns `False`.",
+      "behavior_prose": "Modify the function `is_ipv4_hostname` (declared at module scope inside `httpx`) so that surrounding whitespace on the input is tolerated:\n\n- Calling `is_ipv4_hostname(s)` with leading or trailing whitespace (spaces, tabs, newlines) on an otherwise valid IPv4 hostname now returns `True`. For example, `is_ipv4_hostname('   1.2.3.4   ')` returns `True`, and `is_ipv4_hostname('\\t1.2.3.4/32\\n')` returns `True`.\n- Existing behaviour on whitespace-free inputs is preserved exactly: `is_ipv4_hostname('1.2.3.4')` returns `True`; the trailing CIDR mask is still stripped before the address parse, so `is_ipv4_hostname('1.2.3.4/32')` returns `True`; `is_ipv4_hostname('not-an-ip')` returns `False`; `is_ipv4_hostname('')` returns `False`.\n\nThe minimal change normalises whitespace on the input before the existing CIDR-stripping `.split('/')` call. Do NOT change the existing `IPv4Address` parse logic or the `except Exception: return False` fallback.",
+      "prompt_required_literals": [
+        "True",
+        "False",
+        "'1.2.3.4'",
+        "'1.2.3.4/32'",
+        "'not-an-ip'"
+      ],
+      "prompt_fail_modes": [
+        "Leaves the function unchanged, so `is_ipv4_hostname('  1.2.3.4  ')` still returns `False` because the `IPv4Address` parser rejects whitespace (`no-change`).",
+        "Strips whitespace from the input but only for the leading side (e.g. `lstrip()` instead of `strip()`), so trailing-whitespace inputs still return `False` (`partial-edit`).",
+        "Strips whitespace globally (e.g. removes all internal spaces too), accidentally accepting malformed inputs like `'1.2 . 3 . 4'` (`over-edit`)."
+      ]
+    },
+    {
+      "id": 63,
+      "name": "edit_primitive_value_to_str_decode_bytes",
+      "repo": "httpx",
+      "difficulty": "easy",
+      "leak_function_name": true,
+      "structural_signature": {
+        "template": "tighten-guard",
+        "scope_kind": "single-file",
+        "answer_shape": "value-equality",
+        "unique_trait": "decode-bytes-as-utf8-keep-other-primitives"
+      },
+      "file": "httpx/_utils.py",
+      "functions": [
+        "primitive_value_to_str"
+      ],
+      "constants": [],
+      "imports": [],
+      "reference_edit": {
+        "oldString": "def primitive_value_to_str(value: PrimitiveData) -> str:\n    \"\"\"\n    Coerce a primitive data type into a string value.\n\n    Note that we prefer JSON-style 'true'/'false' for boolean values here.\n    \"\"\"\n    if value is True:\n        return \"true\"\n    elif value is False:\n        return \"false\"\n    elif value is None:\n        return \"\"\n    return str(value)",
+        "newString": "def primitive_value_to_str(value: PrimitiveData) -> str:\n    \"\"\"\n    Coerce a primitive data type into a string value.\n\n    Note that we prefer JSON-style 'true'/'false' for boolean values here.\n    \"\"\"\n    if value is True:\n        return \"true\"\n    elif value is False:\n        return \"false\"\n    elif value is None:\n        return \"\"\n    elif isinstance(value, (bytes, bytearray)):\n        return bytes(value).decode(\"utf-8\")\n    return str(value)"
+      },
+      "discovery_probes": [
+        "def primitive_value_to_str",
+        "PrimitiveData",
+        "JSON-style"
+      ],
+      "asserts": [
+        {
+          "expr": "primitive_value_to_str(True) == 'true'",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "primitive_value_to_str(False) == 'false'",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "primitive_value_to_str(None) == ''",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "primitive_value_to_str(123) == '123'",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "primitive_value_to_str('hello') == 'hello'",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "primitive_value_to_str(b'hello') == 'hello'",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "primitive_value_to_str(b'') == ''",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target is the small `primitive_value_to_str` coercion helper declared at module scope inside `httpx`. It currently maps `True` -> `'true'`, `False` -> `'false'`, `None` -> `''`, and falls back to `str(value)` for everything else; that fallback turns `bytes` values into ugly `\"b'hello'\"`-style repr strings instead of decoded text.",
+      "behavior_prose": "Modify the function `primitive_value_to_str` (declared at module scope inside `httpx`) so that it decodes `bytes` and `bytearray` values into UTF-8 text rather than falling through to `str(value)`:\n\n- Calling `primitive_value_to_str(b'hello')` now returns `'hello'`. Calling `primitive_value_to_str(b'')` returns `''`. The decoding uses UTF-8.\n- Existing behaviour on the other primitives is preserved exactly: `primitive_value_to_str(True)` returns `'true'`, `primitive_value_to_str(False)` returns `'false'`, `primitive_value_to_str(None)` returns `''`, `primitive_value_to_str(123)` returns `'123'`, and `primitive_value_to_str('hello')` returns `'hello'`.\n\nThe minimal change is a single new branch inserted before the trailing `return str(value)` fallback. Do NOT modify the existing True/False/None branches.",
+      "prompt_required_literals": [
+        "'true'",
+        "'false'",
+        "'hello'",
+        "'123'",
+        "''"
+      ],
+      "prompt_fail_modes": [
+        "Leaves the function unchanged, so `primitive_value_to_str(b'hello')` still returns the ugly Python-repr form `\"b'hello'\"` (`no-change`).",
+        "Decodes the bytes but uses the wrong codec (e.g. `latin-1`) so non-ASCII bytes round-trip incorrectly even though the simple `b'hello'` case happens to work (`partial-edit`).",
+        "Catches bytes via the `str(value)` branch by special-casing inside an existing branch (e.g. moves the check inside the `is None` branch) and accidentally also returns `''` for non-empty bytes (`over-edit`)."
+      ]
+    },
+    {
+      "id": 64,
+      "name": "edit_multipart_boundary_reject_duplicate",
+      "repo": "httpx",
+      "difficulty": "medium",
+      "leak_function_name": false,
+      "structural_signature": {
+        "template": "extend-comprehension",
+        "scope_kind": "single-file",
+        "answer_shape": "raises-with-substring",
+        "unique_trait": "reject-multiple-boundary-params-keep-first-quote-strip"
+      },
+      "file": "httpx/_multipart.py",
+      "functions": [
+        "get_multipart_boundary_from_content_type"
+      ],
+      "constants": [],
+      "imports": [],
+      "reference_edit": {
+        "oldString": "    if not content_type or not content_type.startswith(b\"multipart/form-data\"):\n        return None\n    # parse boundary according to\n    # https://www.rfc-editor.org/rfc/rfc2046#section-5.1.1\n    if b\";\" in content_type:\n        for section in content_type.split(b\";\"):\n            if section.strip().lower().startswith(b\"boundary=\"):\n                return section.strip()[len(b\"boundary=\") :].strip(b'\"')\n    return None",
+        "newString": "    if not content_type or not content_type.startswith(b\"multipart/form-data\"):\n        return None\n    # parse boundary according to\n    # https://www.rfc-editor.org/rfc/rfc2046#section-5.1.1\n    if b\";\" in content_type:\n        found = None\n        for section in content_type.split(b\";\"):\n            if section.strip().lower().startswith(b\"boundary=\"):\n                if found is not None:\n                    raise ValueError(\n                        \"get_multipart_boundary_from_content_type: \"\n                        \"content-type contains multiple boundary parameters\"\n                    )\n                found = section.strip()[len(b\"boundary=\") :].strip(b'\"')\n        return found\n    return None"
+      },
+      "discovery_probes": [
+        "def get_multipart_boundary_from_content_type",
+        "boundary=",
+        "rfc2046"
+      ],
+      "asserts": [
+        {
+          "expr": "get_multipart_boundary_from_content_type(b'multipart/form-data; boundary=xyz') == b'xyz'",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "get_multipart_boundary_from_content_type(b'multipart/form-data; boundary=\"abc\"') == b'abc'",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "get_multipart_boundary_from_content_type(b'application/json') is None",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "get_multipart_boundary_from_content_type(None) is None",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "get_multipart_boundary_from_content_type(b'multipart/form-data') is None",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "setup": "raised = None\ntry:\n    get_multipart_boundary_from_content_type(b'multipart/form-data; boundary=abc; boundary=xyz')\nexcept ValueError as e:\n    raised = e",
+          "expr": "raised is not None and 'boundary' in str(raised)",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "setup": "raised = None\ntry:\n    get_multipart_boundary_from_content_type(b'multipart/form-data; charset=utf-8; boundary=abc; boundary=xyz')\nexcept ValueError as e:\n    raised = e",
+          "expr": "raised is not None and 'boundary' in str(raised)",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target is the small private helper that parses a `Content-Type:` request-header byte string and returns the multipart `boundary=` parameter (used by the multipart streaming code path).",
+      "behavior_prose": "In this `httpx` checkout, the helper that parses an HTTP `Content-Type` header value (as bytes) and returns the multipart `boundary=` parameter currently silently keeps only the *last* boundary it sees when the header contains more than one `boundary=` parameter -- a malformed input that breaks RFC 2046 and is a source of multipart smuggling bugs. Tighten the helper so that:\n\n- When the input contains two or more `boundary=` parameters, the helper raises `ValueError` whose message contains the substring `boundary`. For example, parsing `b'multipart/form-data; boundary=abc; boundary=xyz'` raises `ValueError`, and parsing `b'multipart/form-data; charset=utf-8; boundary=abc; boundary=xyz'` raises `ValueError`.\n- Existing behaviour on well-formed inputs is preserved exactly: `b'multipart/form-data; boundary=xyz'` returns `b'xyz'`; `b'multipart/form-data; boundary=\"abc\"'` returns `b'abc'` (the surrounding double quotes are still stripped); `b'application/json'` returns `None`; `None` returns `None`; and `b'multipart/form-data'` (no `boundary=` parameter at all) returns `None`.\n\nThe minimal change extends the existing iteration over the `;`-separated sections so that a *second* `boundary=` match triggers a `ValueError` rather than silently overwriting the first match. Do NOT modify the `multipart/form-data` prefix check or the surrounding-quote stripping logic.",
+      "prompt_required_literals": [
+        "ValueError",
+        "boundary",
+        "multipart/form-data",
+        "b'xyz'",
+        "b'abc'",
+        "None"
+      ],
+      "prompt_fail_modes": [
+        "Leaves the function unchanged, so a duplicate `boundary=` parameter is silently overwritten and only the last one wins (`no-change`).",
+        "Raises `ValueError` on duplicates but also tightens the prefix check so plain `b'multipart/form-data'` (no boundary at all) raises instead of returning `None`, breaking a regression case (`over-edit`).",
+        "Detects duplicates but raises a different exception class (e.g. `RuntimeError`) or omits the `boundary` substring from the message (`partial-edit`)."
+      ]
+    },
+    {
+      "id": 65,
+      "name": "edit_get_lr_multiplier_clamp_post_training",
+      "repo": "autoresearch",
+      "difficulty": "easy",
+      "leak_function_name": true,
+      "structural_signature": {
+        "template": "add-guard",
+        "scope_kind": "single-file",
+        "answer_shape": "value-equality",
+        "unique_trait": "guard-progress-ge-one-keep-cooldown-branch"
+      },
+      "file": "train.py",
+      "functions": [
+        "get_lr_multiplier"
+      ],
+      "constants": [
+        "WARMUP_RATIO",
+        "WARMDOWN_RATIO",
+        "FINAL_LR_FRAC"
+      ],
+      "imports": [],
+      "reference_edit": {
+        "oldString": "def get_lr_multiplier(progress):\n    if progress < WARMUP_RATIO:\n        return progress / WARMUP_RATIO if WARMUP_RATIO > 0 else 1.0\n    elif progress < 1.0 - WARMDOWN_RATIO:\n        return 1.0\n    else:\n        cooldown = (1.0 - progress) / WARMDOWN_RATIO\n        return cooldown * 1.0 + (1 - cooldown) * FINAL_LR_FRAC",
+        "newString": "def get_lr_multiplier(progress):\n    if progress >= 1.0:\n        return FINAL_LR_FRAC\n    if progress < WARMUP_RATIO:\n        return progress / WARMUP_RATIO if WARMUP_RATIO > 0 else 1.0\n    elif progress < 1.0 - WARMDOWN_RATIO:\n        return 1.0\n    else:\n        cooldown = (1.0 - progress) / WARMDOWN_RATIO\n        return cooldown * 1.0 + (1 - cooldown) * FINAL_LR_FRAC"
+      },
+      "discovery_probes": [
+        "def get_lr_multiplier",
+        "WARMUP_RATIO",
+        "tokenizer"
+      ],
+      "asserts": [
+        {
+          "expr": "get_lr_multiplier(0.0) == 1.0",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "get_lr_multiplier(0.25) == 1.0",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "get_lr_multiplier(0.75) == 0.5",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "get_lr_multiplier(1.0) == FINAL_LR_FRAC",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "get_lr_multiplier(1.5) == FINAL_LR_FRAC",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "get_lr_multiplier(2.0) == FINAL_LR_FRAC",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target is the cosine LR-schedule helper `get_lr_multiplier(progress)` declared at module scope inside the `autoresearch` checkout. It returns the learning-rate multiplier as a function of training progress in `[0, 1]`, parameterised by the module-level constants `WARMUP_RATIO`, `WARMDOWN_RATIO`, and `FINAL_LR_FRAC`. For `progress > 1.0` (which can happen if a training loop overshoots the planned step budget), the existing cooldown branch evaluates `(1.0 - progress) / WARMDOWN_RATIO` to a negative number and returns a negative LR multiplier -- a silent bug.",
+      "behavior_prose": "Modify the function `get_lr_multiplier` (declared at module scope inside `autoresearch`) so that any post-training progress value (`progress >= 1.0`) is clamped to the final learning-rate fraction:\n\n- Calling `get_lr_multiplier(progress)` with `progress >= 1.0` now returns the module-level constant `FINAL_LR_FRAC` directly. For example, `get_lr_multiplier(1.5)` returns `FINAL_LR_FRAC`, and `get_lr_multiplier(2.0)` returns `FINAL_LR_FRAC`.\n- Existing behaviour on `progress < 1.0` is preserved exactly, including the boundary case `progress == 1.0` which already evaluates to `FINAL_LR_FRAC` via the cooldown branch: `get_lr_multiplier(0.0)` returns `1.0` (the warmup branch when `WARMUP_RATIO` is `0`), `get_lr_multiplier(0.25)` returns `1.0` (the plateau between warmup end and `1.0 - WARMDOWN_RATIO`), `get_lr_multiplier(0.75)` returns `0.5`, and `get_lr_multiplier(1.0)` returns `FINAL_LR_FRAC`.\n\nThe minimal change is a single guard at the very top of the function body (before the warmup branch that consults `WARMUP_RATIO`) that short-circuits to `FINAL_LR_FRAC` when `progress >= 1.0`. Do NOT modify the existing warmup, plateau, or cooldown branches.",
+      "prompt_required_literals": [
+        "1.0",
+        "0.5",
+        "FINAL_LR_FRAC",
+        "WARMUP_RATIO",
+        "WARMDOWN_RATIO"
+      ],
+      "prompt_fail_modes": [
+        "Leaves the function unchanged, so `get_lr_multiplier(2.0)` returns a negative LR multiplier from the cooldown branch (`no-change`).",
+        "Adds a guard for `progress > 1.0` (strict inequality) but misses the `progress == 1.0` boundary case, leaving it to the cooldown branch which happens to also return `FINAL_LR_FRAC` -- so this looks fine but a stricter clamp would have caught it; conversely guarding on `progress > 1.0` instead of `>= 1.0` and accidentally changing the cooldown behaviour at the boundary breaks the regression on `progress == 1.0` (`partial-edit`).",
+        "Clamps the progress argument itself (e.g. `progress = min(progress, 1.0)`) so other branches still execute, accidentally returning `1.0 * 1.0 + 0 * FINAL_LR_FRAC = 1.0` for clamped inputs rather than `FINAL_LR_FRAC` (`over-edit`)."
+      ]
+    },
+    {
+      "id": 66,
+      "name": "edit_merge_hooks_both_none_returns_empty",
+      "repo": "requests",
+      "difficulty": "easy",
+      "leak_function_name": true,
+      "structural_signature": {
+        "template": "null-tolerant-merge",
+        "scope_kind": "single-file",
+        "answer_shape": "value-equality",
+        "unique_trait": "both-none-returns-empty-dict-class-instead-of-none"
+      },
+      "file": "src/requests/sessions.py",
+      "functions": [
+        "merge_hooks"
+      ],
+      "constants": [],
+      "imports": [
+        "collections:OrderedDict"
+      ],
+      "reference_edit": {
+        "oldString": "def merge_hooks(request_hooks, session_hooks, dict_class=OrderedDict):\n    \"\"\"Properly merges both requests and session hooks.\n\n    This is necessary because when request_hooks == {'response': []}, the\n    merge breaks Session hooks entirely.\n    \"\"\"\n    if session_hooks is None or session_hooks.get(\"response\") == []:\n        return request_hooks\n\n    if request_hooks is None or request_hooks.get(\"response\") == []:\n        return session_hooks\n\n    return merge_setting(request_hooks, session_hooks, dict_class)",
+        "newString": "def merge_hooks(request_hooks, session_hooks, dict_class=OrderedDict):\n    \"\"\"Properly merges both requests and session hooks.\n\n    This is necessary because when request_hooks == {'response': []}, the\n    merge breaks Session hooks entirely.\n    \"\"\"\n    if request_hooks is None and session_hooks is None:\n        return dict_class()\n\n    if session_hooks is None or session_hooks.get(\"response\") == []:\n        return request_hooks\n\n    if request_hooks is None or request_hooks.get(\"response\") == []:\n        return session_hooks\n\n    return merge_setting(request_hooks, session_hooks, dict_class)"
+      },
+      "discovery_probes": [
+        "def merge_hooks",
+        "default_hooks",
+        "session_hooks"
+      ],
+      "asserts": [
+        {
+          "expr": "merge_hooks({'response': ['a']}, None) == {'response': ['a']}",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "merge_hooks(None, {'response': ['b']}) == {'response': ['b']}",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "merge_hooks({'response': []}, {'response': ['c']}) == {'response': ['c']}",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "merge_hooks(None, None) == OrderedDict()",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "isinstance(merge_hooks(None, None), OrderedDict)",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target is the `merge_hooks` helper declared at module scope inside `requests`. It merges two optional hook dictionaries. Today, when BOTH arguments are `None`, the first guard (`session_hooks is None`) wins and the function returns the still-`None` `request_hooks` -- callers that expect a dict-shaped result then have to defensively coerce `None`. With the well-known wart `request_hooks == {'response': []}` already documented in the docstring, the function deserves a parallel guard for the all-`None` case.",
+      "behavior_prose": "Modify the function `merge_hooks` (declared at module scope inside `requests`) so that the all-`None` case returns an empty mapping built from the `dict_class` argument rather than `None`:\n\n- Calling `merge_hooks(None, None)` now returns `OrderedDict()` (the default `dict_class`); calling `merge_hooks(None, None, dict_class=dict)` would similarly return a plain `dict()`. The returned value is an instance of `OrderedDict` when `dict_class` is its default.\n- Existing behaviour on any non-`None` argument is preserved exactly: `merge_hooks({'response': ['a']}, None)` returns `{'response': ['a']}`; `merge_hooks(None, {'response': ['b']})` returns `{'response': ['b']}`; and the existing `request_hooks == {'response': []}` short-circuit still routes to `session_hooks` -- e.g. `merge_hooks({'response': []}, {'response': ['c']})` returns `{'response': ['c']}`.\n\nThe minimal change is a single new branch at the top of the function body that runs before the two existing `is None`-or-empty guards. Do NOT modify the existing two guards or the trailing `merge_setting(...)` call.",
+      "prompt_required_literals": [
+        "OrderedDict",
+        "{'response': ['a']}",
+        "{'response': ['b']}",
+        "{'response': ['c']}",
+        "{'response': []}"
+      ],
+      "prompt_fail_modes": [
+        "Leaves the function unchanged, so `merge_hooks(None, None)` still returns `None` and callers crash on a `.get('response')` they expected to be safe (`no-change`).",
+        "Returns a plain `dict()` rather than `dict_class()`, so callers that relied on insertion order via `OrderedDict` see a different concrete type even though the equality comparison happens to pass (`partial-edit`).",
+        "Adds the new branch but places it AFTER the two existing guards, where it can never fire because the first guard already returned `request_hooks` (which is `None`), so the all-`None` case still returns `None` (`partial-edit`)."
+      ]
+    },
+    {
+      "id": 67,
+      "name": "edit_get_auth_from_url_partial_recovery",
+      "repo": "requests",
+      "difficulty": "easy",
+      "leak_function_name": true,
+      "structural_signature": {
+        "template": "partial-auth-recovery",
+        "scope_kind": "single-file",
+        "answer_shape": "value-equality",
+        "unique_trait": "extract-username-when-password-missing-keep-empty-tuple-fallback"
+      },
+      "file": "src/requests/utils.py",
+      "functions": [
+        "get_auth_from_url"
+      ],
+      "constants": [],
+      "imports": [
+        "urllib.parse:urlparse,unquote"
+      ],
+      "reference_edit": {
+        "oldString": "def get_auth_from_url(url):\n    \"\"\"Given a url with authentication components, extract them into a tuple of\n    username,password.\n\n    :rtype: (str,str)\n    \"\"\"\n    parsed = urlparse(url)\n\n    try:\n        auth = (unquote(parsed.username), unquote(parsed.password))\n    except (AttributeError, TypeError):\n        auth = (\"\", \"\")\n\n    return auth",
+        "newString": "def get_auth_from_url(url):\n    \"\"\"Given a url with authentication components, extract them into a tuple of\n    username,password.\n\n    :rtype: (str,str)\n    \"\"\"\n    parsed = urlparse(url)\n\n    try:\n        username = unquote(parsed.username) if parsed.username is not None else \"\"\n        password = unquote(parsed.password) if parsed.password is not None else \"\"\n        auth = (username, password)\n    except (AttributeError, TypeError):\n        auth = (\"\", \"\")\n\n    return auth"
+      },
+      "discovery_probes": [
+        "def get_auth_from_url",
+        "get_auth_from_url",
+        "auth_from_url"
+      ],
+      "asserts": [
+        {
+          "expr": "get_auth_from_url('http://user:pass@host.example/path') == ('user', 'pass')",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "get_auth_from_url('') == ('', '')",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "get_auth_from_url('http://host.example/path') == ('', '')",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "get_auth_from_url('https://us%40er:p%23ss@host.example/path') == ('us@er', 'p#ss')",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "get_auth_from_url('http://user@host.example/path') == ('user', '')",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "get_auth_from_url('http://us%40er@host.example/path') == ('us@er', '')",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target is the `get_auth_from_url` helper declared at module scope inside `requests`. It parses a URL via `urlparse` and returns a `(username, password)` tuple, percent-decoded. Today, when only the username is present (e.g. `http://user@host.example/path`), the existing code calls `unquote(parsed.password)` -- where `parsed.password` is `None` -- which raises `TypeError`; the broad `except (AttributeError, TypeError)` catches it and the function returns `('', '')`, throwing away the username it could have recovered.",
+      "behavior_prose": "Modify the function `get_auth_from_url` (declared at module scope inside `requests`) so that a URL with only a username is decoded partially rather than collapsed to the empty tuple:\n\n- Calling `get_auth_from_url('http://user@host.example/path')` now returns `('user', '')`. Percent-decoding still applies to the present field, so `get_auth_from_url('http://us%40er@host.example/path')` returns `('us@er', '')` (the `%40` becomes `@`).\n- Existing behaviour on every other input is preserved exactly: `get_auth_from_url('http://user:pass@host.example/path')` returns `('user', 'pass')`; `get_auth_from_url('')` returns `('', '')`; `get_auth_from_url('http://host.example/path')` (no auth at all) returns `('', '')`; and percent-decoding on both fields still works -- `get_auth_from_url('https://us%40er:p%23ss@host.example/path')` returns `('us@er', 'p#ss')`.\n\nThe minimal change is to compute `username` and `password` separately, defaulting each to the empty string when the corresponding component on the parsed URL is `None` rather than passing `None` to `unquote` and relying on the broad `except` to swallow the `TypeError`. Keep the surrounding `try`/`except (AttributeError, TypeError)` block in place as the safety net for genuinely malformed URLs.",
+      "prompt_required_literals": [
+        "'user'",
+        "'pass'",
+        "'us@er'",
+        "'p#ss'",
+        "'http://user:pass@host.example/path'",
+        "'http://user@host.example/path'"
+      ],
+      "prompt_fail_modes": [
+        "Leaves the function unchanged, so `get_auth_from_url('http://user@host.example/path')` still returns `('', '')` and the username is silently lost (`no-change`).",
+        "Recovers the username when the password is missing but also stops percent-decoding (e.g. uses `parsed.username` directly instead of `unquote(parsed.username)`), so `'us%40er'` no longer round-trips to `'us@er'` (`partial-edit`).",
+        "Removes the broad `except (AttributeError, TypeError)` safety net entirely, so a genuinely malformed URL now propagates an exception instead of returning `('', '')` (`over-edit`)."
+      ]
+    },
+    {
+      "id": 68,
+      "name": "edit_is_ipv6_hostname_accept_bracketed",
+      "repo": "httpx",
+      "difficulty": "medium",
+      "leak_function_name": false,
+      "structural_signature": {
+        "template": "accept-bracketed-form",
+        "scope_kind": "single-file",
+        "answer_shape": "value-equality",
+        "unique_trait": "strip-rfc3986-brackets-keep-cidr-strip"
+      },
+      "file": "httpx/_utils.py",
+      "functions": [
+        "is_ipv6_hostname"
+      ],
+      "constants": [],
+      "imports": [
+        "ipaddress"
+      ],
+      "reference_edit": {
+        "oldString": "def is_ipv6_hostname(hostname: str) -> bool:\n    try:\n        ipaddress.IPv6Address(hostname.split(\"/\")[0])\n    except Exception:\n        return False\n    return True",
+        "newString": "def is_ipv6_hostname(hostname: str) -> bool:\n    try:\n        host_part = hostname.split(\"/\")[0]\n        if isinstance(host_part, str) and host_part.startswith(\"[\") and host_part.endswith(\"]\"):\n            host_part = host_part[1:-1]\n        ipaddress.IPv6Address(host_part)\n    except Exception:\n        return False\n    return True"
+      },
+      "discovery_probes": [
+        "def is_ipv6_hostname",
+        "ipaddress.IPv6Address",
+        "IPv4Address"
+      ],
+      "asserts": [
+        {
+          "expr": "is_ipv6_hostname('::1') is True",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "is_ipv6_hostname('2001:db8::1') is True",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "is_ipv6_hostname('::1/64') is True",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "is_ipv6_hostname('not-an-ip') is False",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "is_ipv6_hostname('[::1]') is True",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "is_ipv6_hostname('[2001:db8::1]/64') is True",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target is the small predicate that, in `httpx`'s URL-handling utilities, decides whether a hostname string parses as an IPv6 address. It currently passes the input directly (after a CIDR `/`-strip) to `ipaddress.IPv6Address`; bracketed RFC-3986 forms like `'[::1]'` -- the form a URL parser hands you when extracting `host` from `http://[::1]:8080/path` -- raise inside `IPv6Address` and the broad `except` branch then misclassifies them as non-IPv6.",
+      "behavior_prose": "In this `httpx` checkout, the small private predicate that decides whether a string is a valid IPv6 hostname currently rejects bracketed RFC-3986 forms even though those are exactly what URL parsers hand you when extracting the host component of `http://[::1]:8080/path`. Tighten the helper so that:\n\n- A bracketed IPv6 hostname now parses as IPv6: `'[::1]'` returns `True`, and the bracketed-with-CIDR form `'[2001:db8::1]/64'` also returns `True`.\n- Existing behaviour on bare IPv6 inputs is preserved exactly: `'::1'` returns `True`; `'2001:db8::1'` returns `True`; the CIDR-stripping behaviour still runs, so `'::1/64'` returns `True`; and a non-IPv6 string like `'not-an-ip'` still returns `False`.\n\nThe minimal change strips a single leading `[` and a single trailing `]` from the input (when it is a `str`) before the existing CIDR-stripping `.split('/')` call. Do NOT modify the existing `IPv6Address` parse logic or the `except Exception: return False` fallback. The helper lives among the other small networking helpers in the `httpx` utilities module; locate it by searching for `ipaddress.IPv6Address` or for the sibling IPv4 predicate in the same module.",
+      "prompt_required_literals": [
+        "True",
+        "False",
+        "'::1'",
+        "'2001:db8::1'",
+        "'not-an-ip'",
+        "'[::1]'"
+      ],
+      "prompt_fail_modes": [
+        "Leaves the helper unchanged, so `'[::1]'` still raises inside the parser and the broad except returns `False` (`no-change`).",
+        "Strips brackets unconditionally on every character, so `'[2001:db8]::[1]'`-shaped inputs lose internal brackets and accidentally accept malformed addresses (`over-edit`).",
+        "Strips only the leading `[` (e.g. `lstrip('[')` without `rstrip(']')`), so trailing-bracket cases still fail (`partial-edit`)."
+      ]
+    },
+    {
+      "id": 69,
+      "name": "edit_skip_leading_empty_chunks_extend_whitespace",
+      "repo": "httpx",
+      "difficulty": "medium",
+      "leak_function_name": false,
+      "structural_signature": {
+        "template": "extend-skip-predicate",
+        "scope_kind": "single-file",
+        "answer_shape": "value-equality",
+        "unique_trait": "extend-empty-skip-to-whitespace-only-bytes-keep-pass-through"
+      },
+      "file": "httpx/_transports/wsgi.py",
+      "functions": [
+        "_skip_leading_empty_chunks"
+      ],
+      "constants": [],
+      "imports": [
+        "itertools"
+      ],
+      "reference_edit": {
+        "oldString": "def _skip_leading_empty_chunks(body: typing.Iterable[_T]) -> typing.Iterable[_T]:\n    body = iter(body)\n    for chunk in body:\n        if chunk:\n            return itertools.chain([chunk], body)\n    return []",
+        "newString": "def _skip_leading_empty_chunks(body: typing.Iterable[_T]) -> typing.Iterable[_T]:\n    body = iter(body)\n    for chunk in body:\n        if chunk and (\n            not isinstance(chunk, (bytes, bytearray, str)) or chunk.strip()\n        ):\n            return itertools.chain([chunk], body)\n    return []"
+      },
+      "discovery_probes": [
+        "def _skip_leading_empty_chunks",
+        "WSGI",
+        "itertools.chain"
+      ],
+      "asserts": [
+        {
+          "expr": "list(_skip_leading_empty_chunks([b'', b'foo', b'bar'])) == [b'foo', b'bar']",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "list(_skip_leading_empty_chunks([])) == []",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "list(_skip_leading_empty_chunks([b'foo', b'  ', b'bar'])) == [b'foo', b'  ', b'bar']",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "list(_skip_leading_empty_chunks([b'foo'])) == [b'foo']",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "list(_skip_leading_empty_chunks([b'  ', b'\\t', b'foo', b'bar'])) == [b'foo', b'bar']",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "list(_skip_leading_empty_chunks([b'\\n  \\t', b'foo'])) == [b'foo']",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target is a small private helper inside `httpx`'s WSGI transport that drops leading empty byte chunks from an iterable of body fragments before they reach the response. It currently treats only the truly-empty chunk `b''` as 'leading skippable noise' -- whitespace-only chunks like `b' '` or `b'\\t'` are forwarded as the first chunk, which prevents downstream consumers from inspecting the real first content fragment.",
+      "behavior_prose": "In this `httpx` checkout, the small private helper inside the WSGI transport module currently drops only strictly-empty (`b''`) leading byte chunks from a stream of body fragments. Real-world WSGI applications occasionally yield whitespace-only chunks (`b' '`, `b'\\t'`, `b'\\n  \\t'`) as bookkeeping output before the first real fragment, and downstream consumers expect those to be skipped just like empty chunks are. Extend the leading-skip predicate so that:\n\n- Leading whitespace-only `bytes`/`bytearray`/`str` chunks are also skipped. For example, `list(helper([b'  ', b'\\t', b'foo', b'bar']))` returns `[b'foo', b'bar']`, and `list(helper([b'\\n  \\t', b'foo']))` returns `[b'foo']`.\n- Existing behaviour on truly-empty leading chunks is preserved exactly: `list(helper([b'', b'foo', b'bar']))` returns `[b'foo', b'bar']`. An empty input still returns `[]`.\n- The pass-through-after-first-non-empty contract is preserved: `list(helper([b'foo', b'  ', b'bar']))` returns `[b'foo', b'  ', b'bar']` (whitespace AFTER the first real chunk is forwarded unchanged); a single-element non-empty stream like `list(helper([b'foo']))` returns `[b'foo']`.\n- Non-`bytes`/`bytearray`/`str` chunks must continue to be evaluated by their truthiness only (the helper is generic over chunk types), so the whitespace check applies only when the chunk is a `bytes`, `bytearray`, or `str`.\n\nThe minimal change extends the existing single `if chunk:` predicate to also reject whitespace-only `bytes`/`bytearray`/`str` chunks. Do NOT modify the `itertools.chain([chunk], body)` pass-through or the `return []` fallback. The helper lives among the WSGI integration glue under `httpx`; locate it by searching for `WSGI` or `itertools.chain` in the codebase.",
+      "prompt_required_literals": [
+        "b''",
+        "b'foo'",
+        "b'bar'",
+        "b'  '",
+        "b'\\t'",
+        "[]"
+      ],
+      "prompt_fail_modes": [
+        "Leaves the function unchanged, so `[b'  ', b'\\t', b'foo']` still yields `[b'  ', b'\\t', b'foo']` instead of `[b'foo']` (`no-change`).",
+        "Adds the whitespace check but applies it to ALL chunks (not just leading), so `list(helper([b'foo', b'  ', b'bar']))` becomes `[b'foo', b'bar']` instead of `[b'foo', b'  ', b'bar']` (`over-edit`).",
+        "Strips whitespace too aggressively (e.g. checks `chunk.isspace()` on bytes which is a method that exists but interprets the encoding loosely), passing for `b'\\xc2\\xa0'` (non-breaking space in UTF-8) when it shouldn't (`partial-edit`)."
+      ]
+    },
+    {
+      "id": 70,
+      "name": "edit_normalize_header_value_reject_crlf",
+      "repo": "httpx",
+      "difficulty": "medium",
+      "leak_function_name": false,
+      "structural_signature": {
+        "template": "tighten-injection-prevention",
+        "scope_kind": "single-file",
+        "answer_shape": "raises-with-substring",
+        "unique_trait": "reject-crlf-in-str-keep-bytes-passthrough"
+      },
+      "file": "httpx/_models.py",
+      "functions": [
+        "_normalize_header_value"
+      ],
+      "constants": [],
+      "imports": [],
+      "reference_edit": {
+        "oldString": "def _normalize_header_value(value: str | bytes, encoding: str | None = None) -> bytes:\n    \"\"\"\n    Coerce str/bytes into a strictly byte-wise HTTP header value.\n    \"\"\"\n    if isinstance(value, bytes):\n        return value\n    if not isinstance(value, str):\n        raise TypeError(f\"Header value must be str or bytes, not {type(value)}\")\n    return value.encode(encoding or \"ascii\")",
+        "newString": "def _normalize_header_value(value: str | bytes, encoding: str | None = None) -> bytes:\n    \"\"\"\n    Coerce str/bytes into a strictly byte-wise HTTP header value.\n    \"\"\"\n    if isinstance(value, bytes):\n        return value\n    if not isinstance(value, str):\n        raise TypeError(f\"Header value must be str or bytes, not {type(value)}\")\n    if \"\\r\" in value or \"\\n\" in value:\n        raise ValueError(\n            \"_normalize_header_value: header value must not contain CR or LF\"\n        )\n    return value.encode(encoding or \"ascii\")"
+      },
+      "discovery_probes": [
+        "def _normalize_header_value",
+        "header_value",
+        "Header value must"
+      ],
+      "asserts": [
+        {
+          "expr": "_normalize_header_value('hello') == b'hello'",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "_normalize_header_value(b'hello') == b'hello'",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "_normalize_header_value('worth-keeping') == b'worth-keeping'",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "setup": "raised = None\ntry:\n    _normalize_header_value(123)\nexcept TypeError as e:\n    raised = e",
+          "expr": "raised is not None",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "setup": "raised = None\ntry:\n    _normalize_header_value('value\\r\\nX-Evil: yes')\nexcept ValueError as e:\n    raised = e",
+          "expr": "raised is not None and ('CR' in str(raised) or 'LF' in str(raised))",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "setup": "raised = None\ntry:\n    _normalize_header_value('value\\nX-Evil: yes')\nexcept ValueError as e:\n    raised = e",
+          "expr": "raised is not None and ('CR' in str(raised) or 'LF' in str(raised))",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target is the small private helper that coerces a `str` or `bytes` HTTP header value into bytes. It currently passes `bytes` through, encodes `str` with the supplied encoding (default `'ascii'`), and raises `TypeError` for everything else. Header values containing carriage-return (`\\r`) or line-feed (`\\n`) bytes leak past the helper unchanged -- a classic header-injection vector that lets a hostile caller smuggle additional response headers.",
+      "behavior_prose": "In this `httpx` checkout, the small private helper that coerces a header value (currently typed as `str | bytes`) into a strict byte string forwards strings containing carriage-return (`\\r`) or line-feed (`\\n`) characters straight through to the byte encoder. That allows a hostile caller to smuggle additional headers via a payload like `'session=xyz\\r\\nX-Evil: yes'`. Tighten the helper so that:\n\n- A `str` value containing `\\r` or `\\n` now raises `ValueError` whose message contains either `CR` or `LF`. For example, calling the helper with `'value\\r\\nX-Evil: yes'` raises `ValueError`; calling it with `'value\\nX-Evil: yes'` (LF only) also raises `ValueError`.\n- Existing behaviour on safe inputs is preserved exactly: a clean `str` like `'hello'` still encodes to `b'hello'`; a `bytes` value like `b'hello'` is still passed through; a clean `str` like `'worth-keeping'` still encodes to `b'worth-keeping'`; and the existing `TypeError` for non-`str`/non-`bytes` values (e.g. `123`) is still raised unchanged.\n\nThe minimal change adds a single guard *after* the existing `str`/`bytes` type checks but *before* the `value.encode(...)` call. Do NOT modify the existing type-check logic, the `TypeError` message, or the encoding fallback (`encoding or \"ascii\"`). Note: this guard intentionally does NOT inspect `bytes` values for embedded `b'\\r'` / `b'\\n'`; tightening the bytes path is left as a separate concern.",
+      "prompt_required_literals": [
+        "ValueError",
+        "TypeError",
+        "CR",
+        "LF",
+        "b'hello'",
+        "'hello'",
+        "'worth-keeping'"
+      ],
+      "prompt_fail_modes": [
+        "Leaves the function unchanged, so a CRLF-containing string is encoded straight to bytes and the injection vector is preserved (`no-change`).",
+        "Adds the CRLF check but ALSO inspects `bytes` values for embedded `b'\\r'`/`b'\\n'`, breaking the regression that `bytes` values pass through unchanged (`over-edit`).",
+        "Raises a different exception class (e.g. `TypeError` rather than `ValueError`), so the existing `try: ... except TypeError` callers swallow the new behaviour and the CRLF still leaks (`partial-edit`)."
+      ]
+    },
+    {
+      "id": 71,
+      "name": "edit_from_key_val_list_reject_float",
+      "repo": "requests",
+      "difficulty": "medium",
+      "leak_function_name": false,
+      "structural_signature": {
+        "template": "extend-rejection-set",
+        "scope_kind": "single-file",
+        "answer_shape": "raises-with-substring",
+        "unique_trait": "extend-isinstance-tuple-with-float-and-complex"
+      },
+      "file": "src/requests/utils.py",
+      "functions": [
+        "from_key_val_list"
+      ],
+      "constants": [],
+      "imports": [
+        "collections:OrderedDict"
+      ],
+      "reference_edit": {
+        "oldString": "    if value is None:\n        return None\n\n    if isinstance(value, (str, bytes, bool, int)):\n        raise ValueError(\"cannot encode objects that are not 2-tuples\")\n\n    return OrderedDict(value)",
+        "newString": "    if value is None:\n        return None\n\n    if isinstance(value, (str, bytes, bool, int, float, complex)):\n        raise ValueError(\"cannot encode objects that are not 2-tuples\")\n\n    return OrderedDict(value)"
+      },
+      "discovery_probes": [
+        "def from_key_val_list",
+        "2-tuples",
+        "to_key_val_list"
+      ],
+      "asserts": [
+        {
+          "expr": "from_key_val_list(None) is None",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "list(from_key_val_list({'a': 1}).items()) == [('a', 1)]",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "list(from_key_val_list([('a', 1), ('b', 2)]).items()) == [('a', 1), ('b', 2)]",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "setup": "raised = None\ntry:\n    from_key_val_list('hello')\nexcept ValueError as e:\n    raised = e",
+          "expr": "raised is not None and '2-tuples' in str(raised)",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "setup": "raised = None\ntry:\n    from_key_val_list(3.14)\nexcept ValueError as e:\n    raised = e",
+          "expr": "raised is not None and '2-tuples' in str(raised)",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "setup": "raised = None\ntry:\n    from_key_val_list(1+2j)\nexcept ValueError as e:\n    raised = e",
+          "expr": "raised is not None and '2-tuples' in str(raised)",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target is the small helper that takes a Python value and either returns `None` (for `None` input), raises `ValueError` (for clearly-not-key-value-list inputs like `'hello'` or `123`), or returns an ordered dictionary built from the value (for dicts and lists of 2-tuples). Today, scalar numeric types `float` and `complex` slip past the type-rejection branch -- they are not in the existing `(str, bytes, bool, int)` `isinstance` tuple -- and instead reach `OrderedDict(value)` where they raise an opaque `TypeError: 'float' object is not iterable` from deep inside CPython.",
+      "behavior_prose": "In this `requests` checkout, the small helper that converts a value into an `OrderedDict` of key/value pairs (or returns `None`, or raises `ValueError` for non-2-tuple-like inputs) currently lets `float` and `complex` arguments slip past its `isinstance(value, (str, bytes, bool, int))` rejection. Such inputs reach `OrderedDict(value)` and produce an opaque `TypeError: 'float' object is not iterable` instead of the helper's documented `ValueError(\"cannot encode objects that are not 2-tuples\")`. Tighten the helper so that:\n\n- A `float` argument like `3.14` now raises `ValueError` whose message contains the substring `2-tuples`.\n- A `complex` argument like `1+2j` raises the same `ValueError` (also contains `2-tuples`).\n- Existing behaviour on every other input is preserved exactly: a `None` argument still returns `None`; a `dict` like `{'a': 1}` still produces an `OrderedDict` whose items are `[('a', 1)]`; a list of 2-tuples like `[('a', 1), ('b', 2)]` still produces an `OrderedDict` whose items are `[('a', 1), ('b', 2)]`; and a string argument like `'hello'` still raises `ValueError` with the same `2-tuples` substring it always has.\n\nThe minimal change extends the existing `isinstance(value, (str, bytes, bool, int))` rejection tuple. Do NOT modify the `None`-check, the `ValueError` message, or the trailing `OrderedDict(value)` fallback. The helper lives among the other small key/value coercion helpers under `src/requests/`; locate it by searching for the docstring substring `2-tuples` or the sibling `to_key_val_list`.",
+      "prompt_required_literals": [
+        "ValueError",
+        "2-tuples",
+        "None",
+        "{'a': 1}",
+        "[('a', 1)]",
+        "'hello'",
+        "3.14",
+        "1+2j"
+      ],
+      "prompt_fail_modes": [
+        "Leaves the function unchanged, so `from_key_val_list(3.14)` still raises `TypeError` from inside `OrderedDict` rather than the helper's documented `ValueError` (`no-change`).",
+        "Adds `float` to the rejection tuple but forgets `complex`, so the complex-number case still produces the opaque `TypeError` (`partial-edit`).",
+        "Replaces the existing `(str, bytes, bool, int)` tuple with a different filter (e.g. `(int, float, complex)`), accidentally dropping the `str`/`bytes` rejections so `from_key_val_list('hello')` no longer raises (`over-edit`)."
+      ]
+    },
+    {
+      "id": 72,
+      "name": "edit_peek_filelike_length_byteslike_fastpath",
+      "repo": "httpx",
+      "difficulty": "medium",
+      "leak_function_name": false,
+      "structural_signature": {
+        "template": "early-return-on-byteslike",
+        "scope_kind": "single-file",
+        "answer_shape": "value-equality",
+        "unique_trait": "fast-path-len-on-bytes-bytearray-keep-fileno-and-seek-paths"
+      },
+      "file": "httpx/_utils.py",
+      "functions": [
+        "peek_filelike_length"
+      ],
+      "constants": [],
+      "imports": [
+        "os",
+        "io:BytesIO"
+      ],
+      "reference_edit": {
+        "oldString": "def peek_filelike_length(stream: typing.Any) -> int | None:\n    \"\"\"\n    Given a file-like stream object, return its length in number of bytes\n    without reading it into memory.\n    \"\"\"\n    try:\n        # Is it an actual file?\n        fd = stream.fileno()\n        # Yup, seems to be an actual file.\n        length = os.fstat(fd).st_size\n    except (AttributeError, OSError):\n        # No... Maybe it's something that supports random access, like `io.BytesIO`?\n        try:\n            # Assuming so, go to end of stream to figure out its length,\n            # then put it back in place.\n            offset = stream.tell()\n            length = stream.seek(0, os.SEEK_END)\n            stream.seek(offset)\n        except (AttributeError, OSError):\n            # Not even that? Sorry, we're doomed...\n            return None\n\n    return length",
+        "newString": "def peek_filelike_length(stream: typing.Any) -> int | None:\n    \"\"\"\n    Given a file-like stream object, return its length in number of bytes\n    without reading it into memory.\n    \"\"\"\n    if isinstance(stream, (bytes, bytearray)):\n        return len(stream)\n    try:\n        # Is it an actual file?\n        fd = stream.fileno()\n        # Yup, seems to be an actual file.\n        length = os.fstat(fd).st_size\n    except (AttributeError, OSError):\n        # No... Maybe it's something that supports random access, like `io.BytesIO`?\n        try:\n            # Assuming so, go to end of stream to figure out its length,\n            # then put it back in place.\n            offset = stream.tell()\n            length = stream.seek(0, os.SEEK_END)\n            stream.seek(offset)\n        except (AttributeError, OSError):\n            # Not even that? Sorry, we're doomed...\n            return None\n\n    return length"
+      },
+      "discovery_probes": [
+        "def peek_filelike_length",
+        "peek_filelike",
+        "os.SEEK_END"
+      ],
+      "asserts": [
+        {
+          "expr": "peek_filelike_length(BytesIO(b'hello world')) == 11",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "peek_filelike_length(BytesIO(b'')) == 0",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "peek_filelike_length(object()) is None",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "peek_filelike_length(b'hello') == 5",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "peek_filelike_length(b'') == 0",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "peek_filelike_length(bytearray(b'world')) == 5",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target is the small private helper inside `httpx`'s utilities that takes a stream-like object and tries to determine its length without reading it -- first via `os.fstat` on the underlying file descriptor, then via a `tell()`/`seek(0, os.SEEK_END)`/`seek(offset)` round-trip, returning `None` if neither path works. Callers occasionally hand it raw `bytes`/`bytearray` content (which has neither `.fileno()` nor `.tell()`/`.seek()`); today both paths fall through and the helper returns `None`, even though `len(value)` would have given the correct answer instantly.",
+      "behavior_prose": "In this `httpx` checkout, the small private helper that returns the byte length of a stream-like object (using `os.fstat`, then a `tell`/`seek` fallback) returns `None` when handed raw `bytes` or `bytearray` content -- because neither protocol is implemented on the bytes type and both `try`/`except` blocks fail. Add a fast path so that:\n\n- Calling the helper with a `bytes` value returns `len(value)`. For example, calling it with `b'hello'` returns `5`, and calling it with `b''` returns `0`.\n- The same fast path applies to `bytearray`: calling the helper with `bytearray(b'world')` returns `5`.\n- Existing behaviour on every other input is preserved exactly: an `io.BytesIO` with content like `BytesIO(b'hello world')` still returns `11`; an empty `BytesIO(b'')` still returns `0`; an object that supports neither `.fileno()` nor `.tell()`/`.seek()` (e.g. a bare `object()`) still returns `None`.\n\nThe minimal change is a single guard at the very top of the function body that runs before either `try` block. Do NOT modify the existing `os.fstat` path, the `seek`/`tell` fallback, or the final `return length` line. The helper lives under the small networking helpers in the `httpx` package; locate it by searching for `os.fstat`, `os.SEEK_END`, or the documented file-length-peeking routine.",
+      "prompt_required_literals": [
+        "BytesIO",
+        "bytearray",
+        "5",
+        "0",
+        "11",
+        "None",
+        "b'hello'",
+        "b''",
+        "b'world'"
+      ],
+      "prompt_fail_modes": [
+        "Leaves the function unchanged, so calling the helper with `b'hello'` still returns `None` (`no-change`).",
+        "Handles `bytes` but forgets `bytearray`, so the bytearray case still returns `None` (`partial-edit`).",
+        "Adds the fast path AFTER the existing `try`/`except` blocks so it never runs (the `fileno()` / `tell()` calls raise but reach a final `return length` for the unrelated `length` variable that was set earlier) (`partial-edit`)."
+      ]
+    },
+    {
+      "id": 73,
+      "name": "edit_parse_content_type_default_on_empty",
+      "repo": "requests",
+      "difficulty": "medium",
+      "leak_function_name": false,
+      "structural_signature": {
+        "template": "default-on-empty-content-type",
+        "scope_kind": "single-file",
+        "answer_shape": "value-equality",
+        "unique_trait": "fallback-to-octet-stream-when-leading-semicolon-or-empty-content-type"
+      },
+      "file": "src/requests/utils.py",
+      "functions": [
+        "_parse_content_type_header"
+      ],
+      "constants": [],
+      "imports": [],
+      "reference_edit": {
+        "oldString": "    tokens = header.split(\";\")\n    content_type, params = tokens[0].strip(), tokens[1:]\n    params_dict = {}\n    strip_chars = \"\\\"' \"\n\n    for param in params:\n        param = param.strip()\n        if param and (idx := param.find(\"=\")) != -1:\n            key = param[:idx].strip(strip_chars)\n            value = param[idx + 1 :].strip(strip_chars)\n            params_dict[key.lower()] = value\n    return content_type, params_dict",
+        "newString": "    tokens = header.split(\";\")\n    content_type, params = tokens[0].strip(), tokens[1:]\n    if not content_type:\n        content_type = \"application/octet-stream\"\n    params_dict = {}\n    strip_chars = \"\\\"' \"\n\n    for param in params:\n        param = param.strip()\n        if param and (idx := param.find(\"=\")) != -1:\n            key = param[:idx].strip(strip_chars)\n            value = param[idx + 1 :].strip(strip_chars)\n            params_dict[key.lower()] = value\n    return content_type, params_dict"
+      },
+      "discovery_probes": [
+        "def _parse_content_type_header",
+        "parse_dict_header",
+        "get_encoding_from_headers"
+      ],
+      "asserts": [
+        {
+          "expr": "_parse_content_type_header('text/html')[0] == 'text/html'",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "_parse_content_type_header('text/html; charset=utf-8')[1] == {'charset': 'utf-8'}",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "_parse_content_type_header('application/json; charset=\"utf-8\"; boundary=abc')[1] == {'charset': 'utf-8', 'boundary': 'abc'}",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "_parse_content_type_header('application/octet-stream') == ('application/octet-stream', {})",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "_parse_content_type_header(';charset=utf-8')[0] == 'application/octet-stream'",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "_parse_content_type_header(';charset=utf-8')[1] == {'charset': 'utf-8'}",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target is the small private helper inside `requests` that splits a `Content-Type` header value on `;`, returns the leading content-type token and a dict of parameters (e.g. `charset`, `boundary`). Today, when the header has no leading content-type token (it starts with a `;`, leaving `tokens[0]` as `''`), the helper returns an empty string for the content-type. Downstream consumers like `get_encoding_from_headers` then test substrings (`'text' in content_type`) against the empty string and produce confusing fallback behaviour.",
+      "behavior_prose": "In this `requests` checkout, the small private helper that parses a `Content-Type` header byte string into a `(content_type, params_dict)` tuple returns the empty string `''` for the content-type whenever the header starts with a `;` (so that the leading `;`-split token is empty). Downstream code like `get_encoding_from_headers` then tests `'text' in content_type`, which matches `''` only via fallback heuristics that are clearly wrong. Tighten the helper so that:\n\n- When the leading content-type token would otherwise be the empty string, the helper returns `'application/octet-stream'` as the content-type instead. For example, parsing `;charset=utf-8` returns `('application/octet-stream', {'charset': 'utf-8'})`.\n- The params dict still parses normally for the leading-`;` case: parsing `;charset=utf-8` still produces `{'charset': 'utf-8'}`.\n- Existing behaviour on inputs that have a leading content-type is preserved exactly: parsing `text/html` returns `('text/html', {})`; parsing `text/html; charset=utf-8` produces `'text/html'` plus a `{'charset': 'utf-8'}` dict; parsing `application/json; charset=\"utf-8\"; boundary=abc` produces `'application/json'` plus a `{'charset': 'utf-8', 'boundary': 'abc'}` dict (existing surrounding-quote stripping still applies); and a bare `application/octet-stream` (no params) returns `('application/octet-stream', {})`.\n\nThe minimal change is a single guard inserted between the `tokens[0].strip()` line and the `params_dict = {}` line that reassigns `content_type` to `'application/octet-stream'` when it is otherwise the empty string. Do NOT modify the parameter-parsing loop or its `strip_chars` handling. The helper lives among the small header-parsing helpers under `src/requests/`; locate it by searching for `content_type` or `charset` references in the codebase.",
+      "prompt_required_literals": [
+        "'text/html'",
+        "'application/json'",
+        "'application/octet-stream'",
+        "'charset'",
+        "'utf-8'",
+        "'boundary'",
+        "'abc'"
+      ],
+      "prompt_fail_modes": [
+        "Leaves the function unchanged, so a leading-`;` input still produces an empty-string content-type that pollutes downstream encoding detection (`no-change`).",
+        "Replaces the empty content-type with the wrong default (e.g. `'text/plain'`), satisfying the leading-`;` case but accidentally also matching the `'text' in content_type` heuristic in `get_encoding_from_headers` and over-applying the `ISO-8859-1` fallback (`partial-edit`).",
+        "Always overwrites the content-type with `'application/octet-stream'` (not just when it would be empty), so a valid `text/html` input now also returns `'application/octet-stream'` (`over-edit`)."
+      ]
+    },
+    {
+      "id": 74,
+      "name": "edit_select_proxy_skip_empty_mappings",
+      "repo": "requests",
+      "difficulty": "medium",
+      "leak_function_name": false,
+      "structural_signature": {
+        "template": "skip-empty-proxy-mappings",
+        "scope_kind": "single-file",
+        "answer_shape": "value-equality",
+        "unique_trait": "skip-falsy-values-in-proxy-fallback-chain-keep-key-priority"
+      },
+      "file": "src/requests/utils.py",
+      "functions": [
+        "select_proxy"
+      ],
+      "constants": [],
+      "imports": [
+        "urllib.parse:urlparse"
+      ],
+      "reference_edit": {
+        "oldString": "    proxies = proxies or {}\n    urlparts = urlparse(url)\n    if urlparts.hostname is None:\n        return proxies.get(urlparts.scheme, proxies.get(\"all\"))\n\n    proxy_keys = [\n        urlparts.scheme + \"://\" + urlparts.hostname,\n        urlparts.scheme,\n        \"all://\" + urlparts.hostname,\n        \"all\",\n    ]\n    proxy = None\n    for proxy_key in proxy_keys:\n        if proxy_key in proxies:\n            proxy = proxies[proxy_key]\n            break\n\n    return proxy",
+        "newString": "    proxies = proxies or {}\n    urlparts = urlparse(url)\n    if urlparts.hostname is None:\n        return proxies.get(urlparts.scheme, proxies.get(\"all\"))\n\n    proxy_keys = [\n        urlparts.scheme + \"://\" + urlparts.hostname,\n        urlparts.scheme,\n        \"all://\" + urlparts.hostname,\n        \"all\",\n    ]\n    proxy = None\n    for proxy_key in proxy_keys:\n        if proxy_key in proxies and proxies[proxy_key]:\n            proxy = proxies[proxy_key]\n            break\n\n    return proxy"
+      },
+      "discovery_probes": [
+        "def select_proxy",
+        "select_proxy",
+        "all://"
+      ],
+      "asserts": [
+        {
+          "expr": "select_proxy('http://host.example/path', {'http': 'http://p1:8080'}) == 'http://p1:8080'",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "select_proxy('http://host.example/path', {'all': 'http://p2:8080'}) == 'http://p2:8080'",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "select_proxy('http://host.example/path', None) is None",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "select_proxy('http://host.example/path', {}) is None",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "select_proxy('http://host.example/path', {'https': 'http://p3:8080'}) is None",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "select_proxy('http://host.example/path', {'http://host.example': 'http://specific:8080', 'http': 'http://generic:8080'}) == 'http://specific:8080'",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "select_proxy('http://host.example/path', {'http': None, 'all': 'http://fallback:8080'}) == 'http://fallback:8080'",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "select_proxy('http://host.example/path', {'http': '', 'all': 'http://fallback:8080'}) == 'http://fallback:8080'",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target is the small private helper inside `requests` that, given a URL and a `proxies` dict, walks a four-step fallback chain (`scheme://host`, `scheme`, `all://host`, `all`) to pick the first matching proxy URL. Today the helper short-circuits on the FIRST key that is in the dict regardless of value -- so a falsy mapping like `{'http': None}` or `{'http': ''}` (which is how callers signal 'no proxy for this scheme') traps the lookup at the first step and returns the falsy value instead of falling through to the more general `all` mapping.",
+      "behavior_prose": "In this `requests` checkout, the small private helper that walks a four-step proxy-key fallback chain (`scheme://host`, `scheme`, `all://host`, `all`) currently short-circuits on the first key that exists in the `proxies` mapping -- regardless of whether the value at that key is truthy. Callers commonly use a falsy mapping like `{'http': None}` or `{'http': ''}` to signal 'do not use a proxy for this scheme, fall through to the `all` default'; the helper instead returns the falsy value, defeating the fallback. Tighten the chain so that:\n\n- A falsy value at an earlier key (e.g. `{'http': None, 'all': 'http://fallback:8080'}` for the URL `http://host.example/path`) now falls through to the next key in the chain. The helper returns `'http://fallback:8080'` (the value under `'all'`).\n- The same fallthrough applies when the falsy value is the empty string: `{'http': '', 'all': 'http://fallback:8080'}` returns `'http://fallback:8080'`.\n- Existing behaviour on every other input is preserved exactly: a direct hit like `{'http': 'http://p1:8080'}` returns `'http://p1:8080'`; the `all` fallback like `{'all': 'http://p2:8080'}` returns `'http://p2:8080'`; `proxies=None` returns `None`; an empty `{}` returns `None`; a non-matching scheme like `{'https': 'http://p3:8080'}` (URL is `http://...`) returns `None`; and the host-specific key still wins over the bare scheme -- `{'http://host.example': 'http://specific:8080', 'http': 'http://generic:8080'}` returns `'http://specific:8080'`.\n\nThe minimal change extends the existing `if proxy_key in proxies:` check inside the fallback loop to also require the mapped value be truthy. Do NOT modify the four-key construction, the loop ordering, the early-return path for `urlparts.hostname is None`, or the trailing `return proxy`. The helper lives among the small URL-handling utilities under `src/requests/`; locate it by searching for `all://` references or for proxy-related call sites in the adapters layer.",
+      "prompt_required_literals": [
+        "'http://p1:8080'",
+        "'http://p2:8080'",
+        "'http://specific:8080'",
+        "'http://fallback:8080'",
+        "None"
+      ],
+      "prompt_fail_modes": [
+        "Leaves the function unchanged, so a falsy mapping at an earlier key returns the falsy value instead of falling through (`no-change`).",
+        "Adds a truthiness check on the value but ALSO tightens the key membership test (e.g. `proxy_key in proxies and proxies[proxy_key] is not None`), accidentally accepting empty-string values which the test cases say should also fall through (`partial-edit`).",
+        "Reorders the fallback chain so that bare `scheme` is checked before `scheme://host`, breaking the regression that the host-specific key wins (`over-edit`)."
+      ]
+    },
+    {
+      "id": 75,
+      "name": "edit_urldefragauth_reject_empty_with_caller",
+      "difficulty": "hard",
+      "leak_function_name": false,
+      "structural_signature": {
+        "template": "cross-file-precondition",
+        "scope_kind": "multi-file",
+        "answer_shape": "cross-file-pair",
+        "unique_trait": "callee-rejects-empty-caller-shortcircuits-to-empty-string"
+      },
+      "repo": "requests",
+      "targets": [
+        {
+          "path": "src/requests/utils.py",
+          "functions": ["urldefragauth"],
+          "constants": [],
+          "imports": ["urllib.parse:urlparse,urlunparse"],
+          "reference_edit": {
+            "oldString": "def urldefragauth(url):\n    \"\"\"\n    Given a url remove the fragment and the authentication part.\n\n    :rtype: str\n    \"\"\"\n    scheme, netloc, path, params, query, fragment = urlparse(url)\n\n    # see func:`prepend_scheme_if_needed`\n    if not netloc:\n        netloc, path = path, netloc\n\n    netloc = netloc.rsplit(\"@\", 1)[-1]\n\n    return urlunparse((scheme, netloc, path, params, query, \"\"))\n",
+            "newString": "def urldefragauth(url):\n    \"\"\"\n    Given a url remove the fragment and the authentication part.\n\n    :rtype: str\n    \"\"\"\n    if not url:\n        raise ValueError(\"received empty url\")\n    scheme, netloc, path, params, query, fragment = urlparse(url)\n\n    # see func:`prepend_scheme_if_needed`\n    if not netloc:\n        netloc, path = path, netloc\n\n    netloc = netloc.rsplit(\"@\", 1)[-1]\n\n    return urlunparse((scheme, netloc, path, params, query, \"\"))\n"
+          }
+        },
+        {
+          "path": "src/requests/adapters.py",
+          "functions": ["_safe_urldefragauth"],
+          "constants": [],
+          "imports": [],
+          "is_new": true,
+          "reference_edit": {
+            "oldString": "    return host_params, pool_kwargs\n\n\nclass BaseAdapter:",
+            "newString": "    return host_params, pool_kwargs\n\n\ndef _safe_urldefragauth(url):\n    \"\"\"Defensive wrapper around the lower-level fragment/auth stripper.\n\n    Returns ``''`` (empty string) when ``url`` is None, is not a string,\n    or becomes empty after stripping whitespace. Otherwise delegates to\n    the lower-level helper (which is itself strict about rejecting\n    empty inputs).\n    \"\"\"\n    if url is None:\n        return \"\"\n    if not isinstance(url, str):\n        return \"\"\n    stripped = url.strip()\n    if not stripped:\n        return \"\"\n    return urldefragauth(stripped)\n\n\nclass BaseAdapter:"
+          }
+        }
+      ],
+      "discovery_probes": [
+        "remove the fragment",
+        "is_proxied_http_request"
+      ],
+      "asserts": [
+        {
+          "expr": "urldefragauth('http://user:pass@example.com/path#frag') == 'http://example.com/path'",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "urldefragauth('http://example.com:8080/path') == 'http://example.com:8080/path'",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "urldefragauth('https://x@y.com/p?q=1#z') == 'https://y.com/p?q=1'",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "setup": "_raised = None\ntry:\n    urldefragauth('')\nexcept ValueError as _e:\n    _raised = str(_e)",
+          "expr": "_raised is not None and 'empty url' in _raised",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "_safe_urldefragauth(None) == ''",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "_safe_urldefragauth('') == ''",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "_safe_urldefragauth('   ') == ''",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "_safe_urldefragauth('http://user:pass@example.com/p#f') == 'http://example.com/p'",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "_safe_urldefragauth(['not', 'a', 'string']) == ''",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target spans two related files inside `src/requests/`. The lower-level helper is a small URL-cleaning utility that strips both the URL fragment and the userinfo portion of the authority. The higher-level caller is the HTTP transport adapter that already houses `BaseAdapter`, `HTTPAdapter`, and the proxy-handling logic; it currently calls the lower-level helper directly without guarding against missing/empty URLs.",
+      "behavior_prose": "In this `requests` checkout, satisfy a defensive contract spread across two related files inside `src/requests/`. The change requires consistent edits in BOTH files; a single-file edit will not satisfy the hidden grader.\n\nLower-level helper (in the small URL-cleaning utility module that already houses `parse_dict_header`, `parse_list_header`, and `select_proxy`):\n\n- Today, the helper accepts any URL string -- including the empty string `''` -- and silently returns a stripped value. Empty input passes through `urlparse('')` and produces `''` as the final result, which is misleading because there is nothing to clean.\n- Tighten the helper so it raises `ValueError` with the message text `received empty url` (case-sensitive substring) when called on a falsy input (the empty string `''`). All other inputs continue to behave exactly as before.\n- All existing behaviour is preserved exactly: `'http://user:pass@example.com/path#frag'` still becomes `'http://example.com/path'`; `'http://example.com:8080/path'` still becomes `'http://example.com:8080/path'`; `'https://x@y.com/p?q=1#z'` still becomes `'https://y.com/p?q=1'`. Only the empty-string input changes behaviour (now raises).\n\nHigher-level helper (in the sibling HTTP transport adapter module that already houses `BaseAdapter`, `HTTPAdapter`, and the existing top-level helper `_urllib3_request_context`):\n\n- Add a NEW top-level helper named `_safe_urldefragauth(url)` that defends against missing or non-string `url` arguments before delegating to the lower-level helper. It must:\n  - Return `''` (the empty string) when `url` is `None`.\n  - Return `''` when `url` is not a string (e.g. a list, dict, or any other non-string value).\n  - Return `''` when `url` is a string that becomes empty after `str.strip()` (so whitespace-only strings short-circuit, never reaching the lower-level helper).\n  - Otherwise call the lower-level helper on the stripped string and return its result.\n- For example: `_safe_urldefragauth(None)` returns `''`; `_safe_urldefragauth('   ')` returns `''`; `_safe_urldefragauth(['not', 'a', 'string'])` returns `''`; `_safe_urldefragauth('http://user:pass@example.com/p#f')` returns `'http://example.com/p'`.\n\nLocate the lower-level helper by searching the codebase for the docstring `remove the fragment` or for the trailing `.rsplit(\"@\", 1)[-1]` line that strips the userinfo. Locate the sibling caller file by searching for `is_proxied_http_request` (a flag computed inside the adapter that already calls the lower-level helper).",
+      "prompt_required_literals": [
+        "_safe_urldefragauth(url)",
+        "received empty url",
+        "remove the fragment",
+        "is_proxied_http_request",
+        "BaseAdapter",
+        "_urllib3_request_context"
+      ],
+      "prompt_fail_modes": [
+        "Edits only the lower-level helper to raise on empty input but never adds the new sibling helper, so the new-behavior asserts on `_safe_urldefragauth` fail (`partial-edit`).",
+        "Adds the sibling helper but doesn't tighten the lower-level helper, so calling the lower-level helper directly with `''` still returns `''` instead of raising (`partial-edit`).",
+        "Tightens the lower-level helper to also reject `None` with a different exception class, breaking call sites that previously relied on `TypeError` from `urlparse(None)` (`over-edit`)."
+      ]
+    },
+    {
+      "id": 76,
+      "name": "edit_to_key_val_list_sort_with_caller_filter_none",
+      "difficulty": "hard",
+      "leak_function_name": false,
+      "structural_signature": {
+        "template": "extract-normalizer-pair",
+        "scope_kind": "multi-file",
+        "answer_shape": "cross-file-pair",
+        "unique_trait": "callee-stabilizes-mapping-order-caller-filters-none-values"
+      },
+      "repo": "requests",
+      "targets": [
+        {
+          "path": "src/requests/utils.py",
+          "functions": ["to_key_val_list"],
+          "constants": [],
+          "imports": ["collections.abc:Mapping"],
+          "reference_edit": {
+            "oldString": "    if isinstance(value, Mapping):\n        value = value.items()\n\n    return list(value)\n",
+            "newString": "    if isinstance(value, Mapping):\n        return sorted(value.items(), key=lambda kv: kv[0])\n\n    return list(value)\n"
+          }
+        },
+        {
+          "path": "src/requests/sessions.py",
+          "functions": ["_kv_pairs_for_request"],
+          "constants": [],
+          "imports": [],
+          "is_new": true,
+          "reference_edit": {
+            "oldString": "    return merge_setting(request_hooks, session_hooks, dict_class)\n\n\nclass SessionRedirectMixin:",
+            "newString": "    return merge_setting(request_hooks, session_hooks, dict_class)\n\n\ndef _kv_pairs_for_request(value):\n    \"\"\"Normalize ``value`` into a list of ``(key, val)`` tuples with `None`\n    values dropped.\n\n    Returns ``None`` when ``value`` itself is ``None`` (passthrough).\n    Otherwise delegates to the lower-level key/value normalizer in the\n    utility module and filters out any pair whose value is ``None``.\n    \"\"\"\n    if value is None:\n        return None\n    pairs = to_key_val_list(value)\n    return [(k, v) for (k, v) in pairs if v is not None]\n\n\nclass SessionRedirectMixin:"
+          }
+        }
+      ],
+      "discovery_probes": [
+        "cannot encode objects",
+        "merge_setting"
+      ],
+      "asserts": [
+        {
+          "expr": "to_key_val_list([('x', 1), ('y', 2)]) == [('x', 1), ('y', 2)]",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "to_key_val_list(None) is None",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "setup": "_raised = None\ntry:\n    to_key_val_list('string')\nexcept ValueError as _e:\n    _raised = str(_e)",
+          "expr": "_raised is not None and 'cannot encode objects' in _raised",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "to_key_val_list({'b': 2, 'a': 1, 'c': 3}) == [('a', 1), ('b', 2), ('c', 3)]",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "to_key_val_list({'z': 26, 'a': 1}) == [('a', 1), ('z', 26)]",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "_kv_pairs_for_request(None) is None",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "_kv_pairs_for_request({'a': 1, 'b': None, 'c': 3}) == [('a', 1), ('c', 3)]",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "_kv_pairs_for_request([('x', 1), ('y', None), ('z', 0)]) == [('x', 1), ('z', 0)]",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "_kv_pairs_for_request({}) == []",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target spans two related files inside `src/requests/`. The lower-level helper is a small utility that normalizes user-supplied parameter/header inputs (mappings, list-of-tuples, generators) into a uniform list-of-tuples representation. The higher-level caller is the session module that already houses `merge_setting`, `merge_hooks`, and the request-merging plumbing; it currently consumes whatever insertion-order list the lower-level helper returns and has no defensive filter for `None` values that callers use to signal 'remove this entry'.",
+      "behavior_prose": "In this `requests` checkout, satisfy a contract spread across two related files inside `src/requests/`. The change requires consistent edits in BOTH files; a single-file edit will not satisfy the hidden grader.\n\nLower-level helper (in the small utility module that already houses `parse_dict_header`, `parse_list_header`, `select_proxy`, and the error message `cannot encode objects that are not 2-tuples`):\n\n- Today, when the helper receives a `Mapping` (e.g. a `dict`), it returns `list(value.items())`, which preserves dict insertion order. Two callers that pass equivalent dicts with different insertion orders therefore see different output orderings, and downstream merging is order-sensitive.\n- Tighten the Mapping branch so it returns the items SORTED by key (lexicographic on the key as-is, no `str()` coercion). Concretely: `{'b': 2, 'a': 1, 'c': 3}` must now return `[('a', 1), ('b', 2), ('c', 3)]`; `{'z': 26, 'a': 1}` must return `[('a', 1), ('z', 26)]`.\n- All other behaviour is preserved exactly: a `list` of pairs passes through unchanged (`[('x', 1), ('y', 2)]` still returns `[('x', 1), ('y', 2)]`); `None` still returns `None`; `'string'` still raises `ValueError` with the message containing `cannot encode objects`. Do NOT change the rejection set (str/bytes/bool/int still raise) and do NOT sort non-Mapping inputs.\n\nHigher-level helper (in the sibling session module that already houses the existing top-level `merge_setting` and `merge_hooks` helpers):\n\n- Add a NEW top-level helper named `_kv_pairs_for_request(value)` that normalizes `value` to a list of `(key, val)` tuples with any pair whose value is `None` dropped. It must:\n  - Return `None` (the literal None, NOT `[]`) when `value` itself is `None` (passthrough; mirrors the lower-level helper's None-passthrough).\n  - Otherwise call the lower-level helper on `value`, then return a list comprehension that keeps only the `(k, v)` pairs where `v is not None`.\n  - The filter must use `is not None` (not truthiness): a pair like `('z', 0)` must be KEPT (zero is a legitimate value, only `None` is dropped).\n- For example: `_kv_pairs_for_request({'a': 1, 'b': None, 'c': 3})` returns `[('a', 1), ('c', 3)]`; `_kv_pairs_for_request([('x', 1), ('y', None), ('z', 0)])` returns `[('x', 1), ('z', 0)]`; `_kv_pairs_for_request({})` returns `[]`; `_kv_pairs_for_request(None)` returns `None`.\n\nLocate the lower-level helper by searching the codebase for the exact error string `cannot encode objects that are not 2-tuples`. Locate the sibling caller file by searching for the existing top-level `merge_setting` helper.",
+      "prompt_required_literals": [
+        "_kv_pairs_for_request(value)",
+        "merge_setting",
+        "cannot encode objects",
+        "is not None",
+        "('z', 0)",
+        "[('a', 1), ('c', 3)]"
+      ],
+      "prompt_fail_modes": [
+        "Edits only the lower-level helper (sorts Mapping items) but never adds the new sibling helper, so the new-behavior asserts on `_kv_pairs_for_request` fail (`partial-edit`).",
+        "Adds the sibling helper with the right None-filter but leaves the lower-level helper untouched, so the sort-on-Mapping assertions fail (`partial-edit`).",
+        "Adds the sibling helper using truthy filter `if v` instead of `if v is not None`, dropping the `('z', 0)` pair as well as the `None` pair (`over-edit`)."
+      ]
+    },
+    {
+      "id": 77,
+      "name": "edit_make_default_short_help_reject_nonpositive_with_caller",
+      "difficulty": "hard",
+      "leak_function_name": false,
+      "structural_signature": {
+        "template": "bounded-input-pair",
+        "scope_kind": "multi-file",
+        "answer_shape": "cross-file-pair",
+        "unique_trait": "callee-rejects-nonpositive-bound-caller-clamps-to-default"
+      },
+      "repo": "click",
+      "targets": [
+        {
+          "path": "src/click/utils.py",
+          "functions": ["make_default_short_help"],
+          "constants": [],
+          "imports": [],
+          "reference_edit": {
+            "oldString": "def make_default_short_help(help: str, max_length: int = 45) -> str:\n    \"\"\"Returns a condensed version of help string.\n\n    :meta private:\n    \"\"\"\n    # Consider only the first paragraph.\n    paragraph_end = help.find(\"\\n\\n\")",
+            "newString": "def make_default_short_help(help: str, max_length: int = 45) -> str:\n    \"\"\"Returns a condensed version of help string.\n\n    :meta private:\n    \"\"\"\n    if not isinstance(max_length, int) or max_length <= 0:\n        raise ValueError(\"max_length must be positive\")\n    # Consider only the first paragraph.\n    paragraph_end = help.find(\"\\n\\n\")"
+          }
+        },
+        {
+          "path": "src/click/core.py",
+          "functions": ["_compose_short_help"],
+          "constants": [],
+          "imports": [],
+          "is_new": true,
+          "reference_edit": {
+            "oldString": "    return list(zip(*repeat(iter(iterable), batch_size), strict=False))\n\n\n@contextmanager\ndef augment_usage_errors(",
+            "newString": "    return list(zip(*repeat(iter(iterable), batch_size), strict=False))\n\n\ndef _compose_short_help(help: str, max_length: int = 45) -> str:\n    \"\"\"Defensive wrapper around the lower-level short-help truncator.\n\n    Returns ``''`` immediately when ``help`` is falsy. Clamps non-positive\n    or non-int ``max_length`` values to the default ``45`` before\n    delegating, so callers that pass user-controlled bounds (e.g. from\n    a terminal-width measurement that occasionally yields ``0`` or a\n    negative value) never trigger the lower-level helper's strict\n    bounds check.\n    \"\"\"\n    if not help:\n        return \"\"\n    if not isinstance(max_length, int) or max_length <= 0:\n        max_length = 45\n    return make_default_short_help(help, max_length)\n\n\n@contextmanager\ndef augment_usage_errors(",
+            "newString_alt_unused": ""
+          }
+        }
+      ],
+      "discovery_probes": [
+        "condensed version",
+        "augment_usage_errors"
+      ],
+      "asserts": [
+        {
+          "expr": "make_default_short_help('Short help', 45) == 'Short help'",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "make_default_short_help('This is a very long help string that should be truncated.', 30) == 'This is a very long help...'",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "make_default_short_help('Short.', 45) == 'Short.'",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "setup": "_raised = None\ntry:\n    make_default_short_help('hi', 0)\nexcept ValueError as _e:\n    _raised = str(_e)",
+          "expr": "_raised is not None and 'must be positive' in _raised",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "setup": "_raised2 = None\ntry:\n    make_default_short_help('hi', -5)\nexcept ValueError as _e:\n    _raised2 = str(_e)",
+          "expr": "_raised2 is not None and 'must be positive' in _raised2",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "_compose_short_help('hi', -5) == 'hi'",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "_compose_short_help('', 45) == ''",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "_compose_short_help('hello world', 45) == 'hello world'",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "_compose_short_help('hi', 0) == 'hi'",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target spans two related files inside `src/click/`. The lower-level helper is a small utility in the click utility module that returns a condensed (truncated) version of a help string for command-line display, given a maximum length. The higher-level caller is the click command core that already houses `Command`, `Group`, `Context`, `batch`, and the `@contextmanager`-decorated `augment_usage_errors` helper; it currently calls the lower-level helper directly with whatever `max_length` the calling code supplies (e.g. a terminal-width measurement that can occasionally yield 0 or a negative value).",
+      "behavior_prose": "In this `click` checkout, satisfy a defensive contract spread across two related files inside `src/click/`. The change requires consistent edits in BOTH files; a single-file edit will not satisfy the hidden grader.\n\nLower-level helper (in the click utility module that already houses `safecall`, `format_filename`, and the docstring `Returns a condensed version of help string`):\n\n- Today, the helper accepts any integer (or non-integer) `max_length` argument, including `0` and negative values, and silently produces nonsensical output (e.g. calling the helper with `help='hi'` and `max_length=0` or `max_length=-5` currently returns just `'...'`, the truncation suffix, instead of refusing the bad bound).\n- Tighten the helper so that an invalid `max_length` (non-int or non-positive integer) raises `ValueError` with the message text `max_length must be positive` (case-sensitive substring). The check must happen BEFORE any other work in the function body.\n- All existing behaviour is preserved exactly for valid inputs: `('Short help', 45)` still returns `'Short help'`; `('This is a very long help string that should be truncated.', 30)` still returns `'This is a very long help...'`; `('Short.', 45)` still returns `'Short.'`; `('', 45)` still returns `''`. Only invalid `max_length` values change behaviour (now raise).\n\nHigher-level helper (in the click command core module that already houses `Command`, `Group`, `Context`, the existing top-level `batch` helper, and the `@contextmanager`-decorated `augment_usage_errors`):\n\n- Add a NEW top-level helper named `_compose_short_help(help, max_length=45)` that defends against invalid arguments before delegating to the lower-level helper. It must:\n  - Return `''` (the empty string) when `help` is falsy (the empty string `''`, `None`, etc.).\n  - Clamp `max_length` to the default value `45` when it is not an `int` or is non-positive. Do NOT raise for invalid bounds; clamp silently. The default `max_length=45` of the lower-level helper must be matched.\n  - Otherwise delegate to the lower-level helper with the (possibly clamped) `max_length`, and return its result.\n- For example: `_compose_short_help('hi', -5)` returns `'hi'` (clamped to 45, then delegates); `_compose_short_help('', 45)` returns `''`; `_compose_short_help('hello world', 45)` returns `'hello world'`; `_compose_short_help('hi', 0)` returns `'hi'`.\n\nLocate the lower-level helper by searching the codebase for the docstring substring `condensed version`. Locate the sibling caller file by searching for the existing top-level `augment_usage_errors` helper.",
+      "prompt_required_literals": [
+        "_compose_short_help(help, max_length=45)",
+        "max_length must be positive",
+        "condensed version",
+        "augment_usage_errors",
+        "batch",
+        "45"
+      ],
+      "prompt_fail_modes": [
+        "Edits only the lower-level helper to raise on non-positive `max_length` but never adds the new sibling helper, so the new-behavior asserts on `_compose_short_help` fail (`partial-edit`).",
+        "Adds the sibling helper with the right clamp but doesn't tighten the lower-level helper, so calling the lower-level helper directly with `max_length=0` still returns `'...'` instead of raising (`partial-edit`).",
+        "Tightens the lower-level helper but ALSO rejects the default value `45` (e.g. `max_length < 1` instead of `max_length <= 0` and accidentally inverts the predicate), breaking every existing call site (`over-edit`)."
+      ]
+    },
+    {
+      "id": 78,
+      "name": "edit_split_opt_reject_empty_with_caller_safe_prefix",
+      "difficulty": "hard",
+      "leak_function_name": false,
+      "structural_signature": {
+        "template": "callee-strict-callsite-tolerant",
+        "scope_kind": "multi-file",
+        "answer_shape": "cross-file-pair",
+        "unique_trait": "callee-rejects-empty-option-caller-returns-empty-prefix"
+      },
+      "repo": "click",
+      "targets": [
+        {
+          "path": "src/click/parser.py",
+          "functions": ["_split_opt"],
+          "constants": [],
+          "imports": [],
+          "reference_edit": {
+            "oldString": "def _split_opt(opt: str) -> tuple[str, str]:\n    first = opt[:1]\n    if first.isalnum():\n        return \"\", opt\n    if opt[1:2] == first:\n        return opt[:2], opt[2:]\n    return first, opt[1:]\n",
+            "newString": "def _split_opt(opt: str) -> tuple[str, str]:\n    if not opt:\n        raise ValueError(\"option splitter received empty input\")\n    first = opt[:1]\n    if first.isalnum():\n        return \"\", opt\n    if opt[1:2] == first:\n        return opt[:2], opt[2:]\n    return first, opt[1:]\n"
+          }
+        },
+        {
+          "path": "src/click/formatting.py",
+          "functions": ["_split_opt_prefix_safe"],
+          "constants": [],
+          "imports": [],
+          "is_new": true,
+          "reference_edit": {
+            "oldString": "        yield row + (\"\",) * (col_count - len(row))\n\n\ndef wrap_text(",
+            "newString": "        yield row + (\"\",) * (col_count - len(row))\n\n\ndef _split_opt_prefix_safe(opt):\n    \"\"\"Defensive wrapper that returns the option-prefix portion of ``opt``\n    (e.g. ``'--'`` for ``'--foo'``, ``'-'`` for ``'-x'``, ``''`` for a\n    bare alphanumeric token) without raising on empty/None input.\n\n    Returns ``''`` (empty string) when ``opt`` is None, not a string, or\n    an empty string. Otherwise delegates to the lower-level option\n    splitter and returns just the prefix component (the first element\n    of the returned tuple).\n    \"\"\"\n    if opt is None:\n        return \"\"\n    if not isinstance(opt, str):\n        return \"\"\n    if not opt:\n        return \"\"\n    return _split_opt(opt)[0]\n\n\ndef wrap_text("
+          }
+        }
+      ],
+      "discovery_probes": [
+        "started out as largely a copy paste",
+        "measure_table"
+      ],
+      "asserts": [
+        {
+          "expr": "_split_opt('--foo') == ('--', 'foo')",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "_split_opt('-x') == ('-', 'x')",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "_split_opt('foo') == ('', 'foo')",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "_split_opt('-') == ('-', '')",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "setup": "_raised = None\ntry:\n    _split_opt('')\nexcept ValueError as _e:\n    _raised = str(_e)",
+          "expr": "_raised is not None and 'empty input' in _raised",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "_split_opt_prefix_safe(None) == ''",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "_split_opt_prefix_safe('') == ''",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "_split_opt_prefix_safe('--foo') == '--'",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "_split_opt_prefix_safe('-x') == '-'",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "_split_opt_prefix_safe('foo') == ''",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "_split_opt_prefix_safe(123) == ''",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target spans two related files inside `src/click/`. The lower-level helper is a tiny utility in the click parser module (whose top-of-file docstring mentions that it `started out as largely a copy paste` of the stdlib's optparse) that splits a CLI option token like `'--foo'` into its prefix part (`'--'`) and its name part (`'foo'`); for bare alphanumeric tokens it returns an empty prefix. The higher-level caller is the click formatting module that already houses `measure_table`, `iter_rows`, and `wrap_text`; it currently consumes the prefix returned by the lower-level helper directly without guarding against empty or non-string inputs.",
+      "behavior_prose": "In this `click` checkout, satisfy a defensive contract spread across two related files inside `src/click/`. The change requires consistent edits in BOTH files; a single-file edit will not satisfy the hidden grader.\n\nLower-level helper (in the click parser module whose top-of-file docstring begins `This module started out as largely a copy paste from the stdlib's optparse module`):\n\n- Today, the helper returns `('', '')` when called on the empty string `''` -- a degenerate result that downstream code can mistake for a legitimate `('', name)` shape.\n- Tighten the helper so that an empty `opt` (the empty string `''`, or any other falsy value) raises `ValueError` with the message text `option splitter received empty input` (case-sensitive substring). The check must happen BEFORE the existing `first = opt[:1]` line.\n- All existing behaviour is preserved exactly for non-empty inputs: `'--foo'` still returns `('--', 'foo')`; `'-x'` still returns `('-', 'x')`; `'foo'` still returns `('', 'foo')` (alphanumeric first char keeps the empty prefix); `'-'` still returns `('', '-')`. Only the empty-string input changes behaviour (now raises).\n\nHigher-level helper (in the click formatting module that already houses `measure_table`, `iter_rows`, and `wrap_text`, and that already imports the lower-level option splitter from the sibling parser module):\n\n- Add a NEW top-level helper named `_split_opt_prefix_safe(opt)` that returns just the prefix component of a CLI option token without raising on bad input. It must:\n  - Return `''` (the empty string) when `opt` is `None`.\n  - Return `''` when `opt` is not a `str` (e.g. an integer, a list, etc.).\n  - Return `''` when `opt` is an empty string (so this case never reaches the lower-level helper, which would now raise).\n  - Otherwise delegate to the lower-level option splitter and return just the prefix component (the FIRST element of the returned tuple).\n- For example: `_split_opt_prefix_safe(None)` returns `''`; `_split_opt_prefix_safe('')` returns `''`; `_split_opt_prefix_safe('--foo')` returns `'--'`; `_split_opt_prefix_safe('-x')` returns `'-'`; `_split_opt_prefix_safe('foo')` returns `''` (bare alphanumeric); `_split_opt_prefix_safe(123)` returns `''` (non-string).\n\nLocate the lower-level helper by searching for the docstring substring `started out as largely a copy paste`. Locate the sibling caller file by searching for the existing top-level `measure_table` helper.",
+      "prompt_required_literals": [
+        "_split_opt_prefix_safe(opt)",
+        "option splitter received empty input",
+        "started out as largely a copy paste",
+        "measure_table",
+        "iter_rows",
+        "wrap_text"
+      ],
+      "prompt_fail_modes": [
+        "Edits only the lower-level helper to raise on empty input but never adds the new sibling helper, so the new-behavior asserts on `_split_opt_prefix_safe` fail (`partial-edit`).",
+        "Adds the sibling helper but doesn't tighten the lower-level helper, so calling the lower-level helper directly with `''` still returns `('', '')` instead of raising (`partial-edit`).",
+        "Adds the sibling helper but returns the entire `(prefix, rest)` tuple instead of just the prefix component, breaking the assertion that `_split_opt_prefix_safe('--foo') == '--'` (`over-edit`)."
+      ]
+    },
+    {
+      "id": 79,
+      "name": "edit_join_param_hints_empty_to_none_with_caller_default",
+      "difficulty": "hard",
+      "leak_function_name": false,
+      "structural_signature": {
+        "template": "callee-empty-to-none-pair",
+        "scope_kind": "multi-file",
+        "answer_shape": "cross-file-pair",
+        "unique_trait": "callee-empty-collapses-to-none-caller-substitutes-default"
+      },
+      "repo": "click",
+      "targets": [
+        {
+          "path": "src/click/exceptions.py",
+          "functions": ["_join_param_hints"],
+          "constants": [],
+          "imports": [],
+          "reference_edit": {
+            "oldString": "def _join_param_hints(param_hint: cabc.Sequence[str] | str | None) -> str | None:\n    if param_hint is not None and not isinstance(param_hint, str):\n        return \" / \".join(repr(x) for x in param_hint)\n\n    return param_hint\n",
+            "newString": "def _join_param_hints(param_hint: cabc.Sequence[str] | str | None) -> str | None:\n    if param_hint is not None and not isinstance(param_hint, str):\n        joined = \" / \".join(repr(x) for x in param_hint)\n        return joined if joined else None\n\n    return param_hint\n"
+          }
+        },
+        {
+          "path": "src/click/core.py",
+          "functions": ["_format_param_hint_or_default"],
+          "constants": [],
+          "imports": [],
+          "is_new": true,
+          "reference_edit": {
+            "oldString": "    return sorted(declaration_order, key=sort_key)\n\n\nclass ParameterSource(enum.IntEnum):",
+            "newString": "    return sorted(declaration_order, key=sort_key)\n\n\ndef _format_param_hint_or_default(param_hint, default=\"<missing>\"):\n    \"\"\"Format ``param_hint`` for display, substituting ``default`` when the\n    lower-level joiner returns ``None`` (which now signals \"no usable\n    hint\" -- empty sequences and ``None`` both collapse there).\n\n    Returns the joined hint string when present; otherwise returns the\n    supplied ``default`` (which itself defaults to the literal string\n    ``'<missing>'``).\n    \"\"\"\n    joined = _join_param_hints(param_hint)\n    if joined is None:\n        return default\n    return joined\n\n\nclass ParameterSource(enum.IntEnum):"
+          }
+        }
+      ],
+      "discovery_probes": [
+        "An exception that Click can handle",
+        "augment_usage_errors"
+      ],
+      "asserts": [
+        {
+          "expr": "_join_param_hints(None) is None",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "_join_param_hints('foo') == 'foo'",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "_join_param_hints(['a', 'b']) == \"'a' / 'b'\"",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "_join_param_hints([1, 'x']) == \"1 / 'x'\"",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "_join_param_hints([]) is None",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "_format_param_hint_or_default(None) == '<missing>'",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "_format_param_hint_or_default([]) == '<missing>'",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "_format_param_hint_or_default('foo') == 'foo'",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "_format_param_hint_or_default(['x']) == \"'x'\"",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "_format_param_hint_or_default(None, default='?') == '?'",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target spans two related files inside `src/click/`. The lower-level helper is a tiny utility in the click exceptions module that joins a sequence of parameter-hint strings (e.g. ``['--foo', '--bar']``) into a single display string like ``\"'--foo' / '--bar'\"``, passing through `None` and bare strings unchanged. The higher-level caller is the click command core module (which already houses `Command`, `Group`, `Context`, `iter_params_for_processing`, and the `@contextmanager`-decorated `augment_usage_errors`) and currently has no way to substitute a placeholder when the lower-level helper has nothing useful to format.",
+      "behavior_prose": "In this `click` checkout, satisfy a contract spread across two related files inside `src/click/`. The change requires consistent edits in BOTH files; a single-file edit will not satisfy the hidden grader.\n\nLower-level helper (in the click exceptions module that already houses `ClickException` (whose docstring reads `An exception that Click can handle and show to the user.`), `UsageError`, and `BadParameter`):\n\n- Today, the helper joins a non-string sequence using `\" / \".join(repr(x) for x in param_hint)`. When the sequence is EMPTY, the join returns the empty string `''`, which downstream callers can mistake for a legitimate (zero-length) hint instead of \"no hint at all\".\n- Tighten the helper so that the empty-sequence case collapses to `None` (the same sentinel already used for the `param_hint is None` passthrough). Concretely: when the input is a non-string sequence and the joined result would be the empty string, return `None` instead.\n- All existing behaviour is preserved exactly for non-empty sequences and for the existing `None`/`str` passthrough cases: `None` still returns `None`; `'foo'` still returns `'foo'`; `['a', 'b']` still returns `\"'a' / 'b'\"`; `[1, 'x']` still returns `\"1 / 'x'\"`. Only the empty-sequence input changes behaviour (now returns `None`).\n\nHigher-level helper (in the click command core module that already houses `Command`, `Group`, `Context`, the existing top-level `iter_params_for_processing` helper, and the `@contextmanager`-decorated `augment_usage_errors`):\n\n- Add a NEW top-level helper named `_format_param_hint_or_default(param_hint, default=\"<missing>\")` that formats a parameter hint for display, substituting `default` when the lower-level helper signals \"no usable hint\". It must:\n  - Call the lower-level helper on `param_hint`.\n  - When the lower-level helper returns `None` (which now covers BOTH the `None` input case AND the empty-sequence case), return `default` instead.\n  - Otherwise return the joined string.\n  - The default value of `default` must be the literal string `'<missing>'`.\n- For example: `_format_param_hint_or_default(None)` returns `'<missing>'`; `_format_param_hint_or_default([])` returns `'<missing>'` (only after the lower-level edit lands); `_format_param_hint_or_default('foo')` returns `'foo'`; `_format_param_hint_or_default(['x'])` returns `\"'x'\"`; `_format_param_hint_or_default(None, default='?')` returns `'?'`.\n\nLocate the lower-level helper by searching the codebase for the docstring substring `An exception that Click can handle`. Locate the sibling caller file by searching for the existing top-level `augment_usage_errors` helper.",
+      "prompt_required_literals": [
+        "_format_param_hint_or_default(param_hint, default=\"<missing>\")",
+        "An exception that Click can handle",
+        "augment_usage_errors",
+        "iter_params_for_processing",
+        "<missing>",
+        "'a' / 'b'"
+      ],
+      "prompt_fail_modes": [
+        "Edits only the lower-level helper (empty-sequence -> None) but never adds the new sibling helper, so the new-behavior asserts on `_format_param_hint_or_default` fail (`partial-edit`).",
+        "Adds the sibling helper that hardcodes `'<missing>'` instead of using the supplied `default` argument, breaking the assertion that `_format_param_hint_or_default(None, default='?')` returns `'?'` (`over-edit`).",
+        "Adds the sibling helper but doesn't tighten the lower-level helper, so the empty-list path returns the empty string `''` (which is truthy enough to bypass the `is None` check) and the helper returns `''` instead of the default (`partial-edit`)."
+      ]
+    },
+    {
+      "id": 80,
+      "name": "edit_posixify_accept_byteslike_with_caller_typegate",
+      "difficulty": "hard",
+      "leak_function_name": false,
+      "structural_signature": {
+        "template": "byteslike-acceptance-pair",
+        "scope_kind": "multi-file",
+        "answer_shape": "cross-file-pair",
+        "unique_trait": "callee-decodes-byteslike-caller-rejects-non-text"
+      },
+      "repo": "click",
+      "targets": [
+        {
+          "path": "src/click/utils.py",
+          "functions": ["_posixify"],
+          "constants": [],
+          "imports": [],
+          "reference_edit": {
+            "oldString": "def _posixify(name: str) -> str:\n    return \"-\".join(name.split()).lower()\n",
+            "newString": "def _posixify(name: str) -> str:\n    if isinstance(name, (bytes, bytearray)):\n        name = bytes(name).decode(\"utf-8\")\n    return \"-\".join(name.split()).lower()\n"
+          }
+        },
+        {
+          "path": "src/click/core.py",
+          "functions": ["_appname_from_input"],
+          "constants": [],
+          "imports": [],
+          "is_new": true,
+          "reference_edit": {
+            "oldString": "    raise RuntimeError(message)\n\n\ndef batch(iterable: cabc.Iterable[V], batch_size: int) -> list[tuple[V, ...]]:",
+            "newString": "    raise RuntimeError(message)\n\n\ndef _appname_from_input(value):\n    \"\"\"Normalize a user-supplied app-name value into a posix-friendly slug.\n\n    Returns ``None`` when ``value`` is ``None`` or is not a text-like\n    type (i.e. not ``str``, ``bytes``, or ``bytearray``). Otherwise\n    delegates to the lower-level posix-name helper, which now accepts\n    bytes/bytearray inputs (decoded as UTF-8) in addition to the\n    historically-supported ``str`` inputs.\n    \"\"\"\n    if value is None:\n        return None\n    if not isinstance(value, (str, bytes, bytearray)):\n        return None\n    return _posixify(value)\n\n\ndef batch(iterable: cabc.Iterable[V], batch_size: int) -> list[tuple[V, ...]]:"
+          }
+        }
+      ],
+      "discovery_probes": [
+        "auto_wrap_for_ansi",
+        "declaration_order"
+      ],
+      "asserts": [
+        {
+          "expr": "_posixify('Hello World') == 'hello-world'",
+          "kind": "regression",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "_posixify('  spaces  ') == 'spaces'",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "expr": "_posixify('MixedCase') == 'mixedcase'",
+          "kind": "regression",
+          "misstep": "over-edit"
+        },
+        {
+          "setup": "_r1 = None\ntry:\n    _r1 = _posixify(b'Hello World')\nexcept TypeError:\n    _r1 = 'TypeError'",
+          "expr": "_r1 == 'hello-world'",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "setup": "_r2 = None\ntry:\n    _r2 = _posixify(bytearray(b'My App'))\nexcept TypeError:\n    _r2 = 'TypeError'",
+          "expr": "_r2 == 'my-app'",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "_appname_from_input(None) is None",
+          "kind": "new_behavior",
+          "misstep": "no-change"
+        },
+        {
+          "expr": "_appname_from_input(['list', 'is', 'not', 'text']) is None",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "_appname_from_input(42) is None",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "_appname_from_input('My App') == 'my-app'",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        },
+        {
+          "expr": "_appname_from_input(b'My App') == 'my-app'",
+          "kind": "new_behavior",
+          "misstep": "partial-edit"
+        }
+      ],
+      "prompt_capability": "The target spans two related files inside `src/click/`. The lower-level helper is a tiny utility in the click utility module that turns a free-form app-name string (with spaces and mixed case) into a posix-friendly slug like `'my-app'`. The higher-level caller is the click command core module (which already houses `Command`, `Group`, `Context`, `_check_nested_chain`, and the existing top-level `batch` helper) and currently has no centralized type-validating entry point for caller-supplied app-name inputs.",
+      "behavior_prose": "In this `click` checkout, satisfy a contract spread across two related files inside `src/click/`. The change requires consistent edits in BOTH files; a single-file edit will not satisfy the hidden grader.\n\nLower-level helper (in the click utility module that already imports `auto_wrap_for_ansi` from the compat layer and exposes `safecall`, `format_filename`, and the `echo` helper):\n\n- Today, the helper accepts only `str` inputs. Calling it with `bytes` or `bytearray` raises `TypeError` deep inside the join (`\"-\".join(...)` rejects byte items).\n- Loosen the helper so it accepts `bytes` and `bytearray` inputs by decoding them as UTF-8 BEFORE running the existing split/join/lower pipeline. Concretely: `b'Hello World'` must now return `'hello-world'`; `bytearray(b'My App')` must now return `'my-app'`. The decode step must happen at the TOP of the function body, replacing the `name` parameter with a `str` for the rest of the function.\n- All existing behaviour is preserved exactly for `str` inputs: `'Hello World'` still returns `'hello-world'`; `'  spaces  '` still returns `'spaces'`; `'MixedCase'` still returns `'mixedcase'`. Only the bytes/bytearray inputs change behaviour (now succeed instead of raising).\n\nHigher-level helper (in the click command core module that already houses `Command`, `Group`, `Context`, `_check_nested_chain`, and the existing top-level `batch` helper that uses `cabc.Sequence` and `declaration_order`-style processing):\n\n- Add a NEW top-level helper named `_appname_from_input(value)` that defends against unsupported input types before delegating to the lower-level helper. It must:\n  - Return `None` when `value` is `None`.\n  - Return `None` when `value` is not one of `str`, `bytes`, or `bytearray` (e.g. integers, lists, dicts, etc.).\n  - Otherwise delegate to the lower-level helper and return its result.\n- For example: `_appname_from_input(None)` returns `None`; `_appname_from_input(['list', 'is', 'not', 'text'])` returns `None`; `_appname_from_input(42)` returns `None`; `_appname_from_input('My App')` returns `'my-app'`; `_appname_from_input(b'My App')` returns `'my-app'` (only after the lower-level edit lands).\n\nLocate the lower-level helper by searching the codebase for the import name `auto_wrap_for_ansi` (which appears in the same utility module's import block). Locate the sibling caller file by searching for the existing top-level `_check_nested_chain` helper or the variable `declaration_order`.",
+      "prompt_required_literals": [
+        "_appname_from_input(value)",
+        "auto_wrap_for_ansi",
+        "declaration_order",
+        "_check_nested_chain",
+        "bytes",
+        "bytearray",
+        "'my-app'"
+      ],
+      "prompt_fail_modes": [
+        "Edits only the lower-level helper (decodes bytes) but never adds the new sibling helper, so the new-behavior asserts on `_appname_from_input` fail (`partial-edit`).",
+        "Adds the sibling helper but doesn't loosen the lower-level helper, so calling the lower-level helper directly with `b'Hello World'` still raises `TypeError` (`partial-edit`).",
+        "Adds the sibling helper but accepts ANY type by skipping the isinstance check, so passing a list or integer doesn't return `None` and instead crashes inside the lower-level helper (`over-edit`)."
       ]
     }
   ]

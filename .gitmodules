@@ -4,3 +4,9 @@
 [submodule "projects/v1/requests"]
 	path = projects/v1/requests
 	url = https://github.com/psf/requests
+[submodule "projects/v1/httpx"]
+	path = projects/v1/httpx
+	url = https://github.com/encode/httpx
+[submodule "projects/v1/click"]
+	path = projects/v1/click
+	url = https://github.com/pallets/click

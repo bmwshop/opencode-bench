@@ -3,12 +3,28 @@
     "url": "https://github.com/karpathy/autoresearch",
     "pin": "228791fb499afffb54b46200aca536f79142f117",
     "submodule_path": "projects/v1/autoresearch",
-    "description": "Single-GPU LLM training loop (nanochat-derived). Agent edits train.py."
+    "default_scope": "./",
+    "description": "Single-GPU LLM training loop (nanochat-derived). Agent edits train.py. Repo source lives at the submodule root (no `src/` subdir), so default_scope is './'."
+  },
+  "click": {
+    "url": "https://github.com/pallets/click",
+    "pin": "8bd8b4a074c55c03b6eb5666edc44a9c43df38a2",
+    "submodule_path": "projects/v1/click",
+    "default_scope": "src/click/",
+    "description": "Composable CLI parsing library. Modular layout (core.py, types.py, parser.py, utils.py, exceptions.py, termui.py) gives clean caller\u2194callee chains for hard-tier multi-file edits. Stdlib-only at runtime."
+  },
+  "httpx": {
+    "url": "https://github.com/encode/httpx",
+    "pin": "26d48e0634e6ee9cdc0533996db289ce4b430177",
+    "submodule_path": "projects/v1/httpx",
+    "default_scope": "httpx/",
+    "description": "Modern Python HTTP client (sync + async). Many small pure-Python helpers in httpx/_*.py; pinned to 0.28.1."
   },
   "requests": {
     "url": "https://github.com/psf/requests",
     "pin": "79f4df84cf77a2fee873809821dfbd786de05b97",
     "submodule_path": "projects/v1/requests",
+    "default_scope": "src/requests/",
     "description": "HTTP client library. Clean layered design (Session, HTTPAdapter, PreparedRequest)."
   }
 }

@@ -1,0 +1,56 @@
+Family: editing (manifest v1_editing_criteria.json, category code_editing)
+Analyzed 301 trials across 5 models
+Sample coverage (trials per sample):
+  #51  [medium                      ] 0 trial(s)
+  #52  [medium                      ] 0 trial(s)
+  #53  [hard                        ] 0 trial(s)
+  #54  [easy                        ] 0 trial(s)
+  #55  [medium                      ] 14 trial(s)
+  #56  [easy                        ] 0 trial(s)
+  #57  [medium                      ] 0 trial(s)
+  #58  [easy                        ] 0 trial(s)
+  #59  [hard                        ] 0 trial(s)
+  #60  [hard                        ] 0 trial(s)
+  #61  [easy                        ] 15 trial(s)
+  #62  [easy                        ] 15 trial(s)
+  #63  [easy                        ] 15 trial(s)
+  #64  [medium                      ] 15 trial(s)
+  #65  [easy                        ] 14 trial(s)
+  #66  [easy                        ] 15 trial(s)
+  #67  [easy                        ] 14 trial(s)
+  #68  [medium                      ] 13 trial(s)
+  #69  [medium                      ] 15 trial(s)
+  #70  [medium                      ] 15 trial(s)
+  #71  [medium                      ] 15 trial(s)
+  #72  [medium                      ] 15 trial(s)
+  #73  [medium                      ] 15 trial(s)
+  #74  [medium                      ] 15 trial(s)
+  #75  [hard                        ] 13 trial(s)
+  #76  [hard                        ] 14 trial(s)
+  #77  [hard                        ] 14 trial(s)
+  #78  [hard                        ] 13 trial(s)
+  #79  [hard                        ] 13 trial(s)
+  #80  [hard                        ] 14 trial(s)
+
+Per-tier clone flags (Pearson >= 0.85):
+  [medium] #68 vs #69: r=1.000
+
+Per-model pass rate by tier (passed / completed-trials [rate]):
+  model                                                        easy           medium             hard
+  nvidia-internal_azure_anthropic_claude-opus-4-6      18/18 [1.00]     27/27 [1.00]     18/18 [1.00]
+  nvidia_minimaxai_minimax-m2.5                        15/16 [0.94]     20/24 [0.83]      2/10 [0.20]
+  nvidia_nvidia_nemotron-3-nano-30b-a3b                 0/18 [0.00]      1/27 [0.04]      0/18 [0.00]
+  nvidia_nvidia_nemotron-3-super-120b-a12b             17/18 [0.94]     25/27 [0.93]     13/18 [0.72]
+  nvidia_qwen_qwen3-next-80b-a3b-thinking              16/18 [0.89]     13/27 [0.48]     11/17 [0.65]
+
+Difficulty-gradient monotonicity violations (easy < medium < hard pass-rate):
+  nvidia_nvidia_nemotron-3-nano-30b-a3b: easy=0.000 < medium=0.037
+  nvidia_qwen_qwen3-next-80b-a3b-thinking: medium=0.481 < hard=0.647
+
+Opencode-flavored signal (per-model means across the family):
+  model                                              eff_mult   schema_validity
+  nvidia-internal_azure_anthropic_claude-opus-4-6  2.71x (63)      100.0% (513)
+  nvidia_minimaxai_minimax-m2.5                    1.72x (50)      100.0% (258)
+  nvidia_nvidia_nemotron-3-nano-30b-a3b            1.74x (63)       58.1% (329)
+  nvidia_nvidia_nemotron-3-super-120b-a12b         5.87x (63)      99.8% (1110)
+  nvidia_qwen_qwen3-next-80b-a3b-thinking          1.38x (62)      100.0% (256)
