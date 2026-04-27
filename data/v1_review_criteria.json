@@ -1,0 +1,118 @@
+{
+  "_comment": "Paper-faithful code_review manifest for v1 #91-#100 (atomic_skills paper, Ma et al. arXiv:2604.05013 Appendix E). Each sample is a (PR description + PR diff) -> (YES/NO judgment + free-form review summary) plan-mode task. Source material is cross-referenced from data/v1_editing_criteria.json (#51-#60); we do NOT author new bugs here. The sample's `label` is mechanically verified by scripts/audit_review.py: applying the variant patch to the pinned baseline and running exec_assert against the source's truth table must yield outcome that matches `label`.",
+  "_pin": "79f4df84cf77a2fee873809821dfbd786de05b97",
+  "_repo": "requests",
+  "_paper_ref": "Ma et al. arXiv:2604.05013 Appendix E",
+  "samples": [
+    {
+      "id": 91,
+      "name": "pr_review_iter_slices_yes",
+      "source_manifest": "data/v1_editing_criteria.json",
+      "source_id": 51,
+      "variant": "reference_edit",
+      "label": "YES",
+      "issue_text": "Issue: the `iter_slices` helper in `src/requests/` silently treats a non-positive chunk size as 'use the whole input'. That's surprising and quietly hides caller mistakes.\n\nRepro: `list(iter_slices('abc', 0))` returns `['abc']`. Same for `list(iter_slices('abc', -5))`.\n\nExpected: a non-positive integer chunk size should raise `ValueError` whose message names the offending parameter. Existing behaviour for positive chunk sizes and for `None` (which historically means 'whole string') must be preserved.\n\nThe attached PR claims to tighten the helper accordingly.",
+      "structural_signature": {"label": "YES", "source_difficulty": "medium"},
+      "difficulty": "medium"
+    },
+    {
+      "id": 92,
+      "name": "pr_review_unicode_is_ascii_no",
+      "source_manifest": "data/v1_editing_criteria.json",
+      "source_id": 52,
+      "variant": "mutants[0]",
+      "label": "NO",
+      "issue_text": "Issue: the internal `unicode_is_ascii` helper currently asserts that its argument is a `str` and rejects everything else. We want it to also accept `bytes`/`bytearray` arguments, returning `True` only when EVERY byte is in the ASCII range (strictly less than 128).\n\nExpected:\n- `unicode_is_ascii(b'hello')` returns `True`.\n- `unicode_is_ascii(b'h\\xc3\\xa9llo')` returns `False` (the high-byte sequence is non-ASCII).\n- `unicode_is_ascii(b'')` returns `True` (empty input is ASCII by convention).\n- All existing string behaviour preserved exactly.\n\nThe attached PR proposes adding a `bytes`/`bytearray` branch to the helper.",
+      "structural_signature": {"label": "NO", "source_difficulty": "medium"},
+      "difficulty": "medium"
+    },
+    {
+      "id": 93,
+      "name": "pr_review_to_native_string_yes",
+      "source_manifest": "data/v1_editing_criteria.json",
+      "source_id": 53,
+      "variant": "reference_edit",
+      "label": "YES",
+      "issue_text": "Issue (cross-cutting): two related defensive holes in our internal helpers.\n\n1. `to_native_string` in the internal-utils module currently crashes with `AttributeError` when given a non-string, non-bytes input (e.g. an `int`). It should reject those inputs cleanly with `TypeError` whose message contains the substring `str or bytes`.\n\n2. The basic-authentication helper that builds an HTTP `Basic <base64>` header treats a `None` username or `None` password by emitting a deprecation warning and `str(...)`-coercing them to the literal four-character string `'None'` -- which encodes nonsense. It should treat a `None` username/password as the empty bytes value `b''` instead. Concretely: `(None, 'pw')` should yield `'Basic OnB3'` and `(None, None)` should yield `'Basic Og=='`. The existing deprecation-warning path for non-`None`, non-string inputs (e.g. an integer) must be preserved.\n\nThe attached PR touches both files in one go.",
+      "structural_signature": {"label": "YES", "source_difficulty": "hard"},
+      "difficulty": "hard"
+    },
+    {
+      "id": 94,
+      "name": "pr_review_unquote_header_value_no",
+      "source_manifest": "data/v1_editing_criteria.json",
+      "source_id": 54,
+      "variant": "mutants[0]",
+      "label": "NO",
+      "issue_text": "Issue: `unquote_header_value` in the requests utilities module crashes with `TypeError` when given `None` (it indexes the value before any guard). It should tolerate `None` and return the empty string -- both with and without the `is_filename=True` flag.\n\nExpected:\n- `unquote_header_value(None) == ''`\n- `unquote_header_value(None, is_filename=True) == ''`\n- All existing string-input behaviour preserved exactly (`'\"hello\"'` -> `'hello'`; `'hello'` -> `'hello'`; `''` -> `''`; `'\"hello world\"'` -> `'hello world'`).\n\nThe attached PR adds an early-return guard for the None case.",
+      "structural_signature": {"label": "NO", "source_difficulty": "medium"},
+      "difficulty": "medium"
+    },
+    {
+      "id": 95,
+      "name": "pr_review_parse_header_links_yes",
+      "source_manifest": "data/v1_editing_criteria.json",
+      "source_id": 55,
+      "variant": "reference_edit",
+      "label": "YES",
+      "issue_text": "Issue: the helper that parses an HTTP `Link:` header into a list of `{'url': ..., <params>}` dictionaries currently includes entries whose `'url'` field is the empty string. A malformed fragment like `<>; rel=junk` produces a useless entry with `'url': ''`.\n\nExpected: such entries should be silently skipped from the returned list. Concretely:\n- `parse_header_links('<>; rel=empty')` returns `[]`.\n- `parse_header_links('<http://a.example/x>; rel=front, <>; rel=junk, <http://a.example/y>; rel=back')` returns exactly two entries (the `<>` is dropped).\n- All existing well-formed parses preserved (single-link, multi-link with typed parameters, empty input still returns `[]`).\n\nThe attached PR adds the skip in the helper.",
+      "structural_signature": {"label": "YES", "source_difficulty": "medium"},
+      "difficulty": "medium"
+    },
+    {
+      "id": 96,
+      "name": "pr_review_is_ipv4_address_no",
+      "source_manifest": "data/v1_editing_criteria.json",
+      "source_id": 56,
+      "variant": "mutants[0]",
+      "label": "NO",
+      "issue_text": "Issue: `is_ipv4_address` in the requests utilities module raises `TypeError` when given a non-string argument (e.g. `None`, an integer, or a `bytes` value), because it passes the input straight to `socket.inet_aton`.\n\nExpected: non-string inputs should return `False` (cleanly, no exception). Concretely:\n- `is_ipv4_address(None)` returns `False`.\n- `is_ipv4_address(123)` returns `False`.\n- `is_ipv4_address(b'192.168.1.1')` returns `False`.\n- All existing string-input behaviour preserved exactly: `'192.168.1.1'` -> `True`, `'10.0.0.0'` -> `True`, `'not-an-ip'` -> `False`, `'256.1.1.1'` -> `False`.\n\nThe attached PR adds an isinstance-style guard at the top of the function.",
+      "structural_signature": {"label": "NO", "source_difficulty": "medium"},
+      "difficulty": "medium"
+    },
+    {
+      "id": 97,
+      "name": "pr_review_is_valid_cidr_yes",
+      "source_manifest": "data/v1_editing_criteria.json",
+      "source_id": 57,
+      "variant": "reference_edit",
+      "label": "YES",
+      "issue_text": "Issue: the predicate that validates a CIDR network string (used by the `no_proxy` matcher in the requests utilities module) currently rejects the all-routes mask `/0`, even though that's a perfectly valid CIDR notation.\n\nExpected:\n- `'0.0.0.0/0'` returns `True`.\n- `'10.0.0.0/0'` returns `True`.\n- `'192.168.1.0/-1'` continues to return `False` (negative masks remain invalid).\n- `'192.168.1.0/33'` continues to return `False` (out-of-range masks remain invalid).\n- `'not-a-cidr'` and `'192.168.1.0'` (no `/`) continue to return `False`.\n- All existing acceptances preserved (`'192.168.1.0/24'`, `'10.0.0.0/8'`).\n\nThe attached PR loosens the mask-range check accordingly.",
+      "structural_signature": {"label": "YES", "source_difficulty": "medium"},
+      "difficulty": "medium"
+    },
+    {
+      "id": 98,
+      "name": "pr_review_default_hooks_no",
+      "source_manifest": "data/v1_editing_criteria.json",
+      "source_id": 58,
+      "variant": "mutants[0]",
+      "label": "NO",
+      "issue_text": "Issue: the hook system in the tiny `hooks` module of the requests package currently supports only one event type (`'response'`). We want to extend it to also support a `'request'` event so callers can register pre-flight hooks.\n\nExpected:\n- The module-level list of hook event names contains exactly the two strings `'response'` and `'request'`, in that order, with `len(...)` equal to `2`.\n- `default_hooks()` returns a dict with both keys present, each mapping to an empty list. `len(default_hooks())` equals `2`.\n- The existing `'response'` -> `[]` mapping is preserved.\n\nThe attached PR claims to extend the module to support the new event.",
+      "structural_signature": {"label": "NO", "source_difficulty": "medium"},
+      "difficulty": "medium"
+    },
+    {
+      "id": 99,
+      "name": "pr_review_dispatch_hook_yes",
+      "source_manifest": "data/v1_editing_criteria.json",
+      "source_id": 59,
+      "variant": "reference_edit",
+      "label": "YES",
+      "issue_text": "Issue (cross-cutting): two related hook-system holes.\n\n1. The dispatcher in the tiny `hooks` module crashes when the registered callback list contains a `None` entry, because it calls `None(...)` which raises `TypeError: 'NoneType' object is not callable`. It should silently skip `None` entries while still invoking valid callbacks.\n\nConcretely: with `hook_data=10` and the callback list `[None, lambda d: d + 1]`, the dispatcher must now return `11`. With `[None]` it must return `10` (the original data, unchanged). All existing behaviour is preserved (no hooks -> data unchanged; non-list single-callable hook value still invoked; chained callbacks still propagate).\n\n2. The sibling sessions module needs a NEW top-level helper `apply_response_hooks(hooks, response)` that defends against malformed `hooks` arguments before delegating to the dispatcher. It must return `response` unchanged when `hooks` is `None`, when `hooks` is not a `dict`, or when `hooks` is a dict that doesn't contain the key `'response'`. Otherwise it delegates to the lower-level dispatcher with the event key `'response'`.\n\nThe attached PR touches both files together.",
+      "structural_signature": {"label": "YES", "source_difficulty": "hard"},
+      "difficulty": "hard"
+    },
+    {
+      "id": 100,
+      "name": "pr_review_address_in_network_no",
+      "source_manifest": "data/v1_editing_criteria.json",
+      "source_id": 60,
+      "variant": "mutants[0]",
+      "label": "NO",
+      "issue_text": "Issue (cross-cutting): two related defensive holes that need to be fixed together.\n\n1. `address_in_network` in the requests utilities module today crashes with `OSError` or `ValueError` whenever the IP or CIDR string is malformed. It should return `False` cleanly instead. Concretely: `('not-an-ip', '192.168.1.0/24')` should return `False`; `('192.168.1.1', 'not-a-cidr')` should return `False`; `('192.168.1.1', '192.168.1.0/not-a-mask')` should return `False`. All existing behaviour on well-formed inputs is preserved (`('192.168.1.1', '192.168.1.0/24')` -> `True`; `('192.168.2.1', '192.168.1.0/24')` -> `False`; `('10.0.0.5', '10.0.0.0/8')` -> `True`).\n\n2. The sibling HTTP-adapter module needs a NEW top-level helper `_proxy_target_in_network(target_ip, cidr)` that prefilters obviously bad arguments (None or empty string for either) before delegating to the lower-level helper.\n\nThe attached PR claims to address both.",
+      "structural_signature": {"label": "NO", "source_difficulty": "hard"},
+      "difficulty": "hard"
+    }
+  ]
+}
