@@ -172,11 +172,25 @@ def check(tools, texts, chk):
         return False, build_result.get("reason", "stub build failed")
 
     stub_code = build_result["stub"]
-    stub_module_name = Path(source_rel).stem
 
     with tempfile.TemporaryDirectory(prefix="exec_function_") as td:
         stub_dir = Path(td)
-        (stub_dir / f"{stub_module_name}.py").write_text(stub_code)
+        # Mirror the source's relative path inside the stub dir so a nested
+        # package import (e.g. `from httpx._utils import ...` for source
+        # `httpx/_utils.py`) resolves correctly through PYTHONPATH. For a
+        # flat source path like `train.py` this is equivalent to the old
+        # behaviour of writing one file at the stub-dir root. We materialize
+        # empty `__init__.py` files for every parent directory so Python
+        # treats the chain as a proper package tree.
+        target_in_stub = stub_dir / source_rel
+        target_in_stub.parent.mkdir(parents=True, exist_ok=True)
+        target_in_stub.write_text(stub_code)
+        parent = target_in_stub.parent
+        while parent != stub_dir and stub_dir in parent.parents:
+            init_path = parent / "__init__.py"
+            if not init_path.exists():
+                init_path.write_text("")
+            parent = parent.parent
 
         runner_code = (
             "import sys, os\n"

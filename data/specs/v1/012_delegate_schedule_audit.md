@@ -1,8 +1,8 @@
-# v1 #161 delegate_schedule_audit
+# v1 #12 delegate_schedule_audit
 
 ## Category
 
-subagent
+orchestration
 
 ## Contract
 
@@ -20,7 +20,7 @@ subagents
 
 Delegation / orchestration atomic skill (per Ma et al. arXiv:2604.05013, generalized to multi-agent): the parent agent must route the reading work to an `explore` subagent via the `task` tool, then faithfully persist the subagent's findings to disk. Tests two things end-to-end — parent-side delegation discipline (the parent doesn't bypass the subagent) and result correctness (the on-disk `audit.py` exposes the canonical facts as module-level constants).
 
-Content validation uses `exec_assert` on a Python facts file `audit.py`, evaluating five independent equality assertions against `ast.literal_eval`-extracted constants. The audit subject is the optimizer-LR block in `train.py` (`EMBEDDING_LR`, `UNEMBEDDING_LR`, `MATRIX_LR`, `WEIGHT_DECAY`) plus the consumer method name — disjoint from the constants exercised by #11 (edits the LR-schedule ratios) and #13 (imports `get_lr_multiplier` and probes schedule values), so a model that passed those cannot coast on in-context facts. The unusual numerics (`UNEMBEDDING_LR = 0.004`, `MATRIX_LR = 0.04`) mean hallucinated round defaults fail cleanly, and the consumer (`setup_optimizer`) is a class method rather than a top-level function, forcing the subagent to do real class-member reading.
+Content validation uses `exec_assert` on a Python facts file `audit.py`, evaluating five independent equality assertions against `ast.literal_eval`-extracted constants. The audit subject is the optimizer-LR block in `train.py` (`EMBEDDING_LR`, `UNEMBEDDING_LR`, `MATRIX_LR`, `WEIGHT_DECAY`) plus the consumer method name — disjoint from the constants and helper exercised by the artifact-creation family on the same repo (#13 / #14 import `get_lr_multiplier` and probe schedule values via the LR-schedule ratios `WARMUP_RATIO` / `WARMDOWN_RATIO` / `FINAL_LR_FRAC`), so a model that passed those cannot coast on in-context facts. The unusual numerics (`UNEMBEDDING_LR = 0.004`, `MATRIX_LR = 0.04`) mean hallucinated round defaults fail cleanly, and the consumer (`setup_optimizer`) is a class method rather than a top-level function, forcing the subagent to do real class-member reading.
 
 ## Setup
 

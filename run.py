@@ -371,6 +371,28 @@ def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
     cwd.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(src, cwd)
 
+    # Workspace-overlay merge: layer per-sample overlay files (AGENTS.md /
+    # opencode.json / .opencode/agents/<name>.md / fixture files) on top of
+    # the parent's repo copy. Each category that supports overlays maps to
+    # its own subdir under projects/v1/. Manifest is single source of truth;
+    # overlays are written by the per-family derive_*.py script.
+    _overlay_subdir_by_category = {
+        "tool_restriction": "mutants",
+        "tool_restriction_mutant": "mutants",  # legacy pre-rename rows
+        "orchestration": "orchestration",
+        "skill": "skills",
+    }
+    overlay_subdir = _overlay_subdir_by_category.get(sample.get("category"))
+    if overlay_subdir:
+        overlay_src = PROJECTS / "v1" / overlay_subdir / f"{sid:03d}"
+        if overlay_src.is_dir():
+            for item in overlay_src.rglob("*"):
+                if item.is_file():
+                    rel = item.relative_to(overlay_src)
+                    dst = cwd / rel
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(item, dst)
+
     if vllm_url:
         _inject_vllm_config(cwd, provider, vllm_model_id, vllm_url, vllm_api_key,
                             max_output_tokens=max_output_tokens)

@@ -1,18 +1,24 @@
-# Panel analysis (localization + editing + mutants)
+# Panel analysis (localization + editing + mutants + orchestration)
 
 Artifacts produced by
 [`scripts/analyze_localization_panel.py`](../scripts/analyze_localization_panel.py).
-The same script analyses three v1 sample families via `--family`:
+The same script analyses four v1 sample families via `--family`:
 
 - `--family localization` (default) — structured-output samples #21–#50,
   manifest `data/v1_localization_criteria.json`, category `code_localization`.
 - `--family editing` — de-leaked code-editing samples #51–#80, manifest
   `data/v1_editing_criteria.json`, category `code_editing`.
-- `--family mutants` — tool-restriction mutants #201–#220, manifest
+- `--family mutants` — tool-restriction mutants #201–#230, manifest
   `data/v1_mutant_criteria.json`, category `tool_restriction`. Each
   mutant pairs a v1 substantive parent (editing/localization/review) with
   a per-tool restriction delivered through `opencode.json` permissions,
   AGENTS.md instructions, or a custom main agent persona file.
+- `--family orchestration` — prescriptive orchestration samples #301–#310,
+  manifest `data/v1_orchestration_criteria.json`, category `orchestration`.
+  Five graph patterns × two samples each (parallel_dispatch, chain,
+  dag_join, iteration, merge). The prompt prescribes the multi-step
+  execution graph; verifiers check the model emitted the prescribed shape
+  AND produced a correct artifact.
 
 ## Files
 
@@ -165,3 +171,35 @@ Two findings worth tracking from the first mutant panel pilot
   (distinctive filename, `mode: primary`, row sets `"agent": "<name>"`),
   the persona-file mechanism actually activates. Re-run with
   `bash c_persona_rerun.sh`.
+
+## Orchestration family — gate-check before the first pilot
+
+The orchestration batch (#301–#310) leans heavily on the
+`parallel_dispatch_count` verifier (6 of 10 samples require multiple
+`task` calls in a single assistant turn). If opencode silently linearizes
+parallel tool dispatches into separate steps, those 6 samples will fail
+their `parallel_dispatch_count` check for every model — a methodology
+artifact, not a model signal.
+
+Before running `bash c_orchestration.sh`, run the gate-check first:
+
+```bash
+bash c_orchestration_gate.sh
+python3 eval.py --version v1 --id 301 \
+  --model nvidia-internal/azure/anthropic/claude-opus-4-6 --format text
+```
+
+Inspect the resulting `301_*.jsonl` trace and confirm 3 `tool_use` events
+with `name=task` appear between one `step_start` and the corresponding
+`step_finish`. If they're spread across separate steps, drop or relax the
+`parallel_dispatch_count` checks on #301/#302/#305/#306/#309/#310 to
+plain `tool_call_count` before kicking off the pilot.
+
+To regenerate the orchestration snapshot:
+
+```bash
+python3 scripts/analyze_localization_panel.py --family orchestration \
+  --exclude-incomplete > analysis/orchestration_panel_snapshot.txt
+python3 scripts/analyze_localization_panel.py --family orchestration \
+  --exclude-incomplete --json > analysis/orchestration_panel_snapshot.json
+```

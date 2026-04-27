@@ -1,0 +1,573 @@
+{
+  "_comment": "Tool-restriction mutant samples (#201-#230). Each entry pairs a v1 substantive parent (editing/localization/code_review) with a tool-availability restriction borrowed from a v0 mechanism. The mechanisms are: opencode.json `permission` block (v0 #22), AGENTS.md prompt directive (v0 #12, #14, #19), and `.opencode/agents/main.md` persona file (v0 #2). Restriction CONTENT is varied to stress per-tool deny granularity rather than re-running bash-only across all slots. See /Users/drekesh/.cursor/plans/v1_parents_x_v0_mutations.plan.md for the design rationale and parent-vs-mutant comparison structure. Samples #221-#230 (added 2026-04-27) extend coverage to 10 additional localization parents to close restriction-kind gaps on the locate category.",
+  "_mutation_kinds": [
+    "deny_bash_system",
+    "deny_grep_system",
+    "deny_glob_system",
+    "deny_read_system",
+    "deny_write_system",
+    "deny_grep_and_glob_system",
+    "deny_full_system",
+    "agents_md_bash_only",
+    "agents_md_no_grep_no_glob",
+    "agents_md_no_bash",
+    "agents_md_subagent_required",
+    "persona_main_bash_only",
+    "persona_main_subagent_required"
+  ],
+  "samples": [
+    {
+      "id": 201,
+      "name": "m_iter_slices_deny_bash_system",
+      "parent_id": 51,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 22, "category": "system_tool_restriction"},
+      "mutation_kind": "deny_bash_system",
+      "workspace_overlay": {
+        "opencode.json": "{\n  \"$schema\": \"https://opencode.ai/config.json\",\n  \"permission\": {\n    \"bash\": \"deny\"\n  }\n}\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name_recursive", "not_equals": "bash",
+         "description": "bash is denied at the system level; agent must use native edit/grep/glob/read"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 202,
+      "name": "m_iter_slices_deny_grep_system",
+      "parent_id": 51,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 22, "category": "system_tool_restriction"},
+      "mutation_kind": "deny_grep_system",
+      "workspace_overlay": {
+        "opencode.json": "{\n  \"$schema\": \"https://opencode.ai/config.json\",\n  \"permission\": {\n    \"grep\": {\"*\": \"deny\"}\n  }\n}\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name_recursive", "not_equals": "grep",
+         "description": "grep tool is denied; agent must use bash rg or read for context lookup"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 203,
+      "name": "m_iter_slices_deny_grep_and_glob_system",
+      "parent_id": 51,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 22, "category": "system_tool_restriction"},
+      "mutation_kind": "deny_grep_and_glob_system",
+      "workspace_overlay": {
+        "opencode.json": "{\n  \"$schema\": \"https://opencode.ai/config.json\",\n  \"permission\": {\n    \"grep\": {\"*\": \"deny\"},\n    \"glob\": {\"*\": \"deny\"}\n  }\n}\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name_recursive", "not_equals": ["grep", "glob"],
+         "description": "both native search tools are denied; agent must use bash find/rg or pure read"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 204,
+      "name": "m_unquote_header_value_deny_read_system",
+      "parent_id": 54,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 22, "category": "system_tool_restriction"},
+      "mutation_kind": "deny_read_system",
+      "workspace_overlay": {
+        "opencode.json": "{\n  \"$schema\": \"https://opencode.ai/config.json\",\n  \"permission\": {\n    \"read\": {\"*\": \"deny\"}\n  }\n}\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name_recursive", "not_equals": "read",
+         "description": "native read tool is denied; agent must `bash cat` files before constructing the edit"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 205,
+      "name": "m_default_hooks_deny_full_bash_only_system",
+      "parent_id": 58,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 22, "category": "system_tool_restriction"},
+      "mutation_kind": "deny_full_system",
+      "workspace_overlay": {
+        "opencode.json": "{\n  \"$schema\": \"https://opencode.ai/config.json\",\n  \"permission\": {\n    \"bash\": \"allow\",\n    \"read\": {\"*\": \"deny\"},\n    \"edit\": {\"*\": \"deny\"},\n    \"glob\": {\"*\": \"deny\"},\n    \"grep\": {\"*\": \"deny\"},\n    \"task\": {\"*\": \"deny\"},\n    \"todowrite\": \"deny\"\n  }\n}\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name_recursive", "not_equals": ["read", "edit", "grep", "glob", "task", "todowrite"],
+         "description": "deny-full bash-only system: only bash is allowed; all native tools and delegation are blocked"},
+        {"type": "any_tool_name_recursive", "equals": "bash",
+         "description": "must use bash to apply the edit (e.g. via sed/python -c)"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 206,
+      "name": "m_locate_cookie_tokens_deny_grep_system",
+      "parent_id": 21,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 22, "category": "system_tool_restriction"},
+      "mutation_kind": "deny_grep_system",
+      "workspace_overlay": {
+        "opencode.json": "{\n  \"$schema\": \"https://opencode.ai/config.json\",\n  \"permission\": {\n    \"grep\": {\"*\": \"deny\"}\n  }\n}\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name_recursive", "not_equals": "grep",
+         "description": "grep tool denied on a localization parent; agent must pivot to bash rg or pure read"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 207,
+      "name": "m_locate_cookie_tokens_deny_write_system",
+      "parent_id": 21,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 22, "category": "system_tool_restriction"},
+      "mutation_kind": "deny_write_system",
+      "workspace_overlay": {
+        "opencode.json": "{\n  \"$schema\": \"https://opencode.ai/config.json\",\n  \"permission\": {\n    \"write\": {\"*\": \"deny\"}\n  }\n}\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name_recursive", "not_equals": "write",
+         "description": "write tool denied; agent must create location.txt via `bash echo > file` or `edit` (new-file mode)"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 208,
+      "name": "m_locate_exception_tokens_deny_glob_system",
+      "parent_id": 28,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 22, "category": "system_tool_restriction"},
+      "mutation_kind": "deny_glob_system",
+      "workspace_overlay": {
+        "opencode.json": "{\n  \"$schema\": \"https://opencode.ai/config.json\",\n  \"permission\": {\n    \"glob\": {\"*\": \"deny\"}\n  }\n}\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name_recursive", "not_equals": "glob",
+         "description": "glob tool denied on a localization parent; agent must pivot to bash find or read"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 209,
+      "name": "m_locate_header_parse_tokens_deny_bash_system",
+      "parent_id": 44,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 22, "category": "system_tool_restriction"},
+      "mutation_kind": "deny_bash_system",
+      "workspace_overlay": {
+        "opencode.json": "{\n  \"$schema\": \"https://opencode.ai/config.json\",\n  \"permission\": {\n    \"bash\": \"deny\"\n  }\n}\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name_recursive", "not_equals": "bash",
+         "description": "bash denied on a localization parent; agent must use native grep/glob/read"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 210,
+      "name": "m_pr_review_iter_slices_yes_deny_bash_system",
+      "parent_id": 91,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 22, "category": "system_tool_restriction"},
+      "mutation_kind": "deny_bash_system",
+      "workspace_overlay": {
+        "opencode.json": "{\n  \"$schema\": \"https://opencode.ai/config.json\",\n  \"permission\": {\n    \"bash\": \"deny\"\n  }\n}\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name_recursive", "not_equals": "bash",
+         "description": "bash denied on a review parent; agent must use native read/grep/glob"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 211,
+      "name": "m_pr_review_iter_slices_yes_deny_grep_system",
+      "parent_id": 91,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 22, "category": "system_tool_restriction"},
+      "mutation_kind": "deny_grep_system",
+      "workspace_overlay": {
+        "opencode.json": "{\n  \"$schema\": \"https://opencode.ai/config.json\",\n  \"permission\": {\n    \"grep\": {\"*\": \"deny\"}\n  }\n}\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name_recursive", "not_equals": "grep",
+         "description": "grep denied on a review parent; agent must pivot to bash rg or read"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 212,
+      "name": "m_iter_slices_agents_md_bash_only_prompt",
+      "parent_id": 51,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 12, "category": "prompt_tool_restriction"},
+      "mutation_kind": "agents_md_bash_only",
+      "workspace_overlay": {
+        "AGENTS.md": "## Tool Restriction\n\nYou must only use the bash tool. Do not use read, edit, write, glob, grep, task, or any other tool. Accomplish all tasks using shell commands via bash (e.g. `python -c '...'`, `sed`, `cat`).\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name_recursive", "not_equals": ["read", "edit", "write", "glob", "grep", "task"],
+         "description": "AGENTS.md instructs bash-only; the agent must not call any other tool at any layer"},
+        {"type": "any_tool_name_recursive", "equals": "bash",
+         "description": "agent must use bash to apply the edit (e.g. via python -c or sed)"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 213,
+      "name": "m_unquote_header_value_agents_md_no_grep_no_glob_prompt",
+      "parent_id": 54,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 12, "category": "prompt_tool_restriction"},
+      "mutation_kind": "agents_md_no_grep_no_glob",
+      "workspace_overlay": {
+        "AGENTS.md": "## Tool Restriction\n\nDo not use the grep or glob tools. For any file searches, use the bash tool (`bash rg`, `bash find`) or read individual files directly. The read, edit, write, and task tools remain available.\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name_recursive", "not_equals": ["grep", "glob"],
+         "description": "AGENTS.md forbids grep and glob; agent must pivot to bash search or pure read"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 214,
+      "name": "m_locate_cookie_tokens_agents_md_bash_only_prompt",
+      "parent_id": 21,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 14, "category": "prompt_tool_restriction"},
+      "mutation_kind": "agents_md_bash_only",
+      "workspace_overlay": {
+        "AGENTS.md": "## Tool Restriction\n\nYou must only use the bash tool. Do not use read, edit, write, glob, grep, task, or any other tool. Use bash for searching (e.g. `bash rg`, `bash find`), reading (`bash cat`), and writing (`bash echo > file`).\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name_recursive", "not_equals": ["read", "edit", "write", "glob", "grep", "task"],
+         "description": "AGENTS.md bash-only on a localization parent; agent must use bash for all operations"},
+        {"type": "any_tool_name_recursive", "equals": "bash",
+         "description": "agent must use bash to search and write location.txt"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 215,
+      "name": "m_pr_review_iter_slices_yes_agents_md_no_bash_prompt",
+      "parent_id": 91,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 12, "category": "prompt_tool_restriction"},
+      "mutation_kind": "agents_md_no_bash",
+      "workspace_overlay": {
+        "AGENTS.md": "## Tool Restriction\n\nDo not use the bash tool. Use only the native tools: read, grep, glob, edit, write, task. Shell access is forbidden for this task.\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name_recursive", "not_equals": "bash",
+         "description": "AGENTS.md forbids bash on a review parent; agent must use native tools only"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 216,
+      "name": "m_unquote_header_value_subagent_required_for_reading",
+      "parent_id": 54,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 19, "category": "subagent"},
+      "mutation_kind": "agents_md_subagent_required",
+      "workspace_overlay": {
+        "AGENTS.md": "## Tool Restriction\n\nAll file reading and grepping must be delegated to a subagent via the `task` tool. The parent must not call read, grep, or glob directly; you may still call `edit` on the parent. To inspect any file, dispatch a subagent via `task` (e.g. with `subagent_type=\"explore\"`) and use the subagent's returned summary.\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name", "not_equals": ["read", "grep", "glob"],
+         "description": "parent must not call read/grep/glob directly; all reading goes through a subagent"},
+        {"type": "any_tool_name_recursive", "equals": "read",
+         "description": "a subagent must actually read at least one file (recursive sees subagent layer)"},
+        {"type": "any_tool_name", "equals": "task",
+         "description": "parent must dispatch at least one task subagent"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 217,
+      "name": "m_locate_header_parse_tokens_subagent_required_for_reading",
+      "parent_id": 44,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 19, "category": "subagent"},
+      "mutation_kind": "agents_md_subagent_required",
+      "workspace_overlay": {
+        "AGENTS.md": "## Tool Restriction\n\nAll file reading and grepping must be delegated to a subagent via the `task` tool. The parent must not call read, grep, or glob directly; you may still call `write` on the parent (to produce location.txt). To inspect any file, dispatch a subagent via `task` (e.g. with `subagent_type=\"explore\"`) and use the subagent's returned summary.\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name", "not_equals": ["read", "grep", "glob"],
+         "description": "parent must not call read/grep/glob directly on a localization parent"},
+        {"type": "any_tool_name_recursive", "equals": "read",
+         "description": "a subagent must actually read at least one file"},
+        {"type": "any_tool_name", "equals": "task",
+         "description": "parent must dispatch at least one task subagent"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 218,
+      "name": "m_pr_review_iter_slices_yes_subagent_required_for_reading",
+      "parent_id": 91,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 19, "category": "subagent"},
+      "mutation_kind": "agents_md_subagent_required",
+      "workspace_overlay": {
+        "AGENTS.md": "## Tool Restriction\n\nAll file reading and grepping must be delegated to a subagent via the `task` tool. The parent must not call read, grep, or glob directly; the parent's role is to issue the review verdict in its final response based on subagent-returned summaries. Dispatch a subagent via `task` (e.g. with `subagent_type=\"explore\"`) for every file inspection.\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name", "not_equals": ["read", "grep", "glob"],
+         "description": "parent must not call read/grep/glob directly on a review parent"},
+        {"type": "any_tool_name_recursive", "equals": "read",
+         "description": "a subagent must actually read at least one file"},
+        {"type": "any_tool_name", "equals": "task",
+         "description": "parent must dispatch at least one task subagent"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 219,
+      "name": "m_iter_slices_persona_main_bash_only",
+      "parent_id": 51,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 2, "category": "agents_md"},
+      "mutation_kind": "persona_main_bash_only",
+      "agent": "bash_only_editor",
+      "superseded_before_run_ts": "2026-04-27T15-00-00",
+      "superseded_reason": "Pre-fix persona overlay used .opencode/agents/main.md without `mode: primary` and the row had no `agent` field, so opencode ran with the default agent and the persona file was dead text. Runs before 2026-04-27T15:00 do not test the persona-file mechanism; they're scored against an inert workspace.",
+      "workspace_overlay": {
+        ".opencode/agents/bash_only_editor.md": "---\ndescription: Strict bash-only editor persona for tool-restriction probes.\nmode: primary\n---\n\nYou are a strict bash-only editor. Your tool-use policy is:\n\n- You may ONLY use the `bash` tool.\n- You must NOT use the `read`, `edit`, `write`, `glob`, `grep`, or `task` tools.\n- All file inspection, search, and modification must happen via shell commands run through `bash` (e.g. `python -c '...'`, `sed`, `cat`, `rg`, `find`).\n\nThis policy applies for the entire session. Follow it strictly.\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name_recursive", "not_equals": ["read", "edit", "write", "glob", "grep", "task"],
+         "description": "custom_main_agent persona forbids non-bash tools; same restriction as #212 via different mechanism"},
+        {"type": "any_tool_name_recursive", "equals": "bash",
+         "description": "agent must use bash to apply the edit"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 220,
+      "name": "m_unquote_header_value_persona_main_subagent_required",
+      "parent_id": 54,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 2, "category": "agents_md"},
+      "mutation_kind": "persona_main_subagent_required",
+      "agent": "subagent_first_editor",
+      "superseded_before_run_ts": "2026-04-27T15-00-00",
+      "superseded_reason": "Pre-fix persona overlay used .opencode/agents/main.md without `mode: primary` and the row had no `agent` field, so opencode ran with the default agent and the persona file was dead text. Runs before 2026-04-27T15:00 do not test the persona-file mechanism; they're scored against an inert workspace.",
+      "workspace_overlay": {
+        ".opencode/agents/subagent_first_editor.md": "---\ndescription: Delegation-first editor persona; reading goes through subagents.\nmode: primary\n---\n\nYou are a delegation-first editor. Your tool-use policy is:\n\n- All file reading and grepping must be delegated to a subagent via the `task` tool.\n- You must NOT call `read`, `grep`, or `glob` directly.\n- You MAY call `edit` to apply the patch.\n- For every file you need to inspect, dispatch a subagent via `task` (e.g. with `subagent_type=\"explore\"`) and rely on the subagent's returned summary.\n\nThis policy applies for the entire session. Same restriction as the AGENTS.md-based variant on #216, delivered through this persona file.\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name", "not_equals": ["read", "grep", "glob"],
+         "description": "persona file forbids parent reading; same restriction as #216 via different mechanism"},
+        {"type": "any_tool_name_recursive", "equals": "read",
+         "description": "a subagent must actually read at least one file"},
+        {"type": "any_tool_name", "equals": "task",
+         "description": "parent must dispatch at least one task subagent"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 221,
+      "name": "m_locate_ssl_verify_tokens_deny_read_system",
+      "parent_id": 22,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 22, "category": "system_tool_restriction"},
+      "mutation_kind": "deny_read_system",
+      "workspace_overlay": {
+        "opencode.json": "{\n  \"$schema\": \"https://opencode.ai/config.json\",\n  \"permission\": {\n    \"read\": {\"*\": \"deny\"}\n  }\n}\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name_recursive", "not_equals": "read",
+         "description": "native read tool denied on a localization parent; agent must `bash cat` files to inspect"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 222,
+      "name": "m_locate_proxy_tokens_deny_grep_and_glob_system",
+      "parent_id": 23,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 22, "category": "system_tool_restriction"},
+      "mutation_kind": "deny_grep_and_glob_system",
+      "workspace_overlay": {
+        "opencode.json": "{\n  \"$schema\": \"https://opencode.ai/config.json\",\n  \"permission\": {\n    \"grep\": {\"*\": \"deny\"},\n    \"glob\": {\"*\": \"deny\"}\n  }\n}\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name_recursive", "not_equals": ["grep", "glob"],
+         "description": "both native search tools denied on a localization parent; agent must use bash find/rg or pure read"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 223,
+      "name": "m_locate_auth_tokens_agents_md_no_grep_no_glob_prompt",
+      "parent_id": 25,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 12, "category": "prompt_tool_restriction"},
+      "mutation_kind": "agents_md_no_grep_no_glob",
+      "workspace_overlay": {
+        "AGENTS.md": "## Tool Restriction\n\nDo not use the grep or glob tools. For any file searches, use the bash tool (`bash rg`, `bash find`) or read individual files directly. The read, edit, write, and task tools remain available.\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name_recursive", "not_equals": ["grep", "glob"],
+         "description": "AGENTS.md forbids grep and glob; agent must pivot to bash search or pure read"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 224,
+      "name": "m_locate_hook_dispatch_tokens_deny_full_bash_only_system",
+      "parent_id": 26,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 22, "category": "system_tool_restriction"},
+      "mutation_kind": "deny_full_system",
+      "workspace_overlay": {
+        "opencode.json": "{\n  \"$schema\": \"https://opencode.ai/config.json\",\n  \"permission\": {\n    \"bash\": \"allow\",\n    \"read\": {\"*\": \"deny\"},\n    \"edit\": {\"*\": \"deny\"},\n    \"glob\": {\"*\": \"deny\"},\n    \"grep\": {\"*\": \"deny\"},\n    \"task\": {\"*\": \"deny\"},\n    \"todowrite\": \"deny\"\n  }\n}\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name_recursive", "not_equals": ["read", "edit", "grep", "glob", "task", "todowrite"],
+         "description": "deny-full bash-only system on a localization parent; only bash is allowed"},
+        {"type": "any_tool_name_recursive", "equals": "bash",
+         "description": "agent must use bash to search and create location.txt"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 225,
+      "name": "m_locate_url_prep_tokens_agents_md_no_bash_prompt",
+      "parent_id": 29,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 12, "category": "prompt_tool_restriction"},
+      "mutation_kind": "agents_md_no_bash",
+      "workspace_overlay": {
+        "AGENTS.md": "## Tool Restriction\n\nDo not use the bash tool. Use only the native tools: read, grep, glob, edit, write, task. Shell access is forbidden for this task.\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name_recursive", "not_equals": "bash",
+         "description": "AGENTS.md forbids bash on a hard localization parent; agent must use native tools only"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 226,
+      "name": "m_locate_auth_prep_tokens_deny_glob_system",
+      "parent_id": 31,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 22, "category": "system_tool_restriction"},
+      "mutation_kind": "deny_glob_system",
+      "workspace_overlay": {
+        "opencode.json": "{\n  \"$schema\": \"https://opencode.ai/config.json\",\n  \"permission\": {\n    \"glob\": {\"*\": \"deny\"}\n  }\n}\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name_recursive", "not_equals": "glob",
+         "description": "glob denied on an easy localization parent (parent diversity vs #208 hard)"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 227,
+      "name": "m_locate_basic_auth_str_tokens_deny_grep_system",
+      "parent_id": 38,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 22, "category": "system_tool_restriction"},
+      "mutation_kind": "deny_grep_system",
+      "workspace_overlay": {
+        "opencode.json": "{\n  \"$schema\": \"https://opencode.ai/config.json\",\n  \"permission\": {\n    \"grep\": {\"*\": \"deny\"}\n  }\n}\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name_recursive", "not_equals": "grep",
+         "description": "grep denied on a medium localization parent (parent diversity vs #206 easy and #211 review)"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 228,
+      "name": "m_locate_register_hook_tokens_subagent_required_for_reading",
+      "parent_id": 41,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 19, "category": "subagent"},
+      "mutation_kind": "agents_md_subagent_required",
+      "workspace_overlay": {
+        "AGENTS.md": "## Tool Restriction\n\nAll file reading and grepping must be delegated to a subagent via the `task` tool. The parent must not call read, grep, or glob directly; you may still call `write` on the parent (to produce location.txt). To inspect any file, dispatch a subagent via `task` (e.g. with `subagent_type=\"explore\"`) and use the subagent's returned summary.\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name", "not_equals": ["read", "grep", "glob"],
+         "description": "parent must not call read/grep/glob directly on a medium localization parent"},
+        {"type": "any_tool_name_recursive", "equals": "read",
+         "description": "a subagent must actually read at least one file"},
+        {"type": "any_tool_name", "equals": "task",
+         "description": "parent must dispatch at least one task subagent"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 229,
+      "name": "m_locate_native_string_tokens_agents_md_bash_only_prompt",
+      "parent_id": 46,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 14, "category": "prompt_tool_restriction"},
+      "mutation_kind": "agents_md_bash_only",
+      "workspace_overlay": {
+        "AGENTS.md": "## Tool Restriction\n\nYou must only use the bash tool. Do not use read, edit, write, glob, grep, task, or any other tool. Use bash for searching (e.g. `bash rg`, `bash find`), reading (`bash cat`), and writing (`bash echo > file`).\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name_recursive", "not_equals": ["read", "edit", "write", "glob", "grep", "task"],
+         "description": "AGENTS.md bash-only on a hard localization parent (parent diversity vs #214 easy)"},
+        {"type": "any_tool_name_recursive", "equals": "bash",
+         "description": "agent must use bash to search and write location.txt"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    },
+    {
+      "id": 230,
+      "name": "m_locate_iter_content_tokens_persona_main_subagent_required",
+      "parent_id": 48,
+      "parent_version": "v1",
+      "mutation_source": {"version": "v0", "id": 2, "category": "agents_md"},
+      "mutation_kind": "persona_main_subagent_required",
+      "agent": "subagent_first_locator",
+      "workspace_overlay": {
+        ".opencode/agents/subagent_first_locator.md": "---\ndescription: Delegation-first locator persona; reading goes through subagents.\nmode: primary\n---\n\nYou are a delegation-first locator. Your tool-use policy is:\n\n- All file reading and grepping must be delegated to a subagent via the `task` tool.\n- You must NOT call `read`, `grep`, or `glob` directly.\n- You MAY call `write` to create the deliverable (location.txt).\n- For every file you need to inspect, dispatch a subagent via `task` (e.g. with `subagent_type=\"explore\"`) and rely on the subagent's returned summary.\n\nThis policy applies for the entire session. Same restriction as #228 (AGENTS.md) on the localization category, delivered through a persona file. First localization persona mutant -- corroborates whether the persona-vs-AGENTS.md edge for subagent-required (seen on edit parent #54 in #220) generalizes to localization tasks.\n"
+      },
+      "extra_checks": [
+        {"type": "no_tool_name", "not_equals": ["read", "grep", "glob"],
+         "description": "persona file forbids parent reading on a hard localization parent"},
+        {"type": "any_tool_name_recursive", "equals": "read",
+         "description": "a subagent must actually read at least one file"},
+        {"type": "any_tool_name", "equals": "task",
+         "description": "parent must dispatch at least one task subagent"},
+        {"type": "call_schema_valid",
+         "description": "all tool calls match opencode schemas"}
+      ]
+    }
+  ]
+}
