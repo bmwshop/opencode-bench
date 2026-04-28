@@ -9,16 +9,17 @@ A benchmark suite for evaluating LLM compatibility with the [opencode](https://g
 - A configured model provider (the model under test)
 - `pip install -r requirements.txt` (currently just `jsonschema`, used by the
   `call_schema_valid` check)
-- For v1 samples: clone with submodules (see below)
+
+> **v1 fixtures auto-hydrate.** v1 samples target real pinned open-source repos.
+> `run.py` calls `scripts/hydrate_v1_repos.py` automatically before running v1
+> samples (~30s + ~200MB on first run, idempotent no-op afterwards). You don't
+> need to clone with `--recurse-submodules` unless you specifically want them
+> committed at the canonical `./projects/v1/` paths -- see [Workspaces, hydration,
+> and parallel runs](#workspaces-hydration-and-parallel-runs) below.
 
 ## Quick Start
 
 ```bash
-# Clone with submodules (v1 needs pinned snapshots of real repos)
-git clone --recurse-submodules <repo-url>
-# or, if you already cloned without --recurse-submodules:
-git submodule update --init --recursive
-
 # Run all v1 samples against real pinned repos (the default)
 python run.py
 
@@ -28,7 +29,7 @@ python run.py --category code_review
 # Run the legacy v0 tier (curated toy projects)
 python run.py --version v0
 
-# Evaluate results
+# Evaluate results (auto-detects the latest run)
 python eval.py
 ```
 
@@ -86,10 +87,11 @@ Each run creates an isolated directory with:
 The canonical `projects/` tree is never modified at runtime, so it is safe to run multiple models (or the same model multiple times) in parallel.
 
 ```bash
-python run.py                                              # all v1 samples; auto /tmp workspace, kept after run
-python run.py --workspace .                                # legacy: use repo-local ./projects, ./runs, ./captures
+python run.py                                              # all v1 samples; auto-allocated workspace, kept after run
+python run.py --workspace .                                # legacy layout: use repo-local ./projects, ./runs, ./captures
 python run.py --workspace /scratch/oc-shared               # reuse a hydrated workspace across multiple model evals
-python run.py --clean-workspace                            # rm -rf the auto-allocated /tmp workspace at exit
+python run.py --clean-workspace                            # rm -rf the auto-allocated workspace at exit
+python run.py --workspace-root /scratch                    # auto-allocate under /scratch instead of $TMPDIR (container-friendly)
 python run.py --version v0                                 # run v0 samples (legacy curated tier)
 python run.py --id 1                                       # run a single sample (within selected version)
 python run.py --id 1 --id 2                                # run multiple samples
@@ -100,14 +102,100 @@ python run.py --proxy http://localhost:4000/v1             # route through a log
 python run.py --clean                                      # wipe RUNS dir first (within current workspace)
 python run.py --timeout 120                                # custom per-sample timeout (default: 180s)
 python run.py --retry-on-timeout 2                         # retry on TimeoutExpired (up to 2 extra attempts per sample)
-python run.py -j 4                                         # run up to 4 samples in parallel
+python run.py -j 4                                         # run up to 4 samples in parallel (one process)
 ```
-
-> **Workspace defaults:** `run.py` allocates a fresh `/tmp/oc-bench-XXXXXX` workspace per invocation, hydrates the v1 fixtures into it (idempotent skip on subsequent runs against the same dir), and **keeps the workspace on disk** so you can inspect traces. Pass `--clean-workspace` to auto-`rm`. Pass `--workspace .` to reproduce the legacy repo-local layout. Inside `run_cluster.py` containers, `OPENCODE_BENCH_RUNS=/runs` is pre-set and respected (no auto-allocation, no auto-cleanup).
 
 The `--model` flag is optional. When omitted, opencode uses its configured default and traces go under `runs/v{version}/default/{timestamp}/`. The format is `provider/model-id` (e.g. `anthropic/claude-opus-4-6`), which gets converted to a directory slug (`anthropic_claude-opus-4-6`).
 
-`--workers` / `-j` (default 1) runs samples in parallel via a thread pool. Each sample already executes in its own `runs/v{version}/{slug}/{ts}/projects/{id:03d}/` workspace copy, so parallelism is safe with no contention on disk. Combined with `--proxy`, the switchyard timestamp fallback used by `stitch.py` has a 3-second window, so attribution for zero-tool-call samples may be unreliable — `run.py` prints a warning but does not block it.
+## Workspaces, Hydration, and Parallel Runs
+
+### Workspace selection
+
+A "workspace" hosts the three mutable trees `run.py` writes to: `projects/`
+(hydrated v1 fixtures), `runs/` (traces + meta), and `captures/` (proxy
+payloads). Pick whichever mode fits your workflow:
+
+| Mode | Invocation | When to use |
+|---|---|---|
+| **Auto-allocated** *(default)* | `python run.py ...` | Each invocation gets its own fresh `/tmp/oc-bench-XXXXXX/`. N parallel copies of `run.py` are race-free with no extra wiring. Workspace stays on disk after exit; pass `--clean-workspace` to auto-`rm`. |
+| **Repo-local (legacy)** | `python run.py --workspace . ...` | Reproduces the historical layout (`./projects`, `./runs`, `./captures`). Best for everyday dev: you keep run history at familiar paths and editor/IDE search just works. |
+| **Shared / persistent** | `python run.py --workspace /scratch/oc-shared ...` | Multiple model evals against the same hydrated tree. Hydration is idempotent so the second invocation is a no-op clone-wise. |
+
+The three `OPENCODE_BENCH_PROJECTS`, `OPENCODE_BENCH_RUNS`,
+`OPENCODE_BENCH_CAPTURES` env vars override the corresponding paths
+individually. When any of them is pre-set, `run.py` honors it and skips both
+auto-allocation and auto-cleanup. This is how [`run_cluster.py`](run_cluster.py)
+points runs at the mounted `/runs` volume inside Slurm containers.
+
+### Hydration
+
+v1 samples target real pinned upstream repos declared in
+[data/v1_repos.json](data/v1_repos.json). `run.py` calls
+[`scripts/hydrate_v1_repos.py`](scripts/hydrate_v1_repos.py) automatically
+before running v1 samples — it clones each repo into the active workspace and
+checks out the pinned SHA. Already-correct checkouts report `OK` and skip
+(safe to call repeatedly).
+
+Manual invocation is occasionally useful, e.g. inside a cluster container
+where submodule `.git` metadata wasn't staged with the code:
+
+```bash
+python scripts/hydrate_v1_repos.py             # all repos
+python scripts/hydrate_v1_repos.py --repo requests   # one repo
+python scripts/hydrate_v1_repos.py --dry-run         # preview without modifying disk
+```
+
+If you'd rather have v1 fixtures committed in the repo (so they ship without
+a network round-trip), do the manual `git submodule add` dance described
+under [Adding a v1 repo](#adding-a-v1-repo) and pass `--workspace .` so
+`run.py` reuses the in-tree submodules.
+
+### Parallelism
+
+Two independent dimensions:
+
+- **`-j N` / `--workers N`** — within one `run.py` invocation, run up to N
+  samples concurrently via a thread pool. Each sample already executes in
+  its own per-sample workspace copy, so disk contention is zero. Default 1.
+- **N parallel `run.py` invocations** — fire up to N processes simultaneously;
+  each auto-allocates its own `/tmp/oc-bench-XXXXXX/` workspace. Zero shared
+  mutable state, no wrapper script needed. `run_cluster.py` uses the same
+  isolation model inside Slurm containers.
+
+```bash
+# In-process parallelism: 8 samples at a time, one workspace.
+python run.py --version v1 --model X -j 8
+
+# Multi-process parallelism: 8 isolated workspaces.
+for i in 1 2 3 4 5 6 7 8; do
+  python run.py --version v1 --id 91 --model X &
+done; wait
+```
+
+A caveat for `--proxy` users: when combined with `-j > 1`, the switchyard
+timestamp fallback used by `stitch.py` has a 3-second window, so attribution
+for zero-tool-call samples may be unreliable. `run.py` prints a warning but
+does not block.
+
+### Container ephemeral-`/tmp` workaround
+
+Inside containers `/tmp` is typically tmpfs that vanishes at container exit —
+auto-allocated workspaces under `/tmp` would be lost along with their traces.
+Point auto-allocation at a mounted volume instead:
+
+```bash
+# As a CLI flag
+python run.py --workspace-root /scratch --id 21 --model X
+
+# As an env var (set once, e.g. in a Dockerfile or by run_cluster.py)
+OPENCODE_BENCH_WORKSPACE_ROOT=/scratch python run.py ...
+```
+
+Precedence: `--workspace-root` > `OPENCODE_BENCH_WORKSPACE_ROOT` > `$TMPDIR` >
+`/tmp`. Only consulted when `run.py` auto-allocates; ignored when
+`--workspace PATH` or any of the `OPENCODE_BENCH_*` path overrides are
+already set. See [CLUSTER_RUN.md](CLUSTER_RUN.md) for the full Slurm/cluster
+story.
 
 ## Evaluating Results
 
