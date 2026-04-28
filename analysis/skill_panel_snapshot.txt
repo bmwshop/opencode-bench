@@ -1,0 +1,61 @@
+Family: skill (manifest v1_skill_criteria.json, category skill)
+Analyzed 315 trials across 4 models
+Sample coverage (trials per sample):
+  #401 [tier-a-baseline             ] 12 trial(s)
+  #402 [tier-a-baseline             ] 12 trial(s)
+  #403 [tier-a-baseline             ] 12 trial(s)
+  #404 [tier-a-baseline             ] 12 trial(s)
+  #405 [tier-a-baseline             ] 12 trial(s)
+  #406 [tier-a-baseline             ] 12 trial(s)
+  #407 [tier-a-baseline             ] 12 trial(s)
+  #408 [tier-a-baseline             ] 12 trial(s)
+  #409 [tier-a-baseline             ] 12 trial(s)
+  #410 [tier-b-discovery            ] 12 trial(s)
+  #411 [tier-b-discovery            ] 9 trial(s)
+  #412 [tier-b-discovery            ] 9 trial(s)
+  #413 [tier-b-discovery            ] 9 trial(s)
+  #414 [tier-b-discovery            ] 9 trial(s)
+  #415 [tier-c-delta                ] 20 trial(s)
+  #416 [tier-c-delta                ] 20 trial(s)
+  #417 [tier-c-delta                ] 20 trial(s)
+  #418 [tier-c-delta                ] 20 trial(s)
+  #419 [tier-c-delta                ] 20 trial(s)
+  #420 [tier-c-delta                ] 20 trial(s)
+  #421 [tier-c-delta                ] 19 trial(s)
+  #422 [tier-c-delta                ] 20 trial(s)
+  #423 [tier-d-selectivity          ] 0 trial(s)
+  #424 [tier-d-selectivity          ] 0 trial(s)
+  #425 [tier-d-selectivity          ] 0 trial(s)
+  #426 [tier-d-selectivity          ] 0 trial(s)
+  #427 [tier-e-composition          ] 0 trial(s)
+  #428 [tier-e-composition          ] 0 trial(s)
+  #429 [tier-e-composition          ] 0 trial(s)
+  #430 [tier-e-composition          ] 0 trial(s)
+
+Per-difficulty clone flags (Pearson >= 0.85):
+  [tier-a-baseline] #407 vs #408: r=1.000
+
+Per-model pass rate by difficulty (passed / completed-trials [rate]):
+  model                                            difficulty                              pass-rate
+  nvidia-internal_azure_anthropic_claude-opus-4-6  tier-a-baseline                      27/27 [1.00]
+  nvidia-internal_azure_anthropic_claude-opus-4-6  tier-b-discovery                     15/15 [1.00]
+  nvidia-internal_azure_anthropic_claude-opus-4-6  tier-c-delta                         48/48 [1.00]
+  nvidia_nvidia_nemotron-3-nano-30b-a3b            tier-a-baseline                      11/27 [0.41]
+  nvidia_nvidia_nemotron-3-nano-30b-a3b            tier-b-discovery                     10/15 [0.67]
+  nvidia_nvidia_nemotron-3-nano-30b-a3b            tier-c-delta                         19/48 [0.40]
+  nvidia_nvidia_nemotron-3-super-120b-a12b         tier-a-baseline                      24/27 [0.89]
+  nvidia_nvidia_nemotron-3-super-120b-a12b         tier-b-discovery                       1/3 [0.33]
+  nvidia_nvidia_nemotron-3-super-120b-a12b         tier-c-delta                         22/24 [0.92]
+  nvidia_qwen_qwen3-next-80b-a3b-thinking          tier-a-baseline                      19/27 [0.70]
+  nvidia_qwen_qwen3-next-80b-a3b-thinking          tier-b-discovery                      8/15 [0.53]
+  nvidia_qwen_qwen3-next-80b-a3b-thinking          tier-c-delta                         30/39 [0.77]
+
+Difficulty-gradient monotonicity violations (easy < medium < hard pass-rate):
+  (skipped: family has no tier ordering)
+
+Opencode-flavored signal (per-model means across the family):
+  model                                              eff_mult   schema_validity   skill_load  skill_correct
+  nvidia-internal_azure_anthropic_claude-opus-4-6           -      100.0% (387)  100.0% (87)    100.0% (87)
+  nvidia_nvidia_nemotron-3-nano-30b-a3b                     -       86.9% (464)   94.2% (87)     94.2% (87)
+  nvidia_nvidia_nemotron-3-super-120b-a12b                  -       92.9% (366)   98.2% (54)     98.2% (54)
+  nvidia_qwen_qwen3-next-80b-a3b-thinking                   -      100.0% (282)  100.0% (78)    100.0% (78)

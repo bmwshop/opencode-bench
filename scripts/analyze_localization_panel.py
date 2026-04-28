@@ -71,12 +71,34 @@ FAMILIES: dict[str, dict[str, Any]] = {
     },
     "mutants": {
         "manifest": ROOT / "data" / "v1_mutant_criteria.json",
-        "default_ids": "201-220",
+        "default_ids": "201-230",
         "category": "tool_restriction",
         # Mutants have no natural difficulty tiering -- group by mutation_kind
         # for per-restriction-kind aggregation. Gradient analysis is skipped
         # (tier_order=None) because the kinds aren't ordered.
         "tier_field": "mutation_kind",
+        "tier_order": None,
+    },
+    "orchestration": {
+        "manifest": ROOT / "data" / "v1_orchestration_criteria.json",
+        "default_ids": "301-330",
+        "category": "orchestration",
+        # Group by graph pattern (parallel_dispatch / chain / dag_join /
+        # iteration / merge) for per-pattern pass-rate aggregation.
+        "tier_field": "pattern",
+        "tier_order": None,
+    },
+    "skill": {
+        "manifest": ROOT / "data" / "v1_skill_criteria.json",
+        "default_ids": "401-430",
+        "category": "skill",
+        # Skill samples use a `difficulty` field with values like
+        # "tier-a-baseline", "tier-b-discovery", "tier-c-delta",
+        # "tier-d-selectivity", "tier-e-composition". Tier order is
+        # informative for plan progress but not strictly monotonic in
+        # difficulty (composition isn't strictly harder than discovery),
+        # so gradient checks are off.
+        "tier_field": "difficulty",
         "tier_order": None,
     },
 }
@@ -147,6 +169,7 @@ def collect_runs(
     models: list[str] | None,
     seeds_per_model: int,
     exclude_incomplete: bool = False,
+    superseded_before: dict[int, str] | None = None,
 ) -> dict[tuple[str, int, int], bool]:
     """Return mapping (model, seed_index, sample_id) -> pass (bool).
 
@@ -162,9 +185,16 @@ def collect_runs(
     (timeouts / trace-not-found) from the selected runs, so the
     per-(model, sample) denominator becomes "seeds that actually finished
     this sample" rather than "all seeds attempted".
+
+    `superseded_before` maps `sid -> ts_prefix`. For each sid in the map,
+    scored entries from run dirs whose name (a `2026-04-27T...` timestamp)
+    sorts BEFORE `ts_prefix` are dropped. Used to retire pre-fix runs of
+    samples that got a methodology bugfix without having to delete
+    historical scores.json files.
     """
     sample_ids_set = set(sample_ids)
     out: dict[tuple[str, int, int], bool] = {}
+    superseded_before = superseded_before or {}
 
     for model_dir in sorted(RUNS.iterdir()):
         if not model_dir.is_dir():
@@ -194,6 +224,9 @@ def collect_runs(
                 if sid not in sample_ids_set:
                     continue
                 if exclude_incomplete and not bool(s.get("completed")):
+                    continue
+                cutoff = superseded_before.get(sid)
+                if cutoff is not None and ts_dir.name < cutoff:
                     continue
                 out[(model_name, seed_idx, sid)] = bool(s.get("pass"))
 
@@ -325,6 +358,7 @@ def collect_opencode_metrics(
     sample_ids: list[int],
     models: list[str] | None,
     seeds_per_model: int,
+    manifest: dict[int, dict[str, Any]] | None = None,
 ) -> dict[tuple[str, int, int], dict[str, Any]]:
     """Walk the same most-recent K family-relevant runs as collect_runs and
     extract opencode-specific per-trial metrics from each scores.json plus
@@ -335,12 +369,20 @@ def collect_opencode_metrics(
         "tool_calls_recursive": int | None,
         "schema_valid": int,            # count of well-formed tool calls
         "schema_total": int,            # total tool calls in trace
+        "skill_calls": int,             # how many `skill name=X` calls in the trace
+        "skill_correct": bool | None,   # did the trace include the expected skill name?
+                                        # None when manifest doesn't declare expected_skill_invocations.
     }.
 
     `efficiency_multiple = tool_calls_recursive / min_calls` and
     `schema_validity_rate = schema_valid / schema_total` are computed at
     aggregation time so callers can pick their own per-model / per-tier
     rollup. `None` slots and zero denominators are skipped at rollup time.
+
+    When `manifest` is supplied (i.e. the family has a per-sample manifest
+    declaring `expected_skill_invocations`), the per-trial dict also
+    populates `skill_correct` so the panel can compute `skill_load_rate`
+    and `skill_correct_load_rate` per model.
     """
     sample_ids_set = set(sample_ids)
     out: dict[tuple[str, int, int], dict[str, Any]] = {}
@@ -390,6 +432,8 @@ def collect_opencode_metrics(
                 name = bits[1] if len(bits) > 1 else ""
                 trace_path = ts_dir / f"{sid:03d}_{name}.jsonl"
                 schema_valid = schema_total = 0
+                skill_calls = 0
+                skill_names_invoked: set[str] = set()
                 if trace_path.is_file():
                     try:
                         validators = _make_validators()
@@ -403,8 +447,6 @@ def collect_opencode_metrics(
                                 continue
                             if obj.get("type") != "tool_use":
                                 continue
-                            # Trace shape mirrors eval.extract(): the actual
-                            # tool name and input live nested under part/state.
                             part = obj.get("part") or {}
                             state = part.get("state") or {}
                             tool_name = part.get("tool", "")
@@ -416,16 +458,35 @@ def collect_opencode_metrics(
                             errs = list(v.iter_errors(tool_input))
                             if not errs:
                                 schema_valid += 1
+                            # Track skill-tool invocations for the family-
+                            # specific skill_load_rate / correct_load_rate
+                            # rollups (no-op for non-skill samples).
+                            if tool_name == "skill":
+                                skill_calls += 1
+                                sn = tool_input.get("name")
+                                if isinstance(sn, str):
+                                    skill_names_invoked.add(sn)
                     except Exception:
-                        # Be defensive: missing validator import or malformed trace
-                        # shouldn't crash the analyzer.
                         pass
+
+                # skill_correct: True iff the trace invoked any of the
+                # manifest's expected `must_invoke` skill names. Only
+                # computed when the manifest entry declares those.
+                skill_correct: bool | None = None
+                if manifest is not None:
+                    entry = manifest.get(sid) or {}
+                    expected = entry.get("expected_skill_invocations") or []
+                    must = [e.get("skill_name") for e in expected if e.get("must_invoke")]
+                    if must:
+                        skill_correct = any(name in skill_names_invoked for name in must)
 
                 out[(model_name, seed_idx, sid)] = {
                     "min_calls": s.get("min_calls"),
                     "tool_calls_recursive": s.get("tool_calls_recursive"),
                     "schema_valid": schema_valid,
                     "schema_total": schema_total,
+                    "skill_calls": skill_calls,
+                    "skill_correct": skill_correct,
                 }
     return out
 
@@ -449,6 +510,10 @@ def per_model_opencode_summary(
             "eff_n": 0,
             "sv_valid": 0,
             "sv_total": 0,
+            "skill_load_n_loaded": 0,
+            "skill_load_n_total": 0,
+            "skill_correct_n": 0,
+            "skill_correct_n_total": 0,
         })
         mc = d.get("min_calls")
         tcr = d.get("tool_calls_recursive")
@@ -457,16 +522,36 @@ def per_model_opencode_summary(
             s["eff_n"] += 1
         s["sv_valid"] += d.get("schema_valid", 0)
         s["sv_total"] += d.get("schema_total", 0)
+        # skill-load rate: of trials where the family declared `must_invoke`
+        # skill names, how many had at least one skill call?
+        if d.get("skill_correct") is not None:
+            s["skill_load_n_total"] += 1
+            if d.get("skill_calls", 0) > 0:
+                s["skill_load_n_loaded"] += 1
+            s["skill_correct_n_total"] += 1
+            if d.get("skill_correct"):
+                s["skill_correct_n"] += 1
 
     out: dict[str, dict[str, Any]] = {}
     for m, s in by_model.items():
         eff_mean = s["eff_sum"] / s["eff_n"] if s["eff_n"] else None
         sv_rate = s["sv_valid"] / s["sv_total"] if s["sv_total"] else None
+        sl_rate = (
+            s["skill_load_n_loaded"] / s["skill_load_n_total"]
+            if s["skill_load_n_total"] else None
+        )
+        sc_rate = (
+            s["skill_correct_n"] / s["skill_correct_n_total"]
+            if s["skill_correct_n_total"] else None
+        )
         out[m] = {
             "efficiency_mean": round(eff_mean, 3) if eff_mean is not None else None,
             "efficiency_n": s["eff_n"],
             "schema_validity_rate": round(sv_rate, 4) if sv_rate is not None else None,
             "schema_n_calls": s["sv_total"],
+            "skill_load_rate": round(sl_rate, 4) if sl_rate is not None else None,
+            "skill_correct_load_rate": round(sc_rate, 4) if sc_rate is not None else None,
+            "skill_n_trials": s["skill_load_n_total"],
         }
     return out
 
@@ -544,9 +629,21 @@ def main() -> int:
             cwd=str(ROOT), check=False,
         )
 
+    # Build a per-sid `superseded_before` map from the manifest. Used to
+    # retire pre-methodology-fix scored entries (e.g. mutant #219/#220 had
+    # a wrong-shape persona overlay before 2026-04-27T15:00; runs from
+    # before that cutoff don't actually test the persona-file mechanism
+    # and would dilute the rerun signal).
+    superseded_before: dict[int, str] = {}
+    for sid, entry in manifest.items():
+        ts = entry.get("superseded_before_run_ts")
+        if ts:
+            superseded_before[sid] = ts
+
     runs = collect_runs(
         sample_ids, args.models, args.seeds_per_model,
         exclude_incomplete=args.exclude_incomplete,
+        superseded_before=superseded_before,
     )
     tier_field = family_cfg.get("tier_field", "difficulty")
     tier_order = family_cfg.get("tier_order")
@@ -557,7 +654,9 @@ def main() -> int:
 
     # Opencode-flavored signal: efficiency multiple + schema validity rate.
     # Pure reporting; doesn't gate pass/fail.
-    oc_metrics = collect_opencode_metrics(sample_ids, args.models, args.seeds_per_model)
+    oc_metrics = collect_opencode_metrics(
+        sample_ids, args.models, args.seeds_per_model, manifest=manifest,
+    )
     oc_summary = per_model_opencode_summary(oc_metrics)
 
     # Per-tier correlation grouping. Pearson is computed *within* each tier
@@ -750,16 +849,34 @@ def main() -> int:
         for m, ht, lt, hr, lr in grads:
             print(f"  {m}: {ht}={hr:.3f} < {lt}={lr:.3f}")
     if oc_summary:
+        # Surface skill_load_rate / skill_correct_load_rate columns only when
+        # at least one model has data (i.e. when the family declares
+        # expected_skill_invocations -- skill family today; future families
+        # could opt in by adding the same field).
+        any_skill_data = any(
+            s.get("skill_load_rate") is not None or s.get("skill_correct_load_rate") is not None
+            for s in oc_summary.values()
+        )
         print()
         print("Opencode-flavored signal (per-model means across the family):")
-        print(f"  {'model':48} {'eff_mult':>10} {'schema_validity':>17}")
+        if any_skill_data:
+            print(f"  {'model':48} {'eff_mult':>10} {'schema_validity':>17} {'skill_load':>12} {'skill_correct':>14}")
+        else:
+            print(f"  {'model':48} {'eff_mult':>10} {'schema_validity':>17}")
         for m in sorted(oc_summary.keys()):
             s = oc_summary[m]
             eff = s.get("efficiency_mean")
             eff_str = f"{eff:>4.2f}x ({s['efficiency_n']})" if eff is not None else "-"
             sv = s.get("schema_validity_rate")
             sv_str = f"{sv*100:>5.1f}% ({s['schema_n_calls']})" if sv is not None else "-"
-            print(f"  {m[:48]:48} {eff_str:>10} {sv_str:>17}")
+            if any_skill_data:
+                sl = s.get("skill_load_rate")
+                sc = s.get("skill_correct_load_rate")
+                sl_str = f"{sl*100:>5.1f}% ({s['skill_n_trials']})" if sl is not None else "-"
+                sc_str = f"{sc*100:>5.1f}% ({s['skill_n_trials']})" if sc is not None else "-"
+                print(f"  {m[:48]:48} {eff_str:>10} {sv_str:>17} {sl_str:>12} {sc_str:>14}")
+            else:
+                print(f"  {m[:48]:48} {eff_str:>10} {sv_str:>17}")
 
     # Mutants-only text section (data already on `report` above).
     if args.family == "mutants":

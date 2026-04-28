@@ -88,7 +88,7 @@ if __name__ == "__main__":
 | 2 | `any_tool_name` | model used the skill tool at the parent layer |
 | 3 | `any_tool_name` | model invoked bash to run the script |
 | 4 | `any_tool_param_regex` | bash command runs checksum.py |
-| 5 | `text_contains` | response includes the first 6 chars of the sha256 checksum |
+| 5 | `text_contains` | response includes the first 6 chars of the sha256 checksum (verified against the pinned requests commit) |
 | 6 | `call_schema_valid` | all tool calls match opencode schemas |
 
 ## Note on methodology
