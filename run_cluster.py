@@ -273,11 +273,15 @@ def build_benchmark_command(opencode_model, provider, server_url, timeout,
     # at startup after querying the vLLM server for its actual max_model_len.
     parts.append(build_config_inject_cmd(provider, model_id, server_url))
 
-    # run.py  (no --proxy; --max-output-tokens flows through to opencode's
-    # limit.output so it doesn't fall back to the hardcoded 32000 default)
+    # run.py  (no --proxy; pass --vllm so run.py injects/creates opencode.json
+    # per sample workspace, including fixtures that don't already ship one.
+    # --max-output-tokens flows through to opencode's limit.output so it
+    # doesn't fall back to the hardcoded 32000 default)
     run_args = [
         "cd /nemo_run/code/ && python run.py",
         f"--model {opencode_model}",
+        f"--vllm {shlex.quote(server_url)}",
+        "--vllm-api-key EMPTY",
         f"--timeout {timeout}",
         f"--max-output-tokens {int(max_output_tokens)}",
     ]
