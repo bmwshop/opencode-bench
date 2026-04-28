@@ -35,8 +35,12 @@ def _run(cmd, cwd=None, check=True, capture_output=True):
     )
 
 
-def _git(path, *args, check=True):
-    return _run(["git", "-C", str(path), *args], check=check)
+def _git(path, *args, check=True, capture_output=True):
+    return _run(
+        ["git", "-C", str(path), *args],
+        check=check,
+        capture_output=capture_output,
+    )
 
 
 def _repo_state(path):
