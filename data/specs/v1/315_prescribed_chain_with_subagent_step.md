@@ -32,9 +32,9 @@ orchestration
 | # | type | description |
 |---|------|-------------|
 | 1 | `tool_call_sequence` | chain with task dispatch in the middle |
-| 2 | `tool_call_count` | exactly 2 parent-level reads |
-| 3 | `tool_call_count` | exactly 1 subagent dispatch |
-| 4 | `tool_call_count` | exactly 1 write |
+| 2 | `tool_call_count` | exactly 2 parent-level reads (subagent's reads excluded; the constraint is on parent's prescribed shape) |
+| 3 | `tool_call_count` | exactly 1 subagent dispatch by the parent |
+| 4 | `tool_call_count` | exactly 1 write by the parent |
 | 5 | `file_regex` | EMBEDDING_LR = 0.6 |
 | 6 | `file_regex` | VOCAB_SIZE = 8192 |
 | 7 | `file_regex` | first README section is 'How it works' |

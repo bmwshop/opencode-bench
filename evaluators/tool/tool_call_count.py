@@ -8,18 +8,29 @@ Count calls of a specific tool in the trace.
       `min: N`         - at least N calls
       `max: N`         - at most N calls
       `range: [lo, hi]` - lo..hi inclusive
+  - `scope`: optional, "recursive" (default) | "parent" — when "parent",
+    counts parent-layer calls only even if `trace_path` is supplied.
+    Use this when the prescribed shape constrains the parent's tool use
+    (e.g. "parent reads exactly twice") but allows subagents to read
+    independently. The default ("recursive") aggregates across the
+    parent and any reachable subagent sidecars; this is the right choice
+    when the constraint is on the total work (e.g. "exactly N task calls
+    across the whole hierarchy").
 
-When `trace_path` is supplied, calls made inside any `task` subagent are
-counted alongside the parent's calls (recursive). Sentinel-aware: returns
-False if subagent capture is incomplete (better to fail explicit than
-silently over-count).
+When `trace_path` is supplied AND `scope=recursive` (the default), calls
+made inside any `task` subagent are counted alongside the parent's calls.
+Sentinel-aware: returns False if subagent capture is incomplete (better
+to fail explicit than silently over-count).
 """
 from evaluators import register
 
 
 @register("tool_call_count")
 def check(tools, texts, chk, trace_path=None):
-    if trace_path is not None:
+    scope = chk.get("scope", "recursive")
+    if scope not in ("recursive", "parent"):
+        return False, f"tool_call_count: unknown scope {scope!r} (want 'recursive' or 'parent')"
+    if trace_path is not None and scope == "recursive":
         from evaluators._recursive import (
             _collect_recursive_tools, _check_sentinels, _real_tools,
         )

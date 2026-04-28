@@ -408,12 +408,12 @@
       "checks": [
         {"type": "tool_call_sequence", "sequence": ["read", "task", "read", "write"],
          "description": "chain with task dispatch in the middle"},
-        {"type": "tool_call_count", "tool": "read", "equals": 2,
-         "description": "exactly 2 parent-level reads"},
-        {"type": "tool_call_count", "tool": "task", "equals": 1,
-         "description": "exactly 1 subagent dispatch"},
-        {"type": "tool_call_count", "tool": "write", "equals": 1,
-         "description": "exactly 1 write"},
+        {"type": "tool_call_count", "tool": "read", "equals": 2, "scope": "parent",
+         "description": "exactly 2 parent-level reads (subagent's reads excluded; the constraint is on parent's prescribed shape)"},
+        {"type": "tool_call_count", "tool": "task", "equals": 1, "scope": "parent",
+         "description": "exactly 1 subagent dispatch by the parent"},
+        {"type": "tool_call_count", "tool": "write", "equals": 1, "scope": "parent",
+         "description": "exactly 1 write by the parent"},
         {"type": "file_regex", "path": "summary.md", "pattern": "EMBEDDING_LR:\\s*0\\.6",
          "description": "EMBEDDING_LR = 0.6"},
         {"type": "file_regex", "path": "summary.md", "pattern": "VOCAB_SIZE:\\s*8192",
@@ -795,6 +795,8 @@
       "repo": "autoresearch",
       "prescription_form": "prescriptive",
       "min_calls": 3,
+      "superseded_before_run_ts": "2026-04-28T15-20-00",
+      "superseded_reason": "Original prompt asked subagent_type=explore to dispatch a sub-subagent, but opencode's built-in `explore` subagent doesn't have the `task` tool, making depth-2 dispatch structurally impossible. Redesigned to ship a custom `recursive_dispatcher` subagent via the workspace overlay; pre-redesign runs (before 2026-04-28T15:20 UTC) test something different and shouldn't be aggregated with the redesigned runs.",
       "_design_note": "Original (pre-2026-04-28) used subagent_type=explore. Opencode's built-in `explore` subagent doesn't have the `task` tool, so depth-2 dispatch was structurally impossible -- claude correctly identified this and worked around it, failing the prescribed-shape verifier. Redesigned to ship a custom `recursive_dispatcher` subagent via .opencode/agents/<name>.md overlay so the subagent has `task` access and can actually dispatch a sub-subagent.",
       "workspace_overlay": {
         ".opencode/agents/recursive_dispatcher.md": "---\ndescription: Subagent with task-tool access; can dispatch its own sub-subagents. Used by orchestration sample #327 to test depth-2 hierarchical dispatch.\ntools:\n  task: true\n  read: true\n  grep: true\n  glob: true\n  bash: true\n  webfetch: true\n---\n\nYou are a delegating explorer. Unlike the default `explore` subagent, you have access to the `task` tool and may dispatch your own sub-subagents (typically with `subagent_type=explore`).\n\nFollow the user's instruction precisely. If you are asked to dispatch a sub-subagent, do so via the `task` tool -- do NOT work around it by reading files directly.\n"
