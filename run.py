@@ -231,6 +231,8 @@ FALLBACK_CONTEXT_TOKENS = 32768
 # /v1/models for the same (base_url, model_id) pair.
 _ctx_cache: dict[tuple[str, str], int | None] = {}
 _ctx_cache_lock = threading.Lock()
+_fixture_check_lock = threading.Lock()
+_fixture_checked: set[str] = set()
 
 
 def _inject_proxy(cwd, provider, url):
@@ -238,6 +240,24 @@ def _inject_proxy(cwd, provider, url):
     cfg = json.loads(path.read_text()) if path.exists() else {}
     cfg.setdefault("provider", {}).setdefault(provider, {}).setdefault("options", {})["baseURL"] = url
     path.write_text(json.dumps(cfg, indent=2))
+
+
+def _assert_fixture_clean_once(src: Path, auto_repair: bool = True) -> None:
+    """Run fixture cleanliness checks once per source repo in this process.
+
+    Under `-j > 1`, many samples share the same v1 source checkout. Calling
+    `git status` concurrently on that shared repo can create transient
+    `.git/index.lock` files just as other workers are `copytree()`-ing it into
+    per-sample workspaces, which makes the copy fail with `FileNotFoundError`
+    when the lock disappears mid-copy. Serializing the check once per source
+    repo avoids that race while preserving the dirty-fixture guard.
+    """
+    key = str(src.resolve())
+    with _fixture_check_lock:
+        if key in _fixture_checked:
+            return
+        _assert_fixture_clean(src, auto_repair=auto_repair)
+        _fixture_checked.add(key)
 
 
 def _fetch_max_model_len(base_url, model_id, api_key="EMPTY", timeout=30):
@@ -467,7 +487,7 @@ def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
         print(f"  SKIP #{sid} {name}: {rel}/ not found", flush=True)
         return None
 
-    _assert_fixture_clean(src, auto_repair=auto_repair_fixtures)
+    _assert_fixture_clean_once(src, auto_repair=auto_repair_fixtures)
 
     cwd = run_dir / "projects" / run_project_name(sample)
     if cwd.exists():
