@@ -165,10 +165,20 @@ def evaluate(sample, run_dir):
             result.failed.append(f"unknown check type: {chk['type']!r}")
             continue
         chk["_project_dir"] = str(project)
-        # `_recursive` wrappers and the recurse-by-default `call_schema_valid`
-        # need the trace path so they can walk `{stem}.subagent-*.json` sidecars.
-        # Strict evaluators take 3 positional args and would reject a kwarg.
-        if chk["type"].endswith("_recursive") or chk["type"] == "call_schema_valid":
+        # Evaluators that need the trace path so they can walk
+        # `{stem}.subagent-*.json` sidecars: every `_recursive` wrapper, the
+        # recurse-by-default `call_schema_valid`, and the 2026-04 orchestration
+        # evaluators (`tool_call_count`, `parallel_dispatch_count`,
+        # `tool_call_sequence`) which accept `trace_path=None` and switch to
+        # recursive aggregation when it's supplied. Strict evaluators take
+        # 3 positional args and would reject a kwarg.
+        TRACE_AWARE = {
+            "call_schema_valid",
+            "tool_call_count",
+            "parallel_dispatch_count",
+            "tool_call_sequence",
+        }
+        if chk["type"].endswith("_recursive") or chk["type"] in TRACE_AWARE:
             ok, reason = fn(tools, texts, chk, trace_path=trace)
         else:
             ok, reason = fn(tools, texts, chk)
