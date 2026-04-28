@@ -133,6 +133,24 @@ def hydrate(repo, entry, dry_run=False):
         raise RuntimeError(f"{repo}: hydrated checkout is unexpectedly dirty")
 
 
+def hydrate_all(repos=None, dry_run=False):
+    """Hydrate the requested v1 repos (or all from the manifest) under PROJECTS/v1/.
+
+    Honors OPENCODE_BENCH_PROJECTS via the PROJECTS constant. Idempotent:
+    repos already at the declared pin and clean are reported as OK and
+    skipped. Callable from run.py so the bench can self-hydrate without
+    requiring an external wrapper.
+    """
+    entries = _select_entries(repos)
+    print(
+        f"Hydrating {len(entries)} v1 repo(s) under {PROJECTS / 'v1'}"
+        + (" [dry-run]" if dry_run else "")
+    )
+    for repo, entry in entries:
+        hydrate(repo, entry, dry_run=dry_run)
+    print("Done.")
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
     p.add_argument(
@@ -147,15 +165,7 @@ def main():
         help="Print the actions without modifying projects/v1/*.",
     )
     args = p.parse_args()
-
-    entries = _select_entries(args.repo)
-    print(
-        f"Hydrating {len(entries)} v1 repo(s) under {PROJECTS / 'v1'}"
-        + (" [dry-run]" if args.dry_run else "")
-    )
-    for repo, entry in entries:
-        hydrate(repo, entry, dry_run=args.dry_run)
-    print("Done.")
+    hydrate_all(repos=args.repo, dry_run=args.dry_run)
 
 
 if __name__ == "__main__":

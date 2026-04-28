@@ -86,19 +86,24 @@ Each run creates an isolated directory with:
 The canonical `projects/` tree is never modified at runtime, so it is safe to run multiple models (or the same model multiple times) in parallel.
 
 ```bash
-python run.py                                              # run v0 samples (default)
-python run.py --version v1                                 # run v1 samples (all repos)
+python run.py                                              # all v1 samples; auto /tmp workspace, kept after run
+python run.py --workspace .                                # legacy: use repo-local ./projects, ./runs, ./captures
+python run.py --workspace /scratch/oc-shared               # reuse a hydrated workspace across multiple model evals
+python run.py --clean-workspace                            # rm -rf the auto-allocated /tmp workspace at exit
+python run.py --version v0                                 # run v0 samples (legacy curated tier)
 python run.py --id 1                                       # run a single sample (within selected version)
 python run.py --id 1 --id 2                                # run multiple samples
 python run.py --category tool_schema                       # run one category
 python run.py --category tool_schema --category subagent   # run multiple categories
 python run.py --model provider/model-name                  # override the default model
 python run.py --proxy http://localhost:4000/v1             # route through a logging proxy
-python run.py --clean                                      # wipe runs/ first
+python run.py --clean                                      # wipe RUNS dir first (within current workspace)
 python run.py --timeout 120                                # custom per-sample timeout (default: 180s)
 python run.py --retry-on-timeout 2                         # retry on TimeoutExpired (up to 2 extra attempts per sample)
 python run.py -j 4                                         # run up to 4 samples in parallel
 ```
+
+> **Workspace defaults:** `run.py` allocates a fresh `/tmp/oc-bench-XXXXXX` workspace per invocation, hydrates the v1 fixtures into it (idempotent skip on subsequent runs against the same dir), and **keeps the workspace on disk** so you can inspect traces. Pass `--clean-workspace` to auto-`rm`. Pass `--workspace .` to reproduce the legacy repo-local layout. Inside `run_cluster.py` containers, `OPENCODE_BENCH_RUNS=/runs` is pre-set and respected (no auto-allocation, no auto-cleanup).
 
 The `--model` flag is optional. When omitted, opencode uses its configured default and traces go under `runs/v{version}/default/{timestamp}/`. The format is `provider/model-id` (e.g. `anthropic/claude-opus-4-6`), which gets converted to a directory slug (`anthropic_claude-opus-4-6`).
 

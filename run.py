@@ -4,27 +4,42 @@ Submit samples from data/samples_v0.jsonl (or data/samples_v1.jsonl when
 `--version v1`) to the opencode CLI and save traces to runs/. A single
 invocation targets exactly one version.
 
-Each invocation writes to runs/{version}/{model_slug}/{timestamp}/ with:
+Each invocation writes to {WORKSPACE}/runs/{version}/{model_slug}/{timestamp}/ with:
     meta.json
     {id:03d}_{name}.jsonl       raw opencode trace
     projects/{id:03d}/          post-run workspace (copied from the canonical fixture)
     captures/ (with --proxy)    proxy payloads moved from the staging dir
 
-The canonical projects/ tree is read-only at runtime.
+WORKSPACE selection (in precedence order):
+    1. Any of OPENCODE_BENCH_{PROJECTS,RUNS,CAPTURES} pre-set in env
+       -> user-managed (e.g. run_cluster.py inside a container).
+    2. --workspace PATH
+       -> user-managed; never auto-cleaned. `--workspace .` reproduces
+       the legacy repo-local layout (./projects, ./runs, ./captures).
+    3. (default) mktemp -d /tmp/oc-bench-XXXXXX
+       -> auto-allocated, hydrated, kept on disk. Pass --clean-workspace
+       to rm -rf at exit. Several invocations get distinct workspaces, so
+       running N copies in parallel inside a clean docker container is
+       race-free without an external wrapper.
+
+The canonical projects/ tree is read-only at runtime; v1 fixtures are
+re-hydrated into WORKSPACE/projects/ on every invocation (idempotent
+skip when already pinned correctly).
 
 Usage:
-    python run.py                    # run all v1 samples, every category (default)
-    python run.py --version v0       # run all v0 samples (every category)
-    python run.py --version v1       # run all v1 samples (every category)
+    python run.py                    # all v1 samples, fresh /tmp workspace, kept after run
+    python run.py --workspace .      # legacy: repo-local ./projects + ./runs + ./captures
+    python run.py --workspace /scratch/my-run    # reuse a hydrated dir
+    python run.py --clean-workspace             # auto-rm the /tmp workspace at exit
+    python run.py --version v0       # all v0 samples (every category)
     python run.py --category code_review  # narrow to one category
-    python run.py --id 21            # run one sample (within selected version/category)
-    python run.py --id 21 --id 22    # run multiple samples
-    python run.py --category tool_schema
+    python run.py --id 21            # one sample
+    python run.py --id 21 --id 22    # multiple samples
     python run.py --category tool_schema --category subagent
     python run.py --model provider/model-name
     python run.py --proxy http://localhost:4000/v1
     python run.py --proxy http://localhost:4000/v1 --capture-dir /tmp/sw
-    python run.py --clean            # wipe runs/ first
+    python run.py --clean            # wipe RUNS dir first (within current workspace)
     python run.py --timeout 120      # custom timeout
     python run.py --retry-on-timeout 2  # retry each sample up to 2x on TimeoutExpired
     python run.py --workers 4        # run up to 4 samples in parallel
@@ -35,11 +50,15 @@ Usage:
 """
 
 import argparse
+import atexit
 import json
+import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import urllib.error
@@ -47,6 +66,72 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
+
+
+def _sniff_argv_value(flag):
+    """Pre-argparse extraction of '--flag VALUE' or '--flag=VALUE' from sys.argv.
+
+    Used to bind workspace paths into OPENCODE_BENCH_* env vars BEFORE
+    `from common import PROJECTS, RUNS, CAPTURE_STAGING` runs at module
+    load. Returning argparse-quality validation here would require
+    importing common, which would freeze the wrong paths.
+    """
+    argv = sys.argv[1:]
+    for i, arg in enumerate(argv):
+        if arg == flag and i + 1 < len(argv):
+            return argv[i + 1]
+        if arg.startswith(flag + "="):
+            return arg.split("=", 1)[1]
+    return None
+
+
+def _bind_workspace_early():
+    """Resolve WORKSPACE and bind OPENCODE_BENCH_* env vars before common.py loads.
+
+    Returns (workspace_path, auto_clean) where workspace_path is None
+    when the workspace is user-managed via pre-set env vars OR when the
+    invocation is a no-op (e.g. --help) that shouldn't pollute /tmp.
+    """
+    # Skip allocation when the user only wants info (argparse will print
+    # help and exit before main() runs). Avoids stray /tmp/oc-bench-XXX
+    # dirs from `python run.py --help`.
+    if any(a in ("-h", "--help") for a in sys.argv[1:]):
+        return None, False
+
+    pre_set = any(
+        k in os.environ
+        for k in ("OPENCODE_BENCH_PROJECTS", "OPENCODE_BENCH_RUNS", "OPENCODE_BENCH_CAPTURES")
+    )
+    explicit_ws = _sniff_argv_value("--workspace")
+    clean = "--clean-workspace" in sys.argv[1:]
+
+    if pre_set:
+        return None, False
+    if explicit_ws:
+        ws = Path(explicit_ws).expanduser().resolve()
+        ws.mkdir(parents=True, exist_ok=True)
+        auto_clean = False
+    else:
+        ws = Path(tempfile.mkdtemp(prefix="oc-bench-"))
+        auto_clean = clean
+
+    for sub, var in (
+        ("projects", "OPENCODE_BENCH_PROJECTS"),
+        ("runs", "OPENCODE_BENCH_RUNS"),
+        ("captures", "OPENCODE_BENCH_CAPTURES"),
+    ):
+        os.environ.setdefault(var, str(ws / sub))
+        Path(os.environ[var]).mkdir(parents=True, exist_ok=True)
+    return ws, auto_clean
+
+
+# Only bind when invoked as a script. When run.py is imported (e.g. by
+# scripts/backfill_subagents.py for `_capture_subagents`), don't allocate
+# a workspace -- the importing script is using us as a library.
+if __name__ == "__main__":
+    _WORKSPACE, _AUTO_CLEAN = _bind_workspace_early()
+else:
+    _WORKSPACE, _AUTO_CLEAN = None, False
 
 from common import (
     ROOT, PROJECTS, RUNS, CAPTURE_STAGING,
@@ -56,6 +141,7 @@ from common import (
     project_dir, run_project_name, trace_name,
     v1_repos, v1_repo_pin,
 )
+from scripts.hydrate_v1_repos import hydrate_all  # noqa: E402
 
 DEFAULT_TIMEOUT = 180
 DEFAULT_MAX_OUTPUT_TOKENS = 8192
@@ -556,10 +642,12 @@ def _check_v1_pins(samples):
             print(f"ERROR: v1 sample references unknown repo {repo!r}; "
                   f"declare it in data/v1_repos.json")
             sys.exit(1)
-        sub_path = ROOT / entry["submodule_path"]
+        # Use PROJECTS rather than ROOT so OPENCODE_BENCH_PROJECTS overrides
+        # are respected (run_isolated wrappers, run_cluster.py, --workspace).
+        sub_path = PROJECTS / "v1" / repo
         if not (sub_path / ".git").exists() and not (sub_path.is_dir() and any(sub_path.iterdir())):
-            print(f"ERROR: submodule {entry['submodule_path']!r} not initialized\n"
-                  f"  Fix: git submodule update --init {entry['submodule_path']}")
+            print(f"ERROR: v1 fixture {sub_path!s} not initialized\n"
+                  f"  Fix: python scripts/hydrate_v1_repos.py --repo {repo}")
             sys.exit(1)
         try:
             got = subprocess.run(
@@ -567,14 +655,14 @@ def _check_v1_pins(samples):
                 capture_output=True, text=True, timeout=5, check=True,
             ).stdout.strip()
         except (OSError, subprocess.SubprocessError) as e:
-            print(f"ERROR: could not read submodule HEAD for {repo!r}: {e}")
+            print(f"ERROR: could not read fixture HEAD for {repo!r}: {e}")
             sys.exit(1)
         want = entry["pin"]
         if got != want:
-            print(f"ERROR: submodule pin drift for {repo!r}\n"
+            print(f"ERROR: v1 fixture pin drift for {repo!r}\n"
                   f"  declared (data/v1_repos.json): {want}\n"
                   f"  checked-out HEAD:              {got}\n"
-                  f"  Fix: cd {entry['submodule_path']} && git fetch && git checkout {want}")
+                  f"  Fix: cd {sub_path} && git fetch && git checkout {want}")
             sys.exit(1)
 
 
@@ -676,7 +764,53 @@ def main():
              "clean -fdx) before copying. Default: on. Pass --no-auto-repair-fixtures "
              "to fail loudly instead (aborts the entire eval, not just the sample).",
     )
+    parser.add_argument(
+        "--workspace",
+        default=None,
+        help="Workspace dir to host projects/, runs/, and captures/ (sets the "
+             "OPENCODE_BENCH_* env vars). When omitted, run.py allocates a "
+             "fresh /tmp/oc-bench-XXXXXX dir and hydrates v1 repos into it; the "
+             "dir is kept on disk after exit unless --clean-workspace is also "
+             "passed. Pass `--workspace .` to reproduce the legacy repo-local "
+             "layout. Two parallel run.py invocations sharing an explicit "
+             "--workspace are NOT isolated -- use the auto-allocated default "
+             "for parallelism.",
+    )
+    parser.add_argument(
+        "--clean-workspace",
+        action="store_true",
+        help="Remove the auto-allocated workspace at exit (rm -rf). Only valid "
+             "when --workspace is NOT set. SIGKILL escapes this; recover with "
+             "`find /tmp -maxdepth 1 -name 'oc-bench-*' -mtime +1 -exec rm -rf {} +`.",
+    )
     args = parser.parse_args()
+
+    if args.workspace and args.clean_workspace:
+        print(
+            "ERROR: --clean-workspace only applies when run.py auto-allocates "
+            "the workspace; remove --workspace to enable it.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    # Workspace banner. _WORKSPACE is set by _bind_workspace_early(); it's
+    # None when OPENCODE_BENCH_* was pre-set in env (run_cluster.py path).
+    if _WORKSPACE is not None:
+        kind = "auto-allocated" if not args.workspace else "user-supplied"
+        suffix = " (will rm at exit)" if _AUTO_CLEAN else " (kept after exit)"
+        print(f"Workspace: {_WORKSPACE} [{kind}]{suffix}")
+    else:
+        print(
+            f"Workspace: PROJECTS={PROJECTS} RUNS={RUNS} CAPTURES={CAPTURE_STAGING} "
+            f"[from env]"
+        )
+
+    if _AUTO_CLEAN and _WORKSPACE is not None:
+        def _rm_workspace(*_):
+            shutil.rmtree(_WORKSPACE, ignore_errors=True)
+        atexit.register(_rm_workspace)
+        for _sig in (signal.SIGINT, signal.SIGTERM):
+            signal.signal(_sig, lambda *_: (_rm_workspace(), sys.exit(130)))
 
     # Default behaviour: with no --id and no --category, run every sample in
     # the selected --version (default v1). The legacy "default to
@@ -722,6 +856,15 @@ def main():
     if not samples:
         print("No matching samples found.")
         sys.exit(1)
+
+    v1_repos_used = sorted(
+        {s["repo"] for s in samples if s.get("version") == "v1" and s.get("repo")}
+    )
+    if v1_repos_used:
+        # Idempotent: a correctly-pinned hydrated dir is a no-op (`OK ...`
+        # for each repo, no clone). First-time auto-allocated workspaces
+        # pay ~30s + ~200MB clone for the four pinned v1 repos.
+        hydrate_all(repos=v1_repos_used)
 
     _check_v1_pins(samples)
 
@@ -775,7 +918,6 @@ def main():
     if args.vllm:
         vllm_model_id = args.model.split("/", 1)[1]
 
-    v1_repos_used = sorted({s["repo"] for s in samples if s.get("version") == "v1" and s.get("repo")})
     meta = {
         "model": args.model,
         "model_slug": slug,
@@ -850,6 +992,14 @@ def main():
 
     print(f"\nDone. {ran} ran, {skipped} skipped")
     print(f"Run in {run_dir}/")
+    # Only nudge about cleanup for auto-allocated workspaces; for an
+    # explicit --workspace (especially `--workspace .`) the suggestion
+    # would be misleading or actively dangerous.
+    if _WORKSPACE is not None and not _AUTO_CLEAN and not args.workspace:
+        print(
+            f"Workspace kept at {_WORKSPACE} "
+            f"(rerun with --clean-workspace to auto-rm, or `rm -rf` it manually)"
+        )
 
 
 if __name__ == "__main__":

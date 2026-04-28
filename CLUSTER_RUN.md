@@ -85,30 +85,42 @@ Notes:
 - It needs network access from the container so `git clone` can fetch the
   upstream repos declared in `data/v1_repos.json`.
 
-### Local parallel runs (without containers): `scripts/run_isolated.sh`
+### Local parallel runs (without containers)
 
 `run_cluster.py` achieves multi-process safety via container isolation: each
 container has its own filesystem and sets `OPENCODE_BENCH_RUNS=/runs` so its
-trace outputs land in a per-container mount. The same pattern works on a
-single machine via env-var-routed workspaces.
+trace outputs land in a per-container mount. The same isolation now ships in
+`run.py` itself -- no wrapper script required.
 
-The wrapper at `scripts/run_isolated.sh` allocates a fresh `$WORKSPACE` dir,
-exports all three `OPENCODE_BENCH_*` directory overrides
-(`OPENCODE_BENCH_PROJECTS`, `OPENCODE_BENCH_RUNS`, `OPENCODE_BENCH_CAPTURES`),
-runs `hydrate_v1_repos.py` to clone the v1 fixtures into the workspace, and
-finally invokes `run.py`. N parallel invocations get N independent workspaces
-and zero shared mutable state -- the same model `run_cluster.py` uses with
-containers.
+By default, `run.py` allocates a fresh `/tmp/oc-bench-XXXXXX` directory per
+invocation, points all three of `OPENCODE_BENCH_PROJECTS`,
+`OPENCODE_BENCH_RUNS`, `OPENCODE_BENCH_CAPTURES` into it, hydrates the v1
+fixtures (idempotent skip when the workspace is already pinned), and runs the
+benchmark. The workspace is **kept on disk** after the run so you can inspect
+the traces; pass `--clean-workspace` to `rm -rf` it at exit.
 
 ```bash
-# 8 parallel runs against the same model on one machine, each in an isolated
-# /tmp/oc-bench-XXXXXX workspace, auto-cleaned on exit:
+# 8 parallel runs against the same model on one machine, each in its own
+# fresh /tmp/oc-bench-XXXXXX workspace. No collisions, no wrapper:
 for i in 1 2 3 4 5 6 7 8; do
-  bash scripts/run_isolated.sh --version v1 --id 91 --model X &
+  python run.py --version v1 --id 91 --model X &
 done; wait
+
+# Same, but auto-rm each workspace at exit (saves ~200MB per run):
+for i in 1 2 3 4 5 6 7 8; do
+  python run.py --version v1 --id 91 --model X --clean-workspace &
+done; wait
+
+# Reuse a hydrated workspace (e.g. across many model evals, no re-clone):
+python run.py --version v1 --id 91 --model A --workspace /scratch/oc-shared
+python run.py --version v1 --id 91 --model B --workspace /scratch/oc-shared
 ```
 
-Use this whenever you need local concurrency without the container plumbing.
+`--workspace .` reproduces the legacy repo-local layout (`./projects`,
+`./runs`, `./captures`) for everyday dev workflows. When any of the three
+`OPENCODE_BENCH_*` env vars is already exported (as `run_cluster.py` does
+inside containers), `run.py` honors that and skips both auto-allocation and
+auto-cleanup.
 
 ## Quick Start
 
