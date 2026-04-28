@@ -122,6 +122,30 @@ python run.py --version v1 --id 91 --model B --workspace /scratch/oc-shared
 inside containers), `run.py` honors that and skips both auto-allocation and
 auto-cleanup.
 
+#### Container ephemeral-`/tmp` workaround
+
+Inside a container, `/tmp` is typically tmpfs that disappears when the
+container exits. To keep auto-allocated workspaces on a mounted volume,
+set the workspace root explicitly:
+
+```bash
+docker run -v /lustre/scratch:/scratch \
+  -e OPENCODE_BENCH_WORKSPACE_ROOT=/scratch \
+  bench-image python run.py --id 21 --model X
+# auto-allocates /scratch/oc-bench-XXXXXX/, survives container exit
+```
+
+The same is exposed as a CLI flag for ad-hoc use:
+
+```bash
+python run.py --workspace-root /scratch --id 21 --model X
+```
+
+Precedence for the auto-allocation root: `--workspace-root` >
+`OPENCODE_BENCH_WORKSPACE_ROOT` > `$TMPDIR` > `/tmp`. Only consulted when
+`run.py` auto-allocates -- ignored when `--workspace PATH` or pre-set
+`OPENCODE_BENCH_*` env vars are used.
+
 ## Quick Start
 
 ```bash

@@ -16,11 +16,16 @@ WORKSPACE selection (in precedence order):
     2. --workspace PATH
        -> user-managed; never auto-cleaned. `--workspace .` reproduces
        the legacy repo-local layout (./projects, ./runs, ./captures).
-    3. (default) mktemp -d /tmp/oc-bench-XXXXXX
+    3. (default) mktemp -d under one of (in order):
+         --workspace-root PATH
+         $OPENCODE_BENCH_WORKSPACE_ROOT
+         $TMPDIR (or /tmp)
        -> auto-allocated, hydrated, kept on disk. Pass --clean-workspace
        to rm -rf at exit. Several invocations get distinct workspaces, so
        running N copies in parallel inside a clean docker container is
-       race-free without an external wrapper.
+       race-free without an external wrapper. In containers where /tmp is
+       ephemeral, set --workspace-root or OPENCODE_BENCH_WORKSPACE_ROOT to
+       a mounted volume so workspaces survive container exit.
 
 The canonical projects/ tree is read-only at runtime; v1 fixtures are
 re-hydrated into WORKSPACE/projects/ on every invocation (idempotent
@@ -91,6 +96,9 @@ def _bind_workspace_early():
     Returns (workspace_path, auto_clean) where workspace_path is None
     when the workspace is user-managed via pre-set env vars OR when the
     invocation is a no-op (e.g. --help) that shouldn't pollute /tmp.
+
+    Auto-allocation root precedence:
+        --workspace-root PATH > $OPENCODE_BENCH_WORKSPACE_ROOT > $TMPDIR > /tmp
     """
     # Skip allocation when the user only wants info (argparse will print
     # help and exit before main() runs). Avoids stray /tmp/oc-bench-XXX
@@ -103,6 +111,7 @@ def _bind_workspace_early():
         for k in ("OPENCODE_BENCH_PROJECTS", "OPENCODE_BENCH_RUNS", "OPENCODE_BENCH_CAPTURES")
     )
     explicit_ws = _sniff_argv_value("--workspace")
+    explicit_ws_root = _sniff_argv_value("--workspace-root")
     clean = "--clean-workspace" in sys.argv[1:]
 
     if pre_set:
@@ -112,7 +121,16 @@ def _bind_workspace_early():
         ws.mkdir(parents=True, exist_ok=True)
         auto_clean = False
     else:
-        ws = Path(tempfile.mkdtemp(prefix="oc-bench-"))
+        # Auto-allocate. Use --workspace-root or
+        # OPENCODE_BENCH_WORKSPACE_ROOT to escape container-ephemeral
+        # /tmp; otherwise fall back to tempfile's $TMPDIR-or-/tmp default.
+        ws_root = explicit_ws_root or os.environ.get("OPENCODE_BENCH_WORKSPACE_ROOT")
+        if ws_root:
+            ws_root_p = Path(ws_root).expanduser().resolve()
+            ws_root_p.mkdir(parents=True, exist_ok=True)
+            ws = Path(tempfile.mkdtemp(prefix="oc-bench-", dir=str(ws_root_p)))
+        else:
+            ws = Path(tempfile.mkdtemp(prefix="oc-bench-"))
         auto_clean = clean
 
     for sub, var in (
@@ -782,6 +800,15 @@ def main():
         help="Remove the auto-allocated workspace at exit (rm -rf). Only valid "
              "when --workspace is NOT set. SIGKILL escapes this; recover with "
              "`find /tmp -maxdepth 1 -name 'oc-bench-*' -mtime +1 -exec rm -rf {} +`.",
+    )
+    parser.add_argument(
+        "--workspace-root",
+        default=None,
+        help="Directory under which to mktemp the auto-allocated workspace. "
+             "Useful inside containers where /tmp is tmpfs and disappears "
+             "with the container -- point this at a mounted volume instead. "
+             "Equivalent env var: OPENCODE_BENCH_WORKSPACE_ROOT. Ignored "
+             "when --workspace or pre-set OPENCODE_BENCH_* env vars are used.",
     )
     args = parser.parse_args()
 
