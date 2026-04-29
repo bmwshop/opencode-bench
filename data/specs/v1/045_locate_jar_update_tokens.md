@@ -25,11 +25,11 @@ tools
 ```
 {
   "template": "T1",
-  "scope_kind": "four_files",
+  "scope_kind": "single_file_after_receiver_filter",
   "anchor_kind": "instance_method",
-  "answer_entries": 9,
-  "answer_files": 4,
-  "unique_trait": "cookiejar_update_nine_entry_cross_file_fanin"
+  "answer_entries": 3,
+  "answer_files": 1,
+  "unique_trait": "cookiejar_update_three_entry_after_receiver_filter"
 }
 ```
 
@@ -46,25 +46,21 @@ Anchor: `src/requests/cookies.py::update` (`method`).
 
 Scope: `['src/requests/cookies.py', 'src/requests/models.py', 'src/requests/sessions.py', 'src/requests/structures.py']`.
 
-Answer shape: 9 entries across 4 file(s). Unique structural trait: `cookiejar_update_nine_entry_cross_file_fanin`.
+Answer shape: 3 entries (all in `src/requests/cookies.py`). Unique structural trait: `cookiejar_update_three_entry_after_receiver_filter`.
 
 ## Ground truth (gold answer)
 
-Derived mechanically by [scripts/derive_045_ground_truth.py](../../../scripts/derive_045_ground_truth.py) against pin `79f4df84cf77`. 9 entries, already in lexicographic order:
+Manually narrowed from the oracle's name-based output: the v1 oracle in [scripts/localization_oracle.py](../../../scripts/localization_oracle.py) resolves callers by attribute name (`Attribute(attr=anchor)`), which is correct for unique anchors but over-counts on generic ones like `update`. Of the oracle's 9 raw entries, only 3 are real callers of `RequestsCookieJar.update`; the other 6 call `dict.update` on `__dict__` / `send_kwargs` / `merged_setting` / `result`, or `CaseInsensitiveDict.update` on `self`. The 3 true entries — the anchor itself plus its only two real call-sites in `cookies.py` — are below in lexicographic order:
 
 ```text
-src/requests/cookies.py::RequestsCookieJar.__setstate__
 src/requests/cookies.py::RequestsCookieJar.copy
 src/requests/cookies.py::RequestsCookieJar.update
-src/requests/cookies.py::create_cookie
 src/requests/cookies.py::merge_cookies
-src/requests/models.py::PreparedRequest.prepare_auth
-src/requests/sessions.py::Session.request
-src/requests/sessions.py::merge_setting
-src/requests/structures.py::CaseInsensitiveDict.__init__
 ```
 
-SHA-256 of the gold string (with trailing newline): `0912e442e0e87f9c49de279cb4ead3ae337601f7ba5ac1f31216331379336e75`.
+SHA-256 of the gold string (with trailing newline): `d16128edb60b8f2cf067b99784f90f063c8b4afd6a6125095c82963aec90dd4f`.
+
+The 4-file prompt scope is preserved deliberately: the model still has to inspect `models.py`, `sessions.py`, and `structures.py` to *correctly conclude* they contain no real callers — that negation work is what keeps this sample in the hard tier despite the smaller answer set. The deriver script [scripts/derive_045_ground_truth.py](../../../scripts/derive_045_ground_truth.py) is now a non-authoritative reference (its raw output overcounts); the regex in `data/samples_v1.jsonl` is the binding ground truth.
 
 ## Five-layer verification
 
@@ -91,7 +87,7 @@ The per-run fixture is a pinned copy of `psf/requests`. The agent writes a singl
 
 ## Pass criteria (2 checks)
 
-1. `file_regex_disk` `location.txt` — anchored regex demanding the exact 9-line gold above, optional trailing newline. Any deviation (wrong function, wrong file, missing/added entry, wrong qualname style, wrong sort, extra content) fails.
+1. `file_regex_disk` `location.txt` — anchored regex demanding the exact 3-line gold above, optional trailing newline. Any deviation (wrong function, wrong file, missing/added entry, wrong qualname style, wrong sort, extra content) fails.
 2. `call_schema_valid` — every tool call in the trace matches opencode's canonical JSON schemas.
 
 ## Shortest path
