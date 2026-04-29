@@ -1,0 +1,33 @@
+executor: slurm
+
+# Use this when running directly on the OCI-IAD login node.
+# Unlike oci-iad.yaml, this config does not require an ssh_tunnel.identity.
+job_dir: /lustre/fsw/portfolios/llmservice/users/drekesh/nemo-run/
+
+account: nemotron_reason_code
+partition: batch_block1,batch_block3,batch_block4
+cpu_partition: cpu_short
+job_name_prefix: ""
+
+dependency_type: "afterany"
+
+containers:
+  vllm: /lustre/fsw/portfolios/llmservice/users/igitman/llm/images/nemo-skills-vllm-v0.19.1.sqsh
+  sandbox: /lustre/fsw/portfolios/llmservice/users/igitman/llm/images/nemo-skills-sandbox-latest.sqsh
+  nemo-skills: /lustre/fsw/portfolios/llmservice/users/igitman/llm/images/nemo-skills-latest.sqsh
+
+mounts:
+  - /lustre/fsw/portfolios/llmservice/users/igitman/llm/hf_models:/hf_models
+  - /lustre/fsw/portfolios/llmservice/users/igitman/llm/images/swe-bench:/swe-bench-images
+  - /lustre/fsw/portfolios/llmservice/users/drekesh/hf:/hf
+  # Add extra mounts here if the job needs direct access to more paths.
+
+env_vars:
+  - "PYTHONUTF8=1"
+  - "HF_HOME=/hf"
+
+timeouts:
+  batch_block1,batch_block3,batch_block4: 04:00:00
+  interactive: 04:00:00
+  interactive_singlenode: 04:00:00
+  cpu_short: 04:00:00
