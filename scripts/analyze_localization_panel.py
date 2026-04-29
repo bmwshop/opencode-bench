@@ -83,10 +83,9 @@ FAMILIES: dict[str, dict[str, Any]] = {
         "manifest": ROOT / "data" / "v1_orchestration_criteria.json",
         "default_ids": "301-330",
         "category": "orchestration",
-        # Group by graph pattern (parallel_dispatch / chain / dag_join /
-        # iteration / merge) for per-pattern pass-rate aggregation.
-        "tier_field": "pattern",
-        "tier_order": None,
+        # Orchestration samples are grouped by explicit easy/medium/hard tiers.
+        "tier_field": "difficulty",
+        "tier_order": ["easy", "medium", "hard"],
     },
     "skill": {
         "manifest": ROOT / "data" / "v1_skill_criteria.json",

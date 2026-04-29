@@ -17,31 +17,81 @@
       "min_calls": 4,
       "prompt": "Audit this autoresearch repo. **In a single assistant turn**, dispatch three `task` subagents (`subagent_type=explore`) in parallel:\n\n- Subagent 1: read `train.py` and report the four optimizer learning-rate / weight-decay constants `EMBEDDING_LR`, `UNEMBEDDING_LR`, `MATRIX_LR`, `WEIGHT_DECAY`.\n- Subagent 2: read `train.py` and list the names of all top-level classes (e.g., `class GPTConfig`, `class GPT`, etc.), in source-file order.\n- Subagent 3: read `prepare.py` and report `MAX_SEQ_LEN`, `VOCAB_SIZE`, `BOS_TOKEN`.\n\nAfter all three subagents return, write `report.md` at the repo root with three sections (`## Optimizer`, `## Classes`, `## Tokenizer`) populated from the subagent findings. Format inside each section: one line per item, `KEY: value` or just `<class_name>` for the classes list.\n\nDo not call `read`, `grep`, `glob`, or `bash` directly; only the subagents inspect files.",
       "checks": [
-        {"type": "parallel_dispatch_count", "tool": "task", "equals": 3,
-         "description": "model must dispatch all 3 task subagents in one assistant turn"},
-        {"type": "tool_call_count", "tool": "task", "equals": 3,
-         "description": "exactly 3 subagent dispatches, not more / fewer"},
-        {"type": "no_tool_name", "not_equals": ["read", "grep", "glob", "bash"],
-         "description": "parent must not inspect files directly; only subagents read"},
-        {"type": "any_tool_name", "equals": "write",
-         "description": "parent writes report.md"},
-        {"type": "file_regex", "path": "report.md", "pattern": "## Optimizer",
-         "description": "report has Optimizer section"},
-        {"type": "file_regex", "path": "report.md", "pattern": "## Classes",
-         "description": "report has Classes section"},
-        {"type": "file_regex", "path": "report.md", "pattern": "## Tokenizer",
-         "description": "report has Tokenizer section"},
-        {"type": "file_regex", "path": "report.md", "pattern": "EMBEDDING_LR.*0\\.6",
-         "description": "EMBEDDING_LR value 0.6 reported"},
-        {"type": "file_regex", "path": "report.md", "pattern": "WEIGHT_DECAY.*0\\.2",
-         "description": "WEIGHT_DECAY value 0.2 reported"},
-        {"type": "file_regex", "path": "report.md", "pattern": "VOCAB_SIZE.*8192",
-         "description": "VOCAB_SIZE value 8192 reported"},
-        {"type": "file_regex", "path": "report.md", "pattern": "GPT(?!Config)",
-         "description": "GPT class listed"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "parallel_dispatch_count",
+          "tool": "task",
+          "equals": 3,
+          "description": "model must dispatch all 3 task subagents in one assistant turn"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "task",
+          "equals": 3,
+          "description": "exactly 3 subagent dispatches, not more / fewer"
+        },
+        {
+          "type": "no_tool_name",
+          "not_equals": [
+            "read",
+            "grep",
+            "glob",
+            "bash"
+          ],
+          "description": "parent must not inspect files directly; only subagents read"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "write",
+          "description": "parent writes report.md"
+        },
+        {
+          "type": "file_regex",
+          "path": "report.md",
+          "pattern": "## Optimizer",
+          "description": "report has Optimizer section"
+        },
+        {
+          "type": "file_regex",
+          "path": "report.md",
+          "pattern": "## Classes",
+          "description": "report has Classes section"
+        },
+        {
+          "type": "file_regex",
+          "path": "report.md",
+          "pattern": "## Tokenizer",
+          "description": "report has Tokenizer section"
+        },
+        {
+          "type": "file_regex",
+          "path": "report.md",
+          "pattern": "EMBEDDING_LR.*0\\.6",
+          "description": "EMBEDDING_LR value 0.6 reported"
+        },
+        {
+          "type": "file_regex",
+          "path": "report.md",
+          "pattern": "WEIGHT_DECAY.*0\\.2",
+          "description": "WEIGHT_DECAY value 0.2 reported"
+        },
+        {
+          "type": "file_regex",
+          "path": "report.md",
+          "pattern": "VOCAB_SIZE.*8192",
+          "description": "VOCAB_SIZE value 8192 reported"
+        },
+        {
+          "type": "file_regex",
+          "path": "report.md",
+          "pattern": "GPT(?!Config)",
+          "description": "GPT class listed"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "medium"
     },
     {
       "id": 302,
@@ -52,29 +102,74 @@
       "min_calls": 3,
       "prompt": "**In one assistant turn**, dispatch two `task` subagents (`subagent_type=explore`) in parallel:\n\n- Subagent 1: read `src/requests/sessions.py` and list the public method names of the `Session` class (i.e., methods on `Session` that don't start with `_`), in source-file order.\n- Subagent 2: read `src/requests/adapters.py` and list the public method names of the `HTTPAdapter` class (methods that don't start with `_`), in source-file order.\n\nAfter both return, write `comparison.md` at the repo root with two sections:\n\n## Session\n<one method name per line>\n\n## HTTPAdapter\n<one method name per line>\n\nDo not call `read`, `grep`, or `glob` directly; only the subagents inspect files.",
       "checks": [
-        {"type": "parallel_dispatch_count", "tool": "task", "equals": 2,
-         "description": "model must dispatch both task subagents in one assistant turn"},
-        {"type": "tool_call_count", "tool": "task", "equals": 2,
-         "description": "exactly 2 subagent dispatches"},
-        {"type": "no_tool_name", "not_equals": ["read", "grep", "glob"],
-         "description": "parent must not inspect files directly"},
-        {"type": "any_tool_name", "equals": "write",
-         "description": "parent writes comparison.md"},
-        {"type": "file_regex", "path": "comparison.md", "pattern": "## Session",
-         "description": "comparison has Session section"},
-        {"type": "file_regex", "path": "comparison.md", "pattern": "## HTTPAdapter",
-         "description": "comparison has HTTPAdapter section"},
-        {"type": "file_regex", "path": "comparison.md", "pattern": "prepare_request",
-         "description": "Session.prepare_request listed"},
-        {"type": "file_regex", "path": "comparison.md", "pattern": "merge_environment_settings",
-         "description": "Session.merge_environment_settings listed"},
-        {"type": "file_regex", "path": "comparison.md", "pattern": "init_poolmanager",
-         "description": "HTTPAdapter.init_poolmanager listed"},
-        {"type": "file_regex", "path": "comparison.md", "pattern": "build_response",
-         "description": "HTTPAdapter.build_response listed"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "parallel_dispatch_count",
+          "tool": "task",
+          "equals": 2,
+          "description": "model must dispatch both task subagents in one assistant turn"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "task",
+          "equals": 2,
+          "description": "exactly 2 subagent dispatches"
+        },
+        {
+          "type": "no_tool_name",
+          "not_equals": [
+            "read",
+            "grep",
+            "glob"
+          ],
+          "description": "parent must not inspect files directly"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "write",
+          "description": "parent writes comparison.md"
+        },
+        {
+          "type": "file_regex",
+          "path": "comparison.md",
+          "pattern": "## Session",
+          "description": "comparison has Session section"
+        },
+        {
+          "type": "file_regex",
+          "path": "comparison.md",
+          "pattern": "## HTTPAdapter",
+          "description": "comparison has HTTPAdapter section"
+        },
+        {
+          "type": "file_regex",
+          "path": "comparison.md",
+          "pattern": "prepare_request",
+          "description": "Session.prepare_request listed"
+        },
+        {
+          "type": "file_regex",
+          "path": "comparison.md",
+          "pattern": "merge_environment_settings",
+          "description": "Session.merge_environment_settings listed"
+        },
+        {
+          "type": "file_regex",
+          "path": "comparison.md",
+          "pattern": "init_poolmanager",
+          "description": "HTTPAdapter.init_poolmanager listed"
+        },
+        {
+          "type": "file_regex",
+          "path": "comparison.md",
+          "pattern": "build_response",
+          "description": "HTTPAdapter.build_response listed"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "easy"
     },
     {
       "id": 303,
@@ -85,27 +180,71 @@
       "min_calls": 3,
       "prompt": "Perform exactly these three steps, in this order, with no other tool calls:\n\n1. **Read** `train.py` (use the `read` tool).\n2. **Grep** for the literal string `WEIGHT_DECAY` in the autoresearch repo root (use the `grep` tool).\n3. **Write** `occurrences.md` at the repo root, containing one line per match found in step 2, formatted as `<filepath>:<line_number>` (sorted by line number ascending).\n\nThree occurrences of `WEIGHT_DECAY` exist in `train.py`. The output must list all three.",
       "checks": [
-        {"type": "tool_call_sequence", "sequence": ["read", "grep", "write"],
-         "description": "calls must appear in order: read, grep, write"},
-        {"type": "tool_call_count", "tool": "read", "equals": 1,
-         "description": "exactly one read call"},
-        {"type": "tool_call_count", "tool": "grep", "equals": 1,
-         "description": "exactly one grep call"},
-        {"type": "tool_call_count", "tool": "write", "equals": 1,
-         "description": "exactly one write call"},
-        {"type": "any_tool_param_regex", "tool": "read", "param": "filePath", "pattern": "train\\.py",
-         "description": "read targets train.py"},
-        {"type": "any_tool_param_regex", "tool": "grep", "param": "pattern", "pattern": "WEIGHT_DECAY",
-         "description": "grep searches for WEIGHT_DECAY"},
-        {"type": "file_regex", "path": "occurrences.md", "pattern": "train\\.py:443",
-         "description": "occurrence at train.py:443 listed"},
-        {"type": "file_regex", "path": "occurrences.md", "pattern": "train\\.py:505",
-         "description": "occurrence at train.py:505 listed"},
-        {"type": "file_regex", "path": "occurrences.md", "pattern": "train\\.py:532",
-         "description": "occurrence at train.py:532 listed"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "tool_call_sequence",
+          "sequence": [
+            "read",
+            "grep",
+            "write"
+          ],
+          "description": "calls must appear in order: read, grep, write"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "read",
+          "equals": 1,
+          "description": "exactly one read call"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "grep",
+          "equals": 1,
+          "description": "exactly one grep call"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "write",
+          "equals": 1,
+          "description": "exactly one write call"
+        },
+        {
+          "type": "any_tool_param_regex",
+          "tool": "read",
+          "param": "filePath",
+          "pattern": "train\\.py",
+          "description": "read targets train.py"
+        },
+        {
+          "type": "any_tool_param_regex",
+          "tool": "grep",
+          "param": "pattern",
+          "pattern": "WEIGHT_DECAY",
+          "description": "grep searches for WEIGHT_DECAY"
+        },
+        {
+          "type": "file_regex",
+          "path": "occurrences.md",
+          "pattern": "train\\.py:443",
+          "description": "occurrence at train.py:443 listed"
+        },
+        {
+          "type": "file_regex",
+          "path": "occurrences.md",
+          "pattern": "train\\.py:505",
+          "description": "occurrence at train.py:505 listed"
+        },
+        {
+          "type": "file_regex",
+          "path": "occurrences.md",
+          "pattern": "train\\.py:532",
+          "description": "occurrence at train.py:532 listed"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "easy"
     },
     {
       "id": 304,
@@ -116,27 +255,70 @@
       "min_calls": 10,
       "prompt": "Perform these three steps in order:\n\n1. **Read** `src/requests/api.py` to identify the 8 top-level functions (`request`, `get`, `options`, `head`, `post`, `put`, `patch`, `delete`).\n2. For each of those 8 function names, issue **one** `grep` call searching `src/requests/sessions.py` for the function name. Issue 8 grep calls total (one per name).\n3. **Write** `coverage.md` at the repo root containing 8 lines, one per function, in this exact order: `request`, `get`, `options`, `head`, `post`, `put`, `patch`, `delete`. Each line must be `<function_name>: used` if the corresponding grep returned at least one match, or `<function_name>: unused` otherwise.\n\nNo other tool calls are permitted (in particular, no read calls beyond step 1, and no glob).",
       "checks": [
-        {"type": "tool_call_sequence", "sequence": ["read", "grep", "write"],
-         "description": "calls must include a read, then grep(s), then a write, in order"},
-        {"type": "tool_call_count", "tool": "read", "equals": 1,
-         "description": "exactly 1 read (api.py)"},
-        {"type": "tool_call_count", "tool": "grep", "equals": 8,
-         "description": "exactly 8 grep calls (one per function)"},
-        {"type": "tool_call_count", "tool": "write", "equals": 1,
-         "description": "exactly 1 write (coverage.md)"},
-        {"type": "tool_call_count", "tool": "glob", "equals": 0,
-         "description": "no glob calls"},
-        {"type": "any_tool_param_regex", "tool": "read", "param": "filePath", "pattern": "api\\.py",
-         "description": "read targets api.py"},
-        {"type": "file_regex", "path": "coverage.md", "pattern": "request:\\s*used",
-         "description": "request marked used"},
-        {"type": "file_regex", "path": "coverage.md", "pattern": "get:\\s*used",
-         "description": "get marked used"},
-        {"type": "file_regex", "path": "coverage.md", "pattern": "delete:\\s*used",
-         "description": "delete marked used"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "tool_call_sequence",
+          "sequence": [
+            "read",
+            "grep",
+            "write"
+          ],
+          "description": "calls must include a read, then grep(s), then a write, in order"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "read",
+          "equals": 1,
+          "description": "exactly 1 read (api.py)"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "grep",
+          "equals": 8,
+          "description": "exactly 8 grep calls (one per function)"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "write",
+          "equals": 1,
+          "description": "exactly 1 write (coverage.md)"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "glob",
+          "equals": 0,
+          "description": "no glob calls"
+        },
+        {
+          "type": "any_tool_param_regex",
+          "tool": "read",
+          "param": "filePath",
+          "pattern": "api\\.py",
+          "description": "read targets api.py"
+        },
+        {
+          "type": "file_regex",
+          "path": "coverage.md",
+          "pattern": "request:\\s*used",
+          "description": "request marked used"
+        },
+        {
+          "type": "file_regex",
+          "path": "coverage.md",
+          "pattern": "get:\\s*used",
+          "description": "get marked used"
+        },
+        {
+          "type": "file_regex",
+          "path": "coverage.md",
+          "pattern": "delete:\\s*used",
+          "description": "delete marked used"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "easy"
     },
     {
       "id": 305,
@@ -147,21 +329,51 @@
       "min_calls": 3,
       "prompt": "**In one assistant turn**, dispatch two `task` subagents (`subagent_type=explore`) in parallel:\n\n- Subagent 1: read `train.py` and return the value of `EMBEDDING_LR`.\n- Subagent 2: read `prepare.py` and return the value of `VOCAB_SIZE`.\n\nAfter both return, write `combined.py` at the repo root containing exactly these two lines (and no others):\n\n    EMBEDDING_LR = <value from subagent 1>\n    VOCAB_SIZE = <value from subagent 2>\n\nDo not call `read`, `grep`, `glob`, or `bash` directly; only the subagents inspect files.",
       "checks": [
-        {"type": "parallel_dispatch_count", "tool": "task", "equals": 2,
-         "description": "model must dispatch both task subagents in one assistant turn"},
-        {"type": "tool_call_count", "tool": "task", "equals": 2,
-         "description": "exactly 2 subagent dispatches"},
-        {"type": "no_tool_name", "not_equals": ["read", "grep", "glob", "bash"],
-         "description": "parent must not inspect files directly"},
-        {"type": "any_tool_name", "equals": "write",
-         "description": "parent writes combined.py"},
-        {"type": "file_regex", "path": "combined.py", "pattern": "EMBEDDING_LR\\s*=\\s*0\\.6",
-         "description": "EMBEDDING_LR = 0.6"},
-        {"type": "file_regex", "path": "combined.py", "pattern": "VOCAB_SIZE\\s*=\\s*8192",
-         "description": "VOCAB_SIZE = 8192"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "parallel_dispatch_count",
+          "tool": "task",
+          "equals": 2,
+          "description": "model must dispatch both task subagents in one assistant turn"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "task",
+          "equals": 2,
+          "description": "exactly 2 subagent dispatches"
+        },
+        {
+          "type": "no_tool_name",
+          "not_equals": [
+            "read",
+            "grep",
+            "glob",
+            "bash"
+          ],
+          "description": "parent must not inspect files directly"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "write",
+          "description": "parent writes combined.py"
+        },
+        {
+          "type": "file_regex",
+          "path": "combined.py",
+          "pattern": "EMBEDDING_LR\\s*=\\s*0\\.6",
+          "description": "EMBEDDING_LR = 0.6"
+        },
+        {
+          "type": "file_regex",
+          "path": "combined.py",
+          "pattern": "VOCAB_SIZE\\s*=\\s*8192",
+          "description": "VOCAB_SIZE = 8192"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "easy"
     },
     {
       "id": 306,
@@ -172,25 +384,63 @@
       "min_calls": 3,
       "prompt": "**In one assistant turn**, dispatch two `task` subagents (`subagent_type=explore`) in parallel:\n\n- Subagent 1: read `src/requests/models.py` and list the names of attributes assigned in `Response.__init__` (lines like `self.<name> = ...`), one per line in source-file order.\n- Subagent 2: read `src/requests/adapters.py` and find the `build_response` method of `HTTPAdapter`. List the names of attributes assigned to the local `response` variable in that method (lines like `response.<name> = ...`), one per line in source-file order.\n\nAfter both return, write `attr_overlap.md` at the repo root with three sections:\n\n## __init__ attrs\n<sorted list, one per line>\n\n## build_response attrs\n<sorted list, one per line>\n\n## overlap\n<names that appear in both lists, sorted, one per line>\n\nDo not call `read`, `grep`, or `glob` directly.",
       "checks": [
-        {"type": "parallel_dispatch_count", "tool": "task", "equals": 2,
-         "description": "model must dispatch both task subagents in one assistant turn"},
-        {"type": "tool_call_count", "tool": "task", "equals": 2,
-         "description": "exactly 2 subagent dispatches"},
-        {"type": "no_tool_name", "not_equals": ["read", "grep", "glob"],
-         "description": "parent must not inspect files directly"},
-        {"type": "file_regex", "path": "attr_overlap.md", "pattern": "## __init__ attrs",
-         "description": "report has __init__ attrs section"},
-        {"type": "file_regex", "path": "attr_overlap.md", "pattern": "## build_response attrs",
-         "description": "report has build_response attrs section"},
-        {"type": "file_regex", "path": "attr_overlap.md", "pattern": "## overlap",
-         "description": "report has overlap section"},
-        {"type": "file_regex", "path": "attr_overlap.md", "pattern": "encoding",
-         "description": "encoding attr listed (set in build_response)"},
-        {"type": "file_regex", "path": "attr_overlap.md", "pattern": "status_code",
-         "description": "status_code attr listed (set in build_response)"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "parallel_dispatch_count",
+          "tool": "task",
+          "equals": 2,
+          "description": "model must dispatch both task subagents in one assistant turn"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "task",
+          "equals": 2,
+          "description": "exactly 2 subagent dispatches"
+        },
+        {
+          "type": "no_tool_name",
+          "not_equals": [
+            "read",
+            "grep",
+            "glob"
+          ],
+          "description": "parent must not inspect files directly"
+        },
+        {
+          "type": "file_regex",
+          "path": "attr_overlap.md",
+          "pattern": "## __init__ attrs",
+          "description": "report has __init__ attrs section"
+        },
+        {
+          "type": "file_regex",
+          "path": "attr_overlap.md",
+          "pattern": "## build_response attrs",
+          "description": "report has build_response attrs section"
+        },
+        {
+          "type": "file_regex",
+          "path": "attr_overlap.md",
+          "pattern": "## overlap",
+          "description": "report has overlap section"
+        },
+        {
+          "type": "file_regex",
+          "path": "attr_overlap.md",
+          "pattern": "encoding",
+          "description": "encoding attr listed (set in build_response)"
+        },
+        {
+          "type": "file_regex",
+          "path": "attr_overlap.md",
+          "pattern": "status_code",
+          "description": "status_code attr listed (set in build_response)"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "medium"
     },
     {
       "id": 307,
@@ -201,35 +451,94 @@
       "min_calls": 5,
       "prompt": "For each of these 4 files in the requests source tree, run **one separate** `bash` command using `grep -c \"def \" <file>` to count the number of `def ` keyword occurrences:\n\n1. `src/requests/adapters.py`\n2. `src/requests/auth.py`\n3. `src/requests/hooks.py`\n4. `src/requests/sessions.py`\n\nIssue 4 separate `bash` calls (one per file, in this order). Then write `def_count.md` at the repo root with 4 lines, in the same order:\n\n    src/requests/adapters.py: 20\n    src/requests/auth.py: 19\n    src/requests/hooks.py: 2\n    src/requests/sessions.py: 28\n\nThe expected counts are pinned above; your bash output should match. No other tool calls (no `read`, no `grep`, no `glob`).",
       "checks": [
-        {"type": "tool_call_count", "tool": "bash", "equals": 4,
-         "description": "exactly 4 bash calls (one per file)"},
-        {"type": "tool_call_count", "tool": "write", "equals": 1,
-         "description": "exactly 1 write (def_count.md)"},
-        {"type": "tool_call_count", "tool": "read", "equals": 0,
-         "description": "no read calls"},
-        {"type": "tool_call_count", "tool": "grep", "equals": 0,
-         "description": "no grep tool calls (must use bash grep)"},
-        {"type": "tool_call_count", "tool": "glob", "equals": 0,
-         "description": "no glob calls"},
-        {"type": "any_tool_param_regex", "tool": "bash", "param": "command", "pattern": "adapters\\.py",
-         "description": "one bash call targets adapters.py"},
-        {"type": "any_tool_param_regex", "tool": "bash", "param": "command", "pattern": "auth\\.py",
-         "description": "one bash call targets auth.py"},
-        {"type": "any_tool_param_regex", "tool": "bash", "param": "command", "pattern": "hooks\\.py",
-         "description": "one bash call targets hooks.py"},
-        {"type": "any_tool_param_regex", "tool": "bash", "param": "command", "pattern": "sessions\\.py",
-         "description": "one bash call targets sessions.py"},
-        {"type": "file_regex", "path": "def_count.md", "pattern": "adapters\\.py:\\s*20",
-         "description": "adapters.py count = 20"},
-        {"type": "file_regex", "path": "def_count.md", "pattern": "auth\\.py:\\s*19",
-         "description": "auth.py count = 19"},
-        {"type": "file_regex", "path": "def_count.md", "pattern": "hooks\\.py:\\s*2",
-         "description": "hooks.py count = 2"},
-        {"type": "file_regex", "path": "def_count.md", "pattern": "sessions\\.py:\\s*28",
-         "description": "sessions.py count = 28"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "tool_call_count",
+          "tool": "bash",
+          "equals": 4,
+          "description": "exactly 4 bash calls (one per file)"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "write",
+          "equals": 1,
+          "description": "exactly 1 write (def_count.md)"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "read",
+          "equals": 0,
+          "description": "no read calls"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "grep",
+          "equals": 0,
+          "description": "no grep tool calls (must use bash grep)"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "glob",
+          "equals": 0,
+          "description": "no glob calls"
+        },
+        {
+          "type": "any_tool_param_regex",
+          "tool": "bash",
+          "param": "command",
+          "pattern": "adapters\\.py",
+          "description": "one bash call targets adapters.py"
+        },
+        {
+          "type": "any_tool_param_regex",
+          "tool": "bash",
+          "param": "command",
+          "pattern": "auth\\.py",
+          "description": "one bash call targets auth.py"
+        },
+        {
+          "type": "any_tool_param_regex",
+          "tool": "bash",
+          "param": "command",
+          "pattern": "hooks\\.py",
+          "description": "one bash call targets hooks.py"
+        },
+        {
+          "type": "any_tool_param_regex",
+          "tool": "bash",
+          "param": "command",
+          "pattern": "sessions\\.py",
+          "description": "one bash call targets sessions.py"
+        },
+        {
+          "type": "file_regex",
+          "path": "def_count.md",
+          "pattern": "adapters\\.py:\\s*20",
+          "description": "adapters.py count = 20"
+        },
+        {
+          "type": "file_regex",
+          "path": "def_count.md",
+          "pattern": "auth\\.py:\\s*19",
+          "description": "auth.py count = 19"
+        },
+        {
+          "type": "file_regex",
+          "path": "def_count.md",
+          "pattern": "hooks\\.py:\\s*2",
+          "description": "hooks.py count = 2"
+        },
+        {
+          "type": "file_regex",
+          "path": "def_count.md",
+          "pattern": "sessions\\.py:\\s*28",
+          "description": "sessions.py count = 28"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "easy"
     },
     {
       "id": 308,
@@ -240,31 +549,81 @@
       "min_calls": 4,
       "prompt": "For each of these 3 helper functions defined in `src/requests/utils.py`, count their callers in `src/requests/sessions.py` using **one separate** `grep` call per helper (3 grep calls total, in this order):\n\n1. `merge_setting`\n2. `to_key_val_list`\n3. `iter_slices`\n\nThen write `caller_table.md` at the repo root with 3 lines, in the same order:\n\n    merge_setting: 9\n    to_key_val_list: 3\n    iter_slices: 0\n\nThe expected counts are pinned above. No other tool calls (no `bash`, no `read`, no `glob`).",
       "checks": [
-        {"type": "tool_call_count", "tool": "grep", "equals": 3,
-         "description": "exactly 3 grep calls (one per helper)"},
-        {"type": "tool_call_count", "tool": "write", "equals": 1,
-         "description": "exactly 1 write (caller_table.md)"},
-        {"type": "tool_call_count", "tool": "bash", "equals": 0,
-         "description": "no bash calls"},
-        {"type": "tool_call_count", "tool": "read", "equals": 0,
-         "description": "no read calls"},
-        {"type": "tool_call_count", "tool": "glob", "equals": 0,
-         "description": "no glob calls"},
-        {"type": "any_tool_param_regex", "tool": "grep", "param": "pattern", "pattern": "merge_setting",
-         "description": "one grep targets merge_setting"},
-        {"type": "any_tool_param_regex", "tool": "grep", "param": "pattern", "pattern": "to_key_val_list",
-         "description": "one grep targets to_key_val_list"},
-        {"type": "any_tool_param_regex", "tool": "grep", "param": "pattern", "pattern": "iter_slices",
-         "description": "one grep targets iter_slices"},
-        {"type": "file_regex", "path": "caller_table.md", "pattern": "merge_setting:\\s*9",
-         "description": "merge_setting count = 9"},
-        {"type": "file_regex", "path": "caller_table.md", "pattern": "to_key_val_list:\\s*3",
-         "description": "to_key_val_list count = 3"},
-        {"type": "file_regex", "path": "caller_table.md", "pattern": "iter_slices:\\s*0",
-         "description": "iter_slices count = 0"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "tool_call_count",
+          "tool": "grep",
+          "equals": 3,
+          "description": "exactly 3 grep calls (one per helper)"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "write",
+          "equals": 1,
+          "description": "exactly 1 write (caller_table.md)"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "bash",
+          "equals": 0,
+          "description": "no bash calls"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "read",
+          "equals": 0,
+          "description": "no read calls"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "glob",
+          "equals": 0,
+          "description": "no glob calls"
+        },
+        {
+          "type": "any_tool_param_regex",
+          "tool": "grep",
+          "param": "pattern",
+          "pattern": "merge_setting",
+          "description": "one grep targets merge_setting"
+        },
+        {
+          "type": "any_tool_param_regex",
+          "tool": "grep",
+          "param": "pattern",
+          "pattern": "to_key_val_list",
+          "description": "one grep targets to_key_val_list"
+        },
+        {
+          "type": "any_tool_param_regex",
+          "tool": "grep",
+          "param": "pattern",
+          "pattern": "iter_slices",
+          "description": "one grep targets iter_slices"
+        },
+        {
+          "type": "file_regex",
+          "path": "caller_table.md",
+          "pattern": "merge_setting:\\s*9",
+          "description": "merge_setting count = 9"
+        },
+        {
+          "type": "file_regex",
+          "path": "caller_table.md",
+          "pattern": "to_key_val_list:\\s*3",
+          "description": "to_key_val_list count = 3"
+        },
+        {
+          "type": "file_regex",
+          "path": "caller_table.md",
+          "pattern": "iter_slices:\\s*0",
+          "description": "iter_slices count = 0"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "easy"
     },
     {
       "id": 309,
@@ -275,21 +634,51 @@
       "min_calls": 3,
       "prompt": "Verify that `train.py`'s `UNEMBEDDING_LR` value is consistent between its declaration and its use site. **In one assistant turn**, dispatch two `task` subagents (`subagent_type=explore`) in parallel:\n\n- Subagent 1: read `train.py` and report the **declared** value of the top-level `UNEMBEDDING_LR` constant (the assignment `UNEMBEDDING_LR = ...` at module scope).\n- Subagent 2: read `train.py` and report the value passed as the keyword argument `unembedding_lr=` to the `MuonAdamW` optimizer constructor / `setup_optimizer` call (look around line 500).\n\nAfter both return, write `consistency.md` at the repo root with exactly three lines:\n\n    declared: <value from subagent 1>\n    used: <value from subagent 2>\n    agree: <yes if equal, no otherwise>\n\nDo not call `read`, `grep`, or `glob` directly.",
       "checks": [
-        {"type": "parallel_dispatch_count", "tool": "task", "equals": 2,
-         "description": "model must dispatch both task subagents in one assistant turn"},
-        {"type": "tool_call_count", "tool": "task", "equals": 2,
-         "description": "exactly 2 subagent dispatches"},
-        {"type": "no_tool_name", "not_equals": ["read", "grep", "glob"],
-         "description": "parent must not inspect files directly"},
-        {"type": "file_regex", "path": "consistency.md", "pattern": "declared:\\s*0\\.004",
-         "description": "declared value 0.004"},
-        {"type": "file_regex", "path": "consistency.md", "pattern": "used:\\s*0\\.004",
-         "description": "used value 0.004 (or expression equal to 0.004)"},
-        {"type": "file_regex", "path": "consistency.md", "pattern": "agree:\\s*yes",
-         "description": "agree: yes"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "parallel_dispatch_count",
+          "tool": "task",
+          "equals": 2,
+          "description": "model must dispatch both task subagents in one assistant turn"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "task",
+          "equals": 2,
+          "description": "exactly 2 subagent dispatches"
+        },
+        {
+          "type": "no_tool_name",
+          "not_equals": [
+            "read",
+            "grep",
+            "glob"
+          ],
+          "description": "parent must not inspect files directly"
+        },
+        {
+          "type": "file_regex",
+          "path": "consistency.md",
+          "pattern": "declared:\\s*0\\.004",
+          "description": "declared value 0.004"
+        },
+        {
+          "type": "file_regex",
+          "path": "consistency.md",
+          "pattern": "used:\\s*0\\.004",
+          "description": "used value 0.004 (or expression equal to 0.004)"
+        },
+        {
+          "type": "file_regex",
+          "path": "consistency.md",
+          "pattern": "agree:\\s*yes",
+          "description": "agree: yes"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "easy"
     },
     {
       "id": 311,
@@ -300,19 +689,45 @@
       "min_calls": 2,
       "prompt": "Perform exactly these two steps, in this order, with no other tool calls:\n\n1. **Read** `prepare.py`.\n2. **Write** `bos_token.md` at the repo root containing exactly one line:\n\n    BOS_TOKEN: <value>\n\nwhere `<value>` is the exact string assigned to `BOS_TOKEN` at module scope in `prepare.py`.\n\nThe expected `BOS_TOKEN` value is the literal string `<|reserved_0|>` (including the angle brackets, pipes, and underscore).",
       "checks": [
-        {"type": "tool_call_sequence", "sequence": ["read", "write"],
-         "description": "calls must appear in order: read, write"},
-        {"type": "tool_call_count", "tool": "read", "equals": 1,
-         "description": "exactly one read"},
-        {"type": "tool_call_count", "tool": "write", "equals": 1,
-         "description": "exactly one write"},
-        {"type": "any_tool_param_regex", "tool": "read", "param": "filePath", "pattern": "prepare\\.py",
-         "description": "read targets prepare.py"},
-        {"type": "file_regex", "path": "bos_token.md", "pattern": "BOS_TOKEN:.*<\\|reserved_0\\|>",
-         "description": "BOS_TOKEN reported with correct value"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "tool_call_sequence",
+          "sequence": [
+            "read",
+            "write"
+          ],
+          "description": "calls must appear in order: read, write"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "read",
+          "equals": 1,
+          "description": "exactly one read"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "write",
+          "equals": 1,
+          "description": "exactly one write"
+        },
+        {
+          "type": "any_tool_param_regex",
+          "tool": "read",
+          "param": "filePath",
+          "pattern": "prepare\\.py",
+          "description": "read targets prepare.py"
+        },
+        {
+          "type": "file_regex",
+          "path": "bos_token.md",
+          "pattern": "BOS_TOKEN:.*<\\|reserved_0\\|>",
+          "description": "BOS_TOKEN reported with correct value"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "easy"
     },
     {
       "id": 312,
@@ -323,21 +738,53 @@
       "min_calls": 4,
       "prompt": "Perform exactly these four steps, in this order, with no other tool calls:\n\n1. **Read** `src/requests/api.py` (this lets you confirm `delete` is one of the 8 top-level functions).\n2. **Grep** for the literal string `delete` in `src/requests/sessions.py`.\n3. **Read** `src/requests/sessions.py`.\n4. **Write** `delete_callsites.md` at the repo root with one line per occurrence of `delete` found in step 2, formatted as `sessions.py:<line_number>` (sorted by line number ascending). Empty file is invalid; at least one occurrence is expected.",
       "checks": [
-        {"type": "tool_call_sequence", "sequence": ["read", "grep", "read", "write"],
-         "description": "calls in order: read, grep, read, write (4-step chain)"},
-        {"type": "tool_call_count", "tool": "read", "equals": 2,
-         "description": "exactly two read calls"},
-        {"type": "tool_call_count", "tool": "grep", "equals": 1,
-         "description": "exactly one grep call"},
-        {"type": "tool_call_count", "tool": "write", "equals": 1,
-         "description": "exactly one write call"},
-        {"type": "any_tool_param_regex", "tool": "grep", "param": "pattern", "pattern": "delete",
-         "description": "grep searches for delete"},
-        {"type": "file_regex", "path": "delete_callsites.md", "pattern": "sessions\\.py:\\d+",
-         "description": "at least one sessions.py:<line_number> entry"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "tool_call_sequence",
+          "sequence": [
+            "read",
+            "grep",
+            "read",
+            "write"
+          ],
+          "description": "calls in order: read, grep, read, write (4-step chain)"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "read",
+          "equals": 2,
+          "description": "exactly two read calls"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "grep",
+          "equals": 1,
+          "description": "exactly one grep call"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "write",
+          "equals": 1,
+          "description": "exactly one write call"
+        },
+        {
+          "type": "any_tool_param_regex",
+          "tool": "grep",
+          "param": "pattern",
+          "pattern": "delete",
+          "description": "grep searches for delete"
+        },
+        {
+          "type": "file_regex",
+          "path": "delete_callsites.md",
+          "pattern": "sessions\\.py:\\d+",
+          "description": "at least one sessions.py:<line_number> entry"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "easy"
     },
     {
       "id": 313,
@@ -348,25 +795,66 @@
       "min_calls": 6,
       "prompt": "Perform exactly these six steps, in this order, with no other tool calls:\n\n1. **Read** `src/requests/models.py` (lists the `Response` class).\n2. **Grep** for the literal `Response` in `src/requests/api.py`.\n3. **Grep** for the literal `Response` in `src/requests/adapters.py`.\n4. **Bash** `wc -l src/requests/sessions.py` (count lines in sessions.py).\n5. **Grep** for the literal `Response` in `src/requests/sessions.py`.\n6. **Write** `response_usage.md` at the repo root with three lines:\n\n    api.py: <count from step 2>\n    adapters.py: <count from step 3>\n    sessions.py: <count from step 5>\n\nThe pinned counts are: `api.py: 17`, `adapters.py: 10`, `sessions.py: 23`.",
       "checks": [
-        {"type": "tool_call_sequence", "sequence": ["read", "grep", "grep", "bash", "grep", "write"],
-         "description": "6-step chain with 4 distinct tool types in mixed order"},
-        {"type": "tool_call_count", "tool": "read", "equals": 1,
-         "description": "exactly 1 read"},
-        {"type": "tool_call_count", "tool": "grep", "equals": 3,
-         "description": "exactly 3 grep calls (one per target file)"},
-        {"type": "tool_call_count", "tool": "bash", "equals": 1,
-         "description": "exactly 1 bash call (wc -l)"},
-        {"type": "tool_call_count", "tool": "write", "equals": 1,
-         "description": "exactly 1 write"},
-        {"type": "file_regex", "path": "response_usage.md", "pattern": "api\\.py:\\s*17",
-         "description": "api.py count = 17"},
-        {"type": "file_regex", "path": "response_usage.md", "pattern": "adapters\\.py:\\s*10",
-         "description": "adapters.py count = 10"},
-        {"type": "file_regex", "path": "response_usage.md", "pattern": "sessions\\.py:\\s*23",
-         "description": "sessions.py count = 23"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "tool_call_sequence",
+          "sequence": [
+            "read",
+            "grep",
+            "grep",
+            "bash",
+            "grep",
+            "write"
+          ],
+          "description": "6-step chain with 4 distinct tool types in mixed order"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "read",
+          "equals": 1,
+          "description": "exactly 1 read"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "grep",
+          "equals": 3,
+          "description": "exactly 3 grep calls (one per target file)"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "bash",
+          "equals": 1,
+          "description": "exactly 1 bash call (wc -l)"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "write",
+          "equals": 1,
+          "description": "exactly 1 write"
+        },
+        {
+          "type": "file_regex",
+          "path": "response_usage.md",
+          "pattern": "api\\.py:\\s*17",
+          "description": "api.py count = 17"
+        },
+        {
+          "type": "file_regex",
+          "path": "response_usage.md",
+          "pattern": "adapters\\.py:\\s*10",
+          "description": "adapters.py count = 10"
+        },
+        {
+          "type": "file_regex",
+          "path": "response_usage.md",
+          "pattern": "sessions\\.py:\\s*23",
+          "description": "sessions.py count = 23"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "medium"
     },
     {
       "id": 314,
@@ -377,25 +865,68 @@
       "min_calls": 8,
       "prompt": "Perform exactly these eight steps, in this order, with no other tool calls:\n\n1. **Read** `src/requests/api.py`.\n2. **Grep** for `request` in `src/requests/sessions.py`.\n3. **Bash** `wc -l src/requests/sessions.py` (count lines).\n4. **Read** `src/requests/auth.py`.\n5. **Grep** for `_basic_auth_str` in `src/requests/sessions.py`.\n6. **Bash** `wc -l src/requests/auth.py` (count lines).\n7. **Grep** for `HTTPBasicAuth` in `src/requests/api.py`.\n8. **Write** `audit_report.md` at the repo root with three lines:\n\n    sessions.py lines: <value from step 3>\n    auth.py lines: <value from step 6>\n    HTTPBasicAuth in api.py: <count from step 7>",
       "checks": [
-        {"type": "tool_call_sequence", "sequence": ["read", "grep", "bash", "read", "grep", "bash", "grep", "write"],
-         "description": "8-step chain with mixed read/grep/bash/write"},
-        {"type": "tool_call_count", "tool": "read", "equals": 2,
-         "description": "exactly 2 read calls"},
-        {"type": "tool_call_count", "tool": "grep", "equals": 3,
-         "description": "exactly 3 grep calls"},
-        {"type": "tool_call_count", "tool": "bash", "equals": 2,
-         "description": "exactly 2 bash calls"},
-        {"type": "tool_call_count", "tool": "write", "equals": 1,
-         "description": "exactly 1 write"},
-        {"type": "file_regex", "path": "audit_report.md", "pattern": "sessions\\.py lines:",
-         "description": "sessions.py lines reported"},
-        {"type": "file_regex", "path": "audit_report.md", "pattern": "auth\\.py lines:",
-         "description": "auth.py lines reported"},
-        {"type": "file_regex", "path": "audit_report.md", "pattern": "HTTPBasicAuth in api\\.py:",
-         "description": "HTTPBasicAuth count reported"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "tool_call_sequence",
+          "sequence": [
+            "read",
+            "grep",
+            "bash",
+            "read",
+            "grep",
+            "bash",
+            "grep",
+            "write"
+          ],
+          "description": "8-step chain with mixed read/grep/bash/write"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "read",
+          "equals": 2,
+          "description": "exactly 2 read calls"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "grep",
+          "equals": 3,
+          "description": "exactly 3 grep calls"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "bash",
+          "equals": 2,
+          "description": "exactly 2 bash calls"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "write",
+          "equals": 1,
+          "description": "exactly 1 write"
+        },
+        {
+          "type": "file_regex",
+          "path": "audit_report.md",
+          "pattern": "sessions\\.py lines:",
+          "description": "sessions.py lines reported"
+        },
+        {
+          "type": "file_regex",
+          "path": "audit_report.md",
+          "pattern": "auth\\.py lines:",
+          "description": "auth.py lines reported"
+        },
+        {
+          "type": "file_regex",
+          "path": "audit_report.md",
+          "pattern": "HTTPBasicAuth in api\\.py:",
+          "description": "HTTPBasicAuth count reported"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "hard"
     },
     {
       "id": 315,
@@ -406,23 +937,61 @@
       "min_calls": 4,
       "prompt": "Perform exactly these four steps, in this order, with no other tool calls beyond what's prescribed:\n\n1. **Read** `train.py` (parent reads directly).\n2. **Dispatch a `task` subagent** (`subagent_type=explore`) and have it read `prepare.py` and report the value of `VOCAB_SIZE`. Wait for the subagent to return.\n3. **Read** `README.md` (parent reads directly).\n4. **Write** `summary.md` at the repo root with three lines:\n\n    train.py:EMBEDDING_LR: <value from step 1>\n    prepare.py:VOCAB_SIZE: <value from subagent at step 2>\n    README.md:first_section: <text after \"## \" of the first level-2 heading from step 3>\n\nExpected values: EMBEDDING_LR is 0.6, VOCAB_SIZE is 8192, first ## section is \"How it works\".",
       "checks": [
-        {"type": "tool_call_sequence", "sequence": ["read", "task", "read", "write"],
-         "description": "chain with task dispatch in the middle"},
-        {"type": "tool_call_count", "tool": "read", "equals": 2, "scope": "parent",
-         "description": "exactly 2 parent-level reads (subagent's reads excluded; the constraint is on parent's prescribed shape)"},
-        {"type": "tool_call_count", "tool": "task", "equals": 1, "scope": "parent",
-         "description": "exactly 1 subagent dispatch by the parent"},
-        {"type": "tool_call_count", "tool": "write", "equals": 1, "scope": "parent",
-         "description": "exactly 1 write by the parent"},
-        {"type": "file_regex", "path": "summary.md", "pattern": "EMBEDDING_LR:\\s*0\\.6",
-         "description": "EMBEDDING_LR = 0.6"},
-        {"type": "file_regex", "path": "summary.md", "pattern": "VOCAB_SIZE:\\s*8192",
-         "description": "VOCAB_SIZE = 8192"},
-        {"type": "file_regex", "path": "summary.md", "pattern": "first_section:\\s*How it works",
-         "description": "first README section is 'How it works'"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "tool_call_sequence",
+          "sequence": [
+            "read",
+            "task",
+            "read",
+            "write"
+          ],
+          "description": "chain with task dispatch in the middle"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "read",
+          "equals": 2,
+          "scope": "parent",
+          "description": "exactly 2 parent-level reads (subagent's reads excluded; the constraint is on parent's prescribed shape)"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "task",
+          "equals": 1,
+          "scope": "parent",
+          "description": "exactly 1 subagent dispatch by the parent"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "write",
+          "equals": 1,
+          "scope": "parent",
+          "description": "exactly 1 write by the parent"
+        },
+        {
+          "type": "file_regex",
+          "path": "summary.md",
+          "pattern": "EMBEDDING_LR:\\s*0\\.6",
+          "description": "EMBEDDING_LR = 0.6"
+        },
+        {
+          "type": "file_regex",
+          "path": "summary.md",
+          "pattern": "VOCAB_SIZE:\\s*8192",
+          "description": "VOCAB_SIZE = 8192"
+        },
+        {
+          "type": "file_regex",
+          "path": "summary.md",
+          "pattern": "first_section:\\s*How it works",
+          "description": "first README section is 'How it works'"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "hard"
     },
     {
       "id": 316,
@@ -433,27 +1002,69 @@
       "min_calls": 4,
       "prompt": "**In one assistant turn**, dispatch three `task` subagents (`subagent_type=explore`) in parallel:\n\n- Subagent 1: read `src/requests/api.py` and list all 8 top-level function names (`request`, `get`, `options`, `head`, `post`, `put`, `patch`, `delete`).\n- Subagent 2: read `src/requests/auth.py` and list the 4 top-level class names (one is `AuthBase`, three are concrete auth classes).\n- Subagent 3: read `src/requests/hooks.py` and list its 2 top-level function names.\n\nAfter all three return, write `inventory.md` at the repo root with three sections:\n\n## api.py functions\n<one name per line, 8 names total>\n\n## auth.py classes\n<one name per line, 4 names total>\n\n## hooks.py functions\n<one name per line, 2 names total>\n\nDo not call `read`, `grep`, or `glob` directly.",
       "checks": [
-        {"type": "parallel_dispatch_count", "tool": "task", "equals": 3,
-         "description": "model must dispatch all 3 task subagents in one assistant turn"},
-        {"type": "tool_call_count", "tool": "task", "equals": 3,
-         "description": "exactly 3 subagent dispatches"},
-        {"type": "no_tool_name", "not_equals": ["read", "grep", "glob"],
-         "description": "parent must not inspect files directly"},
-        {"type": "file_regex", "path": "inventory.md", "pattern": "## api\\.py functions",
-         "description": "api.py section present"},
-        {"type": "file_regex", "path": "inventory.md", "pattern": "## auth\\.py classes",
-         "description": "auth.py section present"},
-        {"type": "file_regex", "path": "inventory.md", "pattern": "## hooks\\.py functions",
-         "description": "hooks.py section present"},
-        {"type": "file_regex", "path": "inventory.md", "pattern": "AuthBase",
-         "description": "AuthBase listed"},
-        {"type": "file_regex", "path": "inventory.md", "pattern": "default_hooks",
-         "description": "default_hooks listed"},
-        {"type": "file_regex", "path": "inventory.md", "pattern": "request\\b",
-         "description": "request fn listed"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "parallel_dispatch_count",
+          "tool": "task",
+          "equals": 3,
+          "description": "model must dispatch all 3 task subagents in one assistant turn"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "task",
+          "equals": 3,
+          "description": "exactly 3 subagent dispatches"
+        },
+        {
+          "type": "no_tool_name",
+          "not_equals": [
+            "read",
+            "grep",
+            "glob"
+          ],
+          "description": "parent must not inspect files directly"
+        },
+        {
+          "type": "file_regex",
+          "path": "inventory.md",
+          "pattern": "## api\\.py functions",
+          "description": "api.py section present"
+        },
+        {
+          "type": "file_regex",
+          "path": "inventory.md",
+          "pattern": "## auth\\.py classes",
+          "description": "auth.py section present"
+        },
+        {
+          "type": "file_regex",
+          "path": "inventory.md",
+          "pattern": "## hooks\\.py functions",
+          "description": "hooks.py section present"
+        },
+        {
+          "type": "file_regex",
+          "path": "inventory.md",
+          "pattern": "AuthBase",
+          "description": "AuthBase listed"
+        },
+        {
+          "type": "file_regex",
+          "path": "inventory.md",
+          "pattern": "default_hooks",
+          "description": "default_hooks listed"
+        },
+        {
+          "type": "file_regex",
+          "path": "inventory.md",
+          "pattern": "request\\b",
+          "description": "request fn listed"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "medium"
     },
     {
       "id": 317,
@@ -464,27 +1075,72 @@
       "min_calls": 5,
       "prompt": "Perform a DAG with a parallel front-end and a sequential back-end:\n\n1. **In one assistant turn**, dispatch two `task` subagents (`subagent_type=explore`) in parallel:\n   - Subagent A: read `train.py` and report the value of `WEIGHT_DECAY`.\n   - Subagent B: read `prepare.py` and report the value of `MAX_SEQ_LEN`.\n\n2. After both subagents return, run a single **bash** command: `wc -l README.md` (counts lines in README).\n\n3. **Write** `dag_summary.md` at the repo root with three lines:\n\n    train.py:WEIGHT_DECAY: <value from subagent A>\n    prepare.py:MAX_SEQ_LEN: <value from subagent B>\n    README.md:line_count: <integer from bash output>\n\nExpected values: WEIGHT_DECAY is 0.2, MAX_SEQ_LEN is 2048. Do not call `read`, `grep`, or `glob` directly.",
       "checks": [
-        {"type": "parallel_dispatch_count", "tool": "task", "equals": 2,
-         "description": "step 1 must dispatch both subagents in one assistant turn"},
-        {"type": "tool_call_count", "tool": "task", "equals": 2,
-         "description": "exactly 2 subagent dispatches"},
-        {"type": "tool_call_count", "tool": "bash", "equals": 1,
-         "description": "exactly 1 bash call (wc -l)"},
-        {"type": "tool_call_count", "tool": "write", "equals": 1,
-         "description": "exactly 1 write"},
-        {"type": "no_tool_name", "not_equals": ["read", "grep", "glob"],
-         "description": "parent must not inspect files directly via read/grep/glob"},
-        {"type": "tool_call_sequence", "sequence": ["task", "bash", "write"],
-         "description": "after the parallel dispatch, sequential bash then write"},
-        {"type": "file_regex", "path": "dag_summary.md", "pattern": "WEIGHT_DECAY:\\s*0\\.2",
-         "description": "WEIGHT_DECAY = 0.2"},
-        {"type": "file_regex", "path": "dag_summary.md", "pattern": "MAX_SEQ_LEN:\\s*2048",
-         "description": "MAX_SEQ_LEN = 2048"},
-        {"type": "file_regex", "path": "dag_summary.md", "pattern": "line_count:\\s*\\d+",
-         "description": "line_count is an integer"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "parallel_dispatch_count",
+          "tool": "task",
+          "equals": 2,
+          "description": "step 1 must dispatch both subagents in one assistant turn"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "task",
+          "equals": 2,
+          "description": "exactly 2 subagent dispatches"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "bash",
+          "equals": 1,
+          "description": "exactly 1 bash call (wc -l)"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "write",
+          "equals": 1,
+          "description": "exactly 1 write"
+        },
+        {
+          "type": "no_tool_name",
+          "not_equals": [
+            "read",
+            "grep",
+            "glob"
+          ],
+          "description": "parent must not inspect files directly via read/grep/glob"
+        },
+        {
+          "type": "tool_call_sequence",
+          "sequence": [
+            "task",
+            "bash",
+            "write"
+          ],
+          "description": "after the parallel dispatch, sequential bash then write"
+        },
+        {
+          "type": "file_regex",
+          "path": "dag_summary.md",
+          "pattern": "WEIGHT_DECAY:\\s*0\\.2",
+          "description": "WEIGHT_DECAY = 0.2"
+        },
+        {
+          "type": "file_regex",
+          "path": "dag_summary.md",
+          "pattern": "MAX_SEQ_LEN:\\s*2048",
+          "description": "MAX_SEQ_LEN = 2048"
+        },
+        {
+          "type": "file_regex",
+          "path": "dag_summary.md",
+          "pattern": "line_count:\\s*\\d+",
+          "description": "line_count is an integer"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "medium"
     },
     {
       "id": 318,
@@ -493,27 +1149,65 @@
       "repo": "requests",
       "prescription_form": "prescriptive",
       "min_calls": 5,
-      "prompt": "**In one assistant turn**, dispatch two `task` subagents (`subagent_type=explore`) in parallel:\n\n- Subagent A: read `src/requests/sessions.py` and list the public method names of the `Session` class (don't start with `_`), one per line in source-file order.\n- Subagent B: read `src/requests/adapters.py` and list the public method names of the `HTTPAdapter` class, one per line in source-file order.\n\nAfter both return, write THREE files at the repo root (in this order):\n\n1. `session_methods.md` — Subagent A's list verbatim, one method per line.\n2. `adapter_methods.md` — Subagent B's list verbatim, one method per line.\n3. `common_methods.md` — names that appear in both lists (intersection), sorted alphabetically, one per line.\n\nThe two classes share `send` and `close` at minimum; `common_methods.md` must include both. Do not call `read`, `grep`, or `glob` directly.",
+      "prompt": "**In one assistant turn**, dispatch two `task` subagents (`subagent_type=explore`) in parallel:\n\n- Subagent A: read `src/requests/sessions.py` and list the public method names of the `Session` class (don't start with `_`), one per line in source-file order.\n- Subagent B: read `src/requests/adapters.py` and list the public method names of the `HTTPAdapter` class, one per line in source-file order.\n\nAfter both return, write THREE files at the repo root (in this order):\n\n1. `session_methods.md` \u2014 Subagent A's list verbatim, one method per line.\n2. `adapter_methods.md` \u2014 Subagent B's list verbatim, one method per line.\n3. `common_methods.md` \u2014 names that appear in both lists (intersection), sorted alphabetically, one per line.\n\nThe two classes share `send` and `close` at minimum; `common_methods.md` must include both. Do not call `read`, `grep`, or `glob` directly.",
       "checks": [
-        {"type": "parallel_dispatch_count", "tool": "task", "equals": 2,
-         "description": "step 1 must dispatch both subagents in one turn"},
-        {"type": "tool_call_count", "tool": "task", "equals": 2,
-         "description": "exactly 2 subagent dispatches"},
-        {"type": "tool_call_count", "tool": "write", "equals": 3,
-         "description": "exactly 3 writes (one per output file)"},
-        {"type": "no_tool_name", "not_equals": ["read", "grep", "glob"],
-         "description": "parent must not inspect files directly"},
-        {"type": "file_regex", "path": "session_methods.md", "pattern": "prepare_request",
-         "description": "Session method prepare_request listed"},
-        {"type": "file_regex", "path": "adapter_methods.md", "pattern": "init_poolmanager",
-         "description": "HTTPAdapter method init_poolmanager listed"},
-        {"type": "file_regex", "path": "common_methods.md", "pattern": "^send",
-         "description": "common_methods.md includes send"},
-        {"type": "file_regex", "path": "common_methods.md", "pattern": "^close",
-         "description": "common_methods.md includes close"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "parallel_dispatch_count",
+          "tool": "task",
+          "equals": 2,
+          "description": "step 1 must dispatch both subagents in one turn"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "task",
+          "equals": 2,
+          "description": "exactly 2 subagent dispatches"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "write",
+          "equals": 3,
+          "description": "exactly 3 writes (one per output file)"
+        },
+        {
+          "type": "no_tool_name",
+          "not_equals": [
+            "read",
+            "grep",
+            "glob"
+          ],
+          "description": "parent must not inspect files directly"
+        },
+        {
+          "type": "file_regex",
+          "path": "session_methods.md",
+          "pattern": "prepare_request",
+          "description": "Session method prepare_request listed"
+        },
+        {
+          "type": "file_regex",
+          "path": "adapter_methods.md",
+          "pattern": "init_poolmanager",
+          "description": "HTTPAdapter method init_poolmanager listed"
+        },
+        {
+          "type": "file_regex",
+          "path": "common_methods.md",
+          "pattern": "^send",
+          "description": "common_methods.md includes send"
+        },
+        {
+          "type": "file_regex",
+          "path": "common_methods.md",
+          "pattern": "^close",
+          "description": "common_methods.md includes close"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "hard"
     },
     {
       "id": 319,
@@ -524,29 +1218,72 @@
       "min_calls": 3,
       "prompt": "**In one assistant turn**, issue two `read` calls in parallel (no subagents this time -- the parent reads both files directly in the same assistant turn):\n\n- Read 1: `src/requests/api.py` (8 top-level functions).\n- Read 2: `src/requests/auth.py` (1 top-level function `_basic_auth_str` plus 4 classes).\n\nAfter both reads return, write `inventory.md` at the repo root with two sections:\n\n## api.py top-level functions\n<one name per line, 8 functions: request, get, options, head, post, put, patch, delete>\n\n## auth.py top-level definitions\n<one name per line, 5 entries: _basic_auth_str (function), AuthBase, HTTPBasicAuth, HTTPProxyAuth, HTTPDigestAuth (classes)>\n\nDo not use `task`, `grep`, `glob`, or `bash` -- only `read` (in parallel) and `write`.",
       "checks": [
-        {"type": "parallel_dispatch_count", "tool": "read", "equals": 2,
-         "description": "step 1 must dispatch both reads in one assistant turn -- isolates whether parallel-dispatch works for native tools, not just task subagents"},
-        {"type": "tool_call_count", "tool": "read", "equals": 2,
-         "description": "exactly 2 reads"},
-        {"type": "tool_call_count", "tool": "write", "equals": 1,
-         "description": "exactly 1 write"},
-        {"type": "tool_call_count", "tool": "task", "equals": 0,
-         "description": "no subagent dispatches (this is the native-tools variant)"},
-        {"type": "tool_call_count", "tool": "grep", "equals": 0,
-         "description": "no grep"},
-        {"type": "tool_call_count", "tool": "bash", "equals": 0,
-         "description": "no bash"},
-        {"type": "file_regex", "path": "inventory.md", "pattern": "## api\\.py top-level functions",
-         "description": "api.py section present"},
-        {"type": "file_regex", "path": "inventory.md", "pattern": "## auth\\.py top-level definitions",
-         "description": "auth.py section present"},
-        {"type": "file_regex", "path": "inventory.md", "pattern": "AuthBase",
-         "description": "AuthBase listed"},
-        {"type": "file_regex", "path": "inventory.md", "pattern": "HTTPBasicAuth",
-         "description": "HTTPBasicAuth listed"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "parallel_dispatch_count",
+          "tool": "read",
+          "equals": 2,
+          "description": "step 1 must dispatch both reads in one assistant turn -- isolates whether parallel-dispatch works for native tools, not just task subagents"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "read",
+          "equals": 2,
+          "description": "exactly 2 reads"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "write",
+          "equals": 1,
+          "description": "exactly 1 write"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "task",
+          "equals": 0,
+          "description": "no subagent dispatches (this is the native-tools variant)"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "grep",
+          "equals": 0,
+          "description": "no grep"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "bash",
+          "equals": 0,
+          "description": "no bash"
+        },
+        {
+          "type": "file_regex",
+          "path": "inventory.md",
+          "pattern": "## api\\.py top-level functions",
+          "description": "api.py section present"
+        },
+        {
+          "type": "file_regex",
+          "path": "inventory.md",
+          "pattern": "## auth\\.py top-level definitions",
+          "description": "auth.py section present"
+        },
+        {
+          "type": "file_regex",
+          "path": "inventory.md",
+          "pattern": "AuthBase",
+          "description": "AuthBase listed"
+        },
+        {
+          "type": "file_regex",
+          "path": "inventory.md",
+          "pattern": "HTTPBasicAuth",
+          "description": "HTTPBasicAuth listed"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "easy"
     },
     {
       "id": 320,
@@ -557,27 +1294,73 @@
       "min_calls": 5,
       "prompt": "Perform a DAG with parallel reads, an intermediate write, a verification step, then a final write:\n\n1. **In one assistant turn**, dispatch two `task` subagents (`subagent_type=explore`) in parallel:\n   - Subagent A: read `train.py` and report `WEIGHT_DECAY`.\n   - Subagent B: read `prepare.py` and report `VOCAB_SIZE`.\n\n2. **Write** `intermediate.md` at the repo root with two lines:\n\n    WEIGHT_DECAY=<value from subagent A>\n    VOCAB_SIZE=<value from subagent B>\n\n3. **Bash** `cat intermediate.md` (verification: re-emit the intermediate file's contents).\n\n4. **Write** `final.md` at the repo root with the line:\n\n    verified: WEIGHT_DECAY=0.2 VOCAB_SIZE=8192\n\nExpected values: WEIGHT_DECAY is 0.2, VOCAB_SIZE is 8192. Do not call `read`, `grep`, or `glob` directly.",
       "checks": [
-        {"type": "parallel_dispatch_count", "tool": "task", "equals": 2,
-         "description": "step 1 must dispatch both subagents in one turn"},
-        {"type": "tool_call_count", "tool": "task", "equals": 2,
-         "description": "exactly 2 subagent dispatches"},
-        {"type": "tool_call_count", "tool": "write", "equals": 2,
-         "description": "exactly 2 writes (intermediate + final)"},
-        {"type": "tool_call_count", "tool": "bash", "equals": 1,
-         "description": "exactly 1 bash (verification cat)"},
-        {"type": "no_tool_name", "not_equals": ["read", "grep", "glob"],
-         "description": "parent must not inspect files directly"},
-        {"type": "tool_call_sequence", "sequence": ["task", "write", "bash", "write"],
-         "description": "DAG flow: parallel task -> write intermediate -> bash verify -> write final"},
-        {"type": "file_regex", "path": "intermediate.md", "pattern": "WEIGHT_DECAY=0\\.2",
-         "description": "intermediate has WEIGHT_DECAY=0.2"},
-        {"type": "file_regex", "path": "intermediate.md", "pattern": "VOCAB_SIZE=8192",
-         "description": "intermediate has VOCAB_SIZE=8192"},
-        {"type": "file_regex", "path": "final.md", "pattern": "verified: WEIGHT_DECAY=0\\.2 VOCAB_SIZE=8192",
-         "description": "final.md has the verified line"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "parallel_dispatch_count",
+          "tool": "task",
+          "equals": 2,
+          "description": "step 1 must dispatch both subagents in one turn"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "task",
+          "equals": 2,
+          "description": "exactly 2 subagent dispatches"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "write",
+          "equals": 2,
+          "description": "exactly 2 writes (intermediate + final)"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "bash",
+          "equals": 1,
+          "description": "exactly 1 bash (verification cat)"
+        },
+        {
+          "type": "no_tool_name",
+          "not_equals": [
+            "read",
+            "grep",
+            "glob"
+          ],
+          "description": "parent must not inspect files directly"
+        },
+        {
+          "type": "tool_call_sequence",
+          "sequence": [
+            "task",
+            "write",
+            "bash",
+            "write"
+          ],
+          "description": "DAG flow: parallel task -> write intermediate -> bash verify -> write final"
+        },
+        {
+          "type": "file_regex",
+          "path": "intermediate.md",
+          "pattern": "WEIGHT_DECAY=0\\.2",
+          "description": "intermediate has WEIGHT_DECAY=0.2"
+        },
+        {
+          "type": "file_regex",
+          "path": "intermediate.md",
+          "pattern": "VOCAB_SIZE=8192",
+          "description": "intermediate has VOCAB_SIZE=8192"
+        },
+        {
+          "type": "file_regex",
+          "path": "final.md",
+          "pattern": "verified: WEIGHT_DECAY=0\\.2 VOCAB_SIZE=8192",
+          "description": "final.md has the verified line"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "medium"
     },
     {
       "id": 310,
@@ -588,21 +1371,51 @@
       "min_calls": 4,
       "prompt": "**In one assistant turn**, dispatch three `task` subagents (`subagent_type=explore`) in parallel. README.md at the repo root has multiple `## ` (level-2) section headings:\n\n- Subagent 1: read `README.md` and report the heading text (without the leading `## `) of the **first** `##` section.\n- Subagent 2: read `README.md` and report the heading text of the **second** `##` section.\n- Subagent 3: read `README.md` and report the heading text of the **third** `##` section.\n\nAfter all three return, write `toc.md` at the repo root with exactly three lines, in this format:\n\n    1. <heading 1>\n    2. <heading 2>\n    3. <heading 3>\n\nDo not call `read`, `grep`, or `glob` directly.",
       "checks": [
-        {"type": "parallel_dispatch_count", "tool": "task", "equals": 3,
-         "description": "model must dispatch all 3 task subagents in one assistant turn"},
-        {"type": "tool_call_count", "tool": "task", "equals": 3,
-         "description": "exactly 3 subagent dispatches"},
-        {"type": "no_tool_name", "not_equals": ["read", "grep", "glob"],
-         "description": "parent must not inspect README.md directly"},
-        {"type": "file_regex", "path": "toc.md", "pattern": "1\\.\\s*How it works",
-         "description": "first heading: How it works"},
-        {"type": "file_regex", "path": "toc.md", "pattern": "2\\.\\s*Quick start",
-         "description": "second heading: Quick start"},
-        {"type": "file_regex", "path": "toc.md", "pattern": "3\\.\\s*Running the agent",
-         "description": "third heading: Running the agent"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "parallel_dispatch_count",
+          "tool": "task",
+          "equals": 3,
+          "description": "model must dispatch all 3 task subagents in one assistant turn"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "task",
+          "equals": 3,
+          "description": "exactly 3 subagent dispatches"
+        },
+        {
+          "type": "no_tool_name",
+          "not_equals": [
+            "read",
+            "grep",
+            "glob"
+          ],
+          "description": "parent must not inspect README.md directly"
+        },
+        {
+          "type": "file_regex",
+          "path": "toc.md",
+          "pattern": "1\\.\\s*How it works",
+          "description": "first heading: How it works"
+        },
+        {
+          "type": "file_regex",
+          "path": "toc.md",
+          "pattern": "2\\.\\s*Quick start",
+          "description": "second heading: Quick start"
+        },
+        {
+          "type": "file_regex",
+          "path": "toc.md",
+          "pattern": "3\\.\\s*Running the agent",
+          "description": "third heading: Running the agent"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "medium"
     },
     {
       "id": 321,
@@ -613,31 +1426,81 @@
       "min_calls": 5,
       "prompt": "**In one assistant turn**, dispatch four `task` subagents (`subagent_type=explore`) in parallel:\n\n- Subagent 1: read `train.py` and report `EMBEDDING_LR`, `UNEMBEDDING_LR`, `MATRIX_LR`, `WEIGHT_DECAY`.\n- Subagent 2: read `train.py` and list the names of the top-level classes (e.g., `GPTConfig`, `GPT`, etc.) in source-file order.\n- Subagent 3: read `train.py` and report `ASPECT_RATIO`, `HEAD_DIM`, `DEPTH`, `DEVICE_BATCH_SIZE`.\n- Subagent 4: read `prepare.py` and report `MAX_SEQ_LEN`, `VOCAB_SIZE`, `BOS_TOKEN`.\n\nAfter all four return, write `report.md` at the repo root with four sections (`## Optimizer`, `## Classes`, `## Architecture`, `## Tokenizer`) populated from the subagent findings. Do not call `read`, `grep`, `glob`, or `bash` directly.",
       "checks": [
-        {"type": "parallel_dispatch_count", "tool": "task", "equals": 4,
-         "description": "model must dispatch all 4 task subagents in one assistant turn"},
-        {"type": "tool_call_count", "tool": "task", "equals": 4,
-         "description": "exactly 4 subagent dispatches"},
-        {"type": "no_tool_name", "not_equals": ["read", "grep", "glob", "bash"],
-         "description": "parent must not inspect files directly"},
-        {"type": "any_tool_name", "equals": "write",
-         "description": "parent writes report.md"},
-        {"type": "file_regex", "path": "report.md", "pattern": "## Optimizer",
-         "description": "Optimizer section present"},
-        {"type": "file_regex", "path": "report.md", "pattern": "## Classes",
-         "description": "Classes section present"},
-        {"type": "file_regex", "path": "report.md", "pattern": "## Architecture",
-         "description": "Architecture section present"},
-        {"type": "file_regex", "path": "report.md", "pattern": "## Tokenizer",
-         "description": "Tokenizer section present"},
-        {"type": "file_regex", "path": "report.md", "pattern": "EMBEDDING_LR.*0\\.6",
-         "description": "EMBEDDING_LR = 0.6"},
-        {"type": "file_regex", "path": "report.md", "pattern": "ASPECT_RATIO.*64",
-         "description": "ASPECT_RATIO = 64"},
-        {"type": "file_regex", "path": "report.md", "pattern": "VOCAB_SIZE.*8192",
-         "description": "VOCAB_SIZE = 8192"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "parallel_dispatch_count",
+          "tool": "task",
+          "equals": 4,
+          "description": "model must dispatch all 4 task subagents in one assistant turn"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "task",
+          "equals": 4,
+          "description": "exactly 4 subagent dispatches"
+        },
+        {
+          "type": "no_tool_name",
+          "not_equals": [
+            "read",
+            "grep",
+            "glob",
+            "bash"
+          ],
+          "description": "parent must not inspect files directly"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "write",
+          "description": "parent writes report.md"
+        },
+        {
+          "type": "file_regex",
+          "path": "report.md",
+          "pattern": "## Optimizer",
+          "description": "Optimizer section present"
+        },
+        {
+          "type": "file_regex",
+          "path": "report.md",
+          "pattern": "## Classes",
+          "description": "Classes section present"
+        },
+        {
+          "type": "file_regex",
+          "path": "report.md",
+          "pattern": "## Architecture",
+          "description": "Architecture section present"
+        },
+        {
+          "type": "file_regex",
+          "path": "report.md",
+          "pattern": "## Tokenizer",
+          "description": "Tokenizer section present"
+        },
+        {
+          "type": "file_regex",
+          "path": "report.md",
+          "pattern": "EMBEDDING_LR.*0\\.6",
+          "description": "EMBEDDING_LR = 0.6"
+        },
+        {
+          "type": "file_regex",
+          "path": "report.md",
+          "pattern": "ASPECT_RATIO.*64",
+          "description": "ASPECT_RATIO = 64"
+        },
+        {
+          "type": "file_regex",
+          "path": "report.md",
+          "pattern": "VOCAB_SIZE.*8192",
+          "description": "VOCAB_SIZE = 8192"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "medium"
     },
     {
       "id": 322,
@@ -648,33 +1511,87 @@
       "min_calls": 6,
       "prompt": "**In one assistant turn**, dispatch five `task` subagents (`subagent_type=explore`) in parallel, each reading a different module of the requests source tree:\n\n- Subagent 1: `src/requests/api.py` -- list its 8 top-level functions.\n- Subagent 2: `src/requests/auth.py` -- list its 4 top-level classes.\n- Subagent 3: `src/requests/hooks.py` -- list its 2 top-level functions.\n- Subagent 4: `src/requests/_internal_utils.py` -- list its 2 top-level functions.\n- Subagent 5: `src/requests/structures.py` -- list its 2 top-level classes.\n\nAfter all five return, write `inventory.md` at the repo root with five sections, in this order: `## api.py functions`, `## auth.py classes`, `## hooks.py functions`, `## _internal_utils.py functions`, `## structures.py classes`. Each section lists one name per line.\n\nDo not call `read`, `grep`, or `glob` directly.",
       "checks": [
-        {"type": "parallel_dispatch_count", "tool": "task", "equals": 5,
-         "description": "model must dispatch all 5 task subagents in one assistant turn"},
-        {"type": "tool_call_count", "tool": "task", "equals": 5,
-         "description": "exactly 5 subagent dispatches"},
-        {"type": "no_tool_name", "not_equals": ["read", "grep", "glob"],
-         "description": "parent must not inspect files directly"},
-        {"type": "file_regex", "path": "inventory.md", "pattern": "## api\\.py functions",
-         "description": "api.py section present"},
-        {"type": "file_regex", "path": "inventory.md", "pattern": "## auth\\.py classes",
-         "description": "auth.py section present"},
-        {"type": "file_regex", "path": "inventory.md", "pattern": "## hooks\\.py functions",
-         "description": "hooks.py section present"},
-        {"type": "file_regex", "path": "inventory.md", "pattern": "## _internal_utils\\.py functions",
-         "description": "_internal_utils.py section present"},
-        {"type": "file_regex", "path": "inventory.md", "pattern": "## structures\\.py classes",
-         "description": "structures.py section present"},
-        {"type": "file_regex", "path": "inventory.md", "pattern": "AuthBase",
-         "description": "AuthBase class listed"},
-        {"type": "file_regex", "path": "inventory.md", "pattern": "default_hooks",
-         "description": "default_hooks fn listed"},
-        {"type": "file_regex", "path": "inventory.md", "pattern": "to_native_string",
-         "description": "to_native_string fn listed"},
-        {"type": "file_regex", "path": "inventory.md", "pattern": "CaseInsensitiveDict",
-         "description": "CaseInsensitiveDict class listed"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "parallel_dispatch_count",
+          "tool": "task",
+          "equals": 5,
+          "description": "model must dispatch all 5 task subagents in one assistant turn"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "task",
+          "equals": 5,
+          "description": "exactly 5 subagent dispatches"
+        },
+        {
+          "type": "no_tool_name",
+          "not_equals": [
+            "read",
+            "grep",
+            "glob"
+          ],
+          "description": "parent must not inspect files directly"
+        },
+        {
+          "type": "file_regex",
+          "path": "inventory.md",
+          "pattern": "## api\\.py functions",
+          "description": "api.py section present"
+        },
+        {
+          "type": "file_regex",
+          "path": "inventory.md",
+          "pattern": "## auth\\.py classes",
+          "description": "auth.py section present"
+        },
+        {
+          "type": "file_regex",
+          "path": "inventory.md",
+          "pattern": "## hooks\\.py functions",
+          "description": "hooks.py section present"
+        },
+        {
+          "type": "file_regex",
+          "path": "inventory.md",
+          "pattern": "## _internal_utils\\.py functions",
+          "description": "_internal_utils.py section present"
+        },
+        {
+          "type": "file_regex",
+          "path": "inventory.md",
+          "pattern": "## structures\\.py classes",
+          "description": "structures.py section present"
+        },
+        {
+          "type": "file_regex",
+          "path": "inventory.md",
+          "pattern": "AuthBase",
+          "description": "AuthBase class listed"
+        },
+        {
+          "type": "file_regex",
+          "path": "inventory.md",
+          "pattern": "default_hooks",
+          "description": "default_hooks fn listed"
+        },
+        {
+          "type": "file_regex",
+          "path": "inventory.md",
+          "pattern": "to_native_string",
+          "description": "to_native_string fn listed"
+        },
+        {
+          "type": "file_regex",
+          "path": "inventory.md",
+          "pattern": "CaseInsensitiveDict",
+          "description": "CaseInsensitiveDict class listed"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "hard"
     },
     {
       "id": 323,
@@ -685,23 +1602,57 @@
       "min_calls": 7,
       "prompt": "**In one assistant turn**, dispatch six `task` subagents (`subagent_type=explore`) in parallel:\n\n- Subagent 1: read `src/requests/api.py` and list its 8 top-level functions.\n- Subagent 2: read `src/requests/auth.py` and list its 4 top-level classes.\n- Subagent 3: read `src/requests/hooks.py` and list its 2 top-level functions.\n- Subagent 4: read `src/requests/exceptions.py` and report the COUNT of top-level classes (it has 25).\n- Subagent 5: read `src/requests/_internal_utils.py` and list its 2 top-level functions.\n- Subagent 6: read `src/requests/structures.py` and list its 2 top-level classes.\n\nAfter all six return, write `survey.md` at the repo root with six sections in the order above (`## api.py functions`, `## auth.py classes`, `## hooks.py functions`, `## exceptions.py count`, `## _internal_utils.py functions`, `## structures.py classes`). The exceptions section is a single line: `count: 25`.\n\nDo not call `read`, `grep`, or `glob` directly. This sample probes opencode's parallel-dispatch ceiling -- 6 task calls in one turn.",
       "checks": [
-        {"type": "parallel_dispatch_count", "tool": "task", "equals": 6,
-         "description": "model must dispatch all 6 task subagents in one assistant turn -- this probes opencode's fan-out ceiling"},
-        {"type": "tool_call_count", "tool": "task", "equals": 6,
-         "description": "exactly 6 subagent dispatches"},
-        {"type": "no_tool_name", "not_equals": ["read", "grep", "glob"],
-         "description": "parent must not inspect files directly"},
-        {"type": "file_regex", "path": "survey.md", "pattern": "## exceptions\\.py count",
-         "description": "exceptions count section present"},
-        {"type": "file_regex", "path": "survey.md", "pattern": "count:\\s*25",
-         "description": "exceptions count = 25"},
-        {"type": "file_regex", "path": "survey.md", "pattern": "AuthBase",
-         "description": "AuthBase listed"},
-        {"type": "file_regex", "path": "survey.md", "pattern": "CaseInsensitiveDict",
-         "description": "CaseInsensitiveDict listed"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "parallel_dispatch_count",
+          "tool": "task",
+          "equals": 6,
+          "description": "model must dispatch all 6 task subagents in one assistant turn -- this probes opencode's fan-out ceiling"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "task",
+          "equals": 6,
+          "description": "exactly 6 subagent dispatches"
+        },
+        {
+          "type": "no_tool_name",
+          "not_equals": [
+            "read",
+            "grep",
+            "glob"
+          ],
+          "description": "parent must not inspect files directly"
+        },
+        {
+          "type": "file_regex",
+          "path": "survey.md",
+          "pattern": "## exceptions\\.py count",
+          "description": "exceptions count section present"
+        },
+        {
+          "type": "file_regex",
+          "path": "survey.md",
+          "pattern": "count:\\s*25",
+          "description": "exceptions count = 25"
+        },
+        {
+          "type": "file_regex",
+          "path": "survey.md",
+          "pattern": "AuthBase",
+          "description": "AuthBase listed"
+        },
+        {
+          "type": "file_regex",
+          "path": "survey.md",
+          "pattern": "CaseInsensitiveDict",
+          "description": "CaseInsensitiveDict listed"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "hard"
     },
     {
       "id": 324,
@@ -712,29 +1663,72 @@
       "min_calls": 5,
       "prompt": "**In one assistant turn**, issue four `read` calls in parallel (no subagents -- the parent reads four files directly in the same assistant turn):\n\n- Read 1: `src/requests/api.py`.\n- Read 2: `src/requests/auth.py`.\n- Read 3: `src/requests/hooks.py`.\n- Read 4: `src/requests/_internal_utils.py`.\n\nAfter all four reads return, write `inventory.md` at the repo root with four sections (`## api.py functions`, `## auth.py classes`, `## hooks.py functions`, `## _internal_utils.py functions`). Each section lists one name per line in source-file order.\n\nDo not use `task`, `grep`, `glob`, or `bash`. Pairs with #319 (2 parallel reads) to test whether opencode's native-tool fan-out scales beyond 2.",
       "checks": [
-        {"type": "parallel_dispatch_count", "tool": "read", "equals": 4,
-         "description": "step 1 must dispatch all 4 reads in one assistant turn -- tests native-tool fan-out width"},
-        {"type": "tool_call_count", "tool": "read", "equals": 4,
-         "description": "exactly 4 reads"},
-        {"type": "tool_call_count", "tool": "write", "equals": 1,
-         "description": "exactly 1 write"},
-        {"type": "tool_call_count", "tool": "task", "equals": 0,
-         "description": "no subagent dispatches"},
-        {"type": "tool_call_count", "tool": "grep", "equals": 0,
-         "description": "no grep"},
-        {"type": "tool_call_count", "tool": "bash", "equals": 0,
-         "description": "no bash"},
-        {"type": "file_regex", "path": "inventory.md", "pattern": "## api\\.py functions",
-         "description": "api.py section present"},
-        {"type": "file_regex", "path": "inventory.md", "pattern": "## auth\\.py classes",
-         "description": "auth.py section present"},
-        {"type": "file_regex", "path": "inventory.md", "pattern": "AuthBase",
-         "description": "AuthBase listed"},
-        {"type": "file_regex", "path": "inventory.md", "pattern": "to_native_string",
-         "description": "to_native_string listed"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "parallel_dispatch_count",
+          "tool": "read",
+          "equals": 4,
+          "description": "step 1 must dispatch all 4 reads in one assistant turn -- tests native-tool fan-out width"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "read",
+          "equals": 4,
+          "description": "exactly 4 reads"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "write",
+          "equals": 1,
+          "description": "exactly 1 write"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "task",
+          "equals": 0,
+          "description": "no subagent dispatches"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "grep",
+          "equals": 0,
+          "description": "no grep"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "bash",
+          "equals": 0,
+          "description": "no bash"
+        },
+        {
+          "type": "file_regex",
+          "path": "inventory.md",
+          "pattern": "## api\\.py functions",
+          "description": "api.py section present"
+        },
+        {
+          "type": "file_regex",
+          "path": "inventory.md",
+          "pattern": "## auth\\.py classes",
+          "description": "auth.py section present"
+        },
+        {
+          "type": "file_regex",
+          "path": "inventory.md",
+          "pattern": "AuthBase",
+          "description": "AuthBase listed"
+        },
+        {
+          "type": "file_regex",
+          "path": "inventory.md",
+          "pattern": "to_native_string",
+          "description": "to_native_string listed"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "medium"
     },
     {
       "id": 325,
@@ -745,23 +1739,58 @@
       "min_calls": 5,
       "prompt": "**In one assistant turn**, dispatch four `task` subagents (`subagent_type=explore`) in parallel, each reporting a different statistic about `train.py`:\n\n- Subagent 1: report the value of `WEIGHT_DECAY` (should be 0.2).\n- Subagent 2: count the top-level functions defined at module scope (should be 9, e.g. `norm`, `has_ve`, `apply_rotary_emb`, etc.).\n- Subagent 3: count the top-level classes (should be 6: `GPTConfig`, `CausalSelfAttention`, `MLP`, `Block`, `GPT`, `MuonAdamW`).\n- Subagent 4: report the value of `EMBEDDING_LR` (should be 0.6).\n\nAfter all four return, write `stats.md` at the repo root with exactly these four lines:\n\n    WEIGHT_DECAY: <subagent 1>\n    top_level_functions: <subagent 2>\n    top_level_classes: <subagent 3>\n    EMBEDDING_LR: <subagent 4>\n\nDo not call `read`, `grep`, `glob`, or `bash` directly.",
       "checks": [
-        {"type": "parallel_dispatch_count", "tool": "task", "equals": 4,
-         "description": "step 1 must dispatch all 4 subagents in one assistant turn"},
-        {"type": "tool_call_count", "tool": "task", "equals": 4,
-         "description": "exactly 4 subagent dispatches"},
-        {"type": "no_tool_name", "not_equals": ["read", "grep", "glob", "bash"],
-         "description": "parent must not inspect files directly"},
-        {"type": "file_regex", "path": "stats.md", "pattern": "WEIGHT_DECAY:\\s*0\\.2",
-         "description": "WEIGHT_DECAY = 0.2"},
-        {"type": "file_regex", "path": "stats.md", "pattern": "EMBEDDING_LR:\\s*0\\.6",
-         "description": "EMBEDDING_LR = 0.6"},
-        {"type": "file_regex", "path": "stats.md", "pattern": "top_level_functions:\\s*9",
-         "description": "9 top-level functions"},
-        {"type": "file_regex", "path": "stats.md", "pattern": "top_level_classes:\\s*6",
-         "description": "6 top-level classes"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "parallel_dispatch_count",
+          "tool": "task",
+          "equals": 4,
+          "description": "step 1 must dispatch all 4 subagents in one assistant turn"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "task",
+          "equals": 4,
+          "description": "exactly 4 subagent dispatches"
+        },
+        {
+          "type": "no_tool_name",
+          "not_equals": [
+            "read",
+            "grep",
+            "glob",
+            "bash"
+          ],
+          "description": "parent must not inspect files directly"
+        },
+        {
+          "type": "file_regex",
+          "path": "stats.md",
+          "pattern": "WEIGHT_DECAY:\\s*0\\.2",
+          "description": "WEIGHT_DECAY = 0.2"
+        },
+        {
+          "type": "file_regex",
+          "path": "stats.md",
+          "pattern": "EMBEDDING_LR:\\s*0\\.6",
+          "description": "EMBEDDING_LR = 0.6"
+        },
+        {
+          "type": "file_regex",
+          "path": "stats.md",
+          "pattern": "top_level_functions:\\s*9",
+          "description": "9 top-level functions"
+        },
+        {
+          "type": "file_regex",
+          "path": "stats.md",
+          "pattern": "top_level_classes:\\s*6",
+          "description": "6 top-level classes"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "hard"
     },
     {
       "id": 326,
@@ -772,21 +1801,51 @@
       "min_calls": 3,
       "prompt": "**In one assistant turn**, dispatch two `task` subagents (`subagent_type=explore`) in parallel. They are asked the same question, but pointed at different files -- one of them will find the answer; the other will not:\n\n- Subagent A: read `train.py` and report the value of the top-level constant `WEIGHT_DECAY`. (It should be 0.2.)\n- Subagent B: read `prepare.py` and report the value of the top-level constant `WEIGHT_DECAY`. (It does not exist in `prepare.py`; the subagent should say 'not found' or similar.)\n\nAfter both return, write `reconciliation.md` at the repo root with exactly these three lines, reconciling the disjoint findings:\n\n    train.py: 0.2\n    prepare.py: not found\n    canonical_value: 0.2\n\nThe canonical value is whichever of the two subagent answers is non-null. Do not call `read`, `grep`, or `glob` directly.",
       "checks": [
-        {"type": "parallel_dispatch_count", "tool": "task", "equals": 2,
-         "description": "step 1 must dispatch both subagents in one assistant turn"},
-        {"type": "tool_call_count", "tool": "task", "equals": 2,
-         "description": "exactly 2 subagent dispatches"},
-        {"type": "no_tool_name", "not_equals": ["read", "grep", "glob"],
-         "description": "parent must not inspect files directly"},
-        {"type": "file_regex", "path": "reconciliation.md", "pattern": "train\\.py:\\s*0\\.2",
-         "description": "train.py reports 0.2"},
-        {"type": "file_regex", "path": "reconciliation.md", "pattern": "prepare\\.py:\\s*not found",
-         "description": "prepare.py reports not found"},
-        {"type": "file_regex", "path": "reconciliation.md", "pattern": "canonical_value:\\s*0\\.2",
-         "description": "parent reconciles to canonical_value 0.2"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "parallel_dispatch_count",
+          "tool": "task",
+          "equals": 2,
+          "description": "step 1 must dispatch both subagents in one assistant turn"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "task",
+          "equals": 2,
+          "description": "exactly 2 subagent dispatches"
+        },
+        {
+          "type": "no_tool_name",
+          "not_equals": [
+            "read",
+            "grep",
+            "glob"
+          ],
+          "description": "parent must not inspect files directly"
+        },
+        {
+          "type": "file_regex",
+          "path": "reconciliation.md",
+          "pattern": "train\\.py:\\s*0\\.2",
+          "description": "train.py reports 0.2"
+        },
+        {
+          "type": "file_regex",
+          "path": "reconciliation.md",
+          "pattern": "prepare\\.py:\\s*not found",
+          "description": "prepare.py reports not found"
+        },
+        {
+          "type": "file_regex",
+          "path": "reconciliation.md",
+          "pattern": "canonical_value:\\s*0\\.2",
+          "description": "parent reconciles to canonical_value 0.2"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "medium"
     },
     {
       "id": 327,
@@ -803,23 +1862,56 @@
       },
       "prompt": "Dispatch one `task` subagent (`subagent_type=recursive_dispatcher`) with this exact instruction:\n\n> Dispatch your OWN `task` subagent (`subagent_type=explore`) and ask it to read `train.py` and report the value of `EMBEDDING_LR`. Wait for your sub-subagent to return, then return its answer to me prefixed with `via_subsubagent: `.\n\nAfter your subagent returns, write `hierarchy.md` at the repo root with exactly two lines:\n\n    via_subsubagent: 0.6\n    final: EMBEDDING_LR=0.6\n\nThis tests opencode's recursive subagent dispatch: parent -> subagent (recursive_dispatcher, has task) -> sub-subagent (explore, reads train.py). Depth 2. Do not call `read`, `grep`, or `glob` directly. Notice that `subagent_type=recursive_dispatcher` is a custom subagent shipped with this sample's workspace overlay (`.opencode/agents/recursive_dispatcher.md`) -- the default `explore` subagent does not have the `task` tool.",
       "checks": [
-        {"type": "tool_call_count", "tool": "task", "equals": 2,
-         "description": "exactly 2 task calls in the recursive trace: parent's 1 + subagent's 1 (the depth-2 dispatch)"},
-        {"type": "any_tool_name_recursive", "equals": "task",
-         "description": "at least one task call exists across the recursive trace"},
-        {"type": "any_tool_param_value_recursive", "tool": "task", "param": "subagent_type", "equals": "recursive_dispatcher",
-         "description": "parent's task uses subagent_type=recursive_dispatcher (the custom hierarchical-capable agent)"},
-        {"type": "any_tool_name_recursive", "equals": "read",
-         "description": "the sub-subagent (explore) reads train.py"},
-        {"type": "no_tool_name", "not_equals": ["read", "grep", "glob"],
-         "description": "parent must not inspect files directly"},
-        {"type": "file_regex", "path": "hierarchy.md", "pattern": "via_subsubagent:\\s*0\\.6",
-         "description": "value transited from sub-subagent through subagent to parent"},
-        {"type": "file_regex", "path": "hierarchy.md", "pattern": "final: EMBEDDING_LR=0\\.6",
-         "description": "final line includes the value"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "tool_call_count",
+          "tool": "task",
+          "equals": 2,
+          "description": "exactly 2 task calls in the recursive trace: parent's 1 + subagent's 1 (the depth-2 dispatch)"
+        },
+        {
+          "type": "any_tool_name_recursive",
+          "equals": "task",
+          "description": "at least one task call exists across the recursive trace"
+        },
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "task",
+          "param": "subagent_type",
+          "equals": "recursive_dispatcher",
+          "description": "parent's task uses subagent_type=recursive_dispatcher (the custom hierarchical-capable agent)"
+        },
+        {
+          "type": "any_tool_name_recursive",
+          "equals": "read",
+          "description": "the sub-subagent (explore) reads train.py"
+        },
+        {
+          "type": "no_tool_name",
+          "not_equals": [
+            "read",
+            "grep",
+            "glob"
+          ],
+          "description": "parent must not inspect files directly"
+        },
+        {
+          "type": "file_regex",
+          "path": "hierarchy.md",
+          "pattern": "via_subsubagent:\\s*0\\.6",
+          "description": "value transited from sub-subagent through subagent to parent"
+        },
+        {
+          "type": "file_regex",
+          "path": "hierarchy.md",
+          "pattern": "final: EMBEDDING_LR=0\\.6",
+          "description": "final line includes the value"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "hard"
     },
     {
       "id": 328,
@@ -830,27 +1922,69 @@
       "min_calls": 4,
       "prompt": "**In one assistant turn**, dispatch two `task` subagents (`subagent_type=explore`) in parallel:\n\n- Subagent A: read `src/requests/sessions.py` and report whether the `Session` class has a method named `send` (yes/no).\n- Subagent B: read `src/requests/adapters.py` and report whether the `HTTPAdapter` class has a method named `send` (yes/no).\n\nAfter both return, issue a single **grep** call: search `src/requests/sessions.py` for the literal `def send` (this is your validation step). Then write `validation.md` at the repo root with exactly three lines:\n\n    sessions.Session.send: <yes/no from subagent A>\n    adapters.HTTPAdapter.send: <yes/no from subagent B>\n    validation_grep_count: <integer count of matches from grep>\n\nBoth subagents should answer 'yes' (both classes do have `send`). Do not call `read` or `glob` directly; the only parent-level non-task tool is the single grep validation call.",
       "checks": [
-        {"type": "parallel_dispatch_count", "tool": "task", "equals": 2,
-         "description": "step 1 must dispatch both subagents in one turn"},
-        {"type": "tool_call_count", "tool": "task", "equals": 2,
-         "description": "exactly 2 subagent dispatches"},
-        {"type": "tool_call_count", "tool": "grep", "equals": 1,
-         "description": "exactly 1 validation grep"},
-        {"type": "tool_call_count", "tool": "write", "equals": 1,
-         "description": "exactly 1 write"},
-        {"type": "no_tool_name", "not_equals": ["read", "glob"],
-         "description": "parent must not call read or glob directly"},
-        {"type": "any_tool_param_regex", "tool": "grep", "param": "pattern", "pattern": "def send",
-         "description": "validation grep searches for `def send`"},
-        {"type": "file_regex", "path": "validation.md", "pattern": "sessions\\.Session\\.send:\\s*yes",
-         "description": "Session.send: yes"},
-        {"type": "file_regex", "path": "validation.md", "pattern": "adapters\\.HTTPAdapter\\.send:\\s*yes",
-         "description": "HTTPAdapter.send: yes"},
-        {"type": "file_regex", "path": "validation.md", "pattern": "validation_grep_count:\\s*\\d+",
-         "description": "grep count is reported"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "parallel_dispatch_count",
+          "tool": "task",
+          "equals": 2,
+          "description": "step 1 must dispatch both subagents in one turn"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "task",
+          "equals": 2,
+          "description": "exactly 2 subagent dispatches"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "grep",
+          "equals": 1,
+          "description": "exactly 1 validation grep"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "write",
+          "equals": 1,
+          "description": "exactly 1 write"
+        },
+        {
+          "type": "no_tool_name",
+          "not_equals": [
+            "read",
+            "glob"
+          ],
+          "description": "parent must not call read or glob directly"
+        },
+        {
+          "type": "any_tool_param_regex",
+          "tool": "grep",
+          "param": "pattern",
+          "pattern": "def send",
+          "description": "validation grep searches for `def send`"
+        },
+        {
+          "type": "file_regex",
+          "path": "validation.md",
+          "pattern": "sessions\\.Session\\.send:\\s*yes",
+          "description": "Session.send: yes"
+        },
+        {
+          "type": "file_regex",
+          "path": "validation.md",
+          "pattern": "adapters\\.HTTPAdapter\\.send:\\s*yes",
+          "description": "HTTPAdapter.send: yes"
+        },
+        {
+          "type": "file_regex",
+          "path": "validation.md",
+          "pattern": "validation_grep_count:\\s*\\d+",
+          "description": "grep count is reported"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "medium"
     },
     {
       "id": 329,
@@ -861,35 +1995,90 @@
       "min_calls": 9,
       "prompt": "For each of these 8 files, run **one separate** `bash` command using `grep -c \"def \" <file>` to count `def ` occurrences:\n\n1. `src/requests/adapters.py`\n2. `src/requests/auth.py`\n3. `src/requests/cookies.py`\n4. `src/requests/exceptions.py`\n5. `src/requests/hooks.py`\n6. `src/requests/models.py`\n7. `src/requests/sessions.py`\n8. `src/requests/utils.py`\n\nIssue 8 separate bash calls (one per file, in this order). Then write `def_count.md` at the repo root with 8 lines, in the same order:\n\n    src/requests/adapters.py: 20\n    src/requests/auth.py: 19\n    src/requests/cookies.py: 49\n    src/requests/exceptions.py: 3\n    src/requests/hooks.py: 2\n    src/requests/models.py: 44\n    src/requests/sessions.py: 28\n    src/requests/utils.py: 43\n\nThe expected counts are pinned above. No other tool calls (no `read`, no `grep`, no `glob`).",
       "checks": [
-        {"type": "tool_call_count", "tool": "bash", "equals": 8,
-         "description": "exactly 8 bash calls (one per file)"},
-        {"type": "tool_call_count", "tool": "write", "equals": 1,
-         "description": "exactly 1 write"},
-        {"type": "tool_call_count", "tool": "read", "equals": 0,
-         "description": "no read calls"},
-        {"type": "tool_call_count", "tool": "grep", "equals": 0,
-         "description": "no grep tool calls"},
-        {"type": "tool_call_count", "tool": "glob", "equals": 0,
-         "description": "no glob calls"},
-        {"type": "file_regex", "path": "def_count.md", "pattern": "adapters\\.py:\\s*20",
-         "description": "adapters.py count = 20"},
-        {"type": "file_regex", "path": "def_count.md", "pattern": "auth\\.py:\\s*19",
-         "description": "auth.py count = 19"},
-        {"type": "file_regex", "path": "def_count.md", "pattern": "cookies\\.py:\\s*49",
-         "description": "cookies.py count = 49"},
-        {"type": "file_regex", "path": "def_count.md", "pattern": "exceptions\\.py:\\s*3",
-         "description": "exceptions.py count = 3"},
-        {"type": "file_regex", "path": "def_count.md", "pattern": "hooks\\.py:\\s*2",
-         "description": "hooks.py count = 2"},
-        {"type": "file_regex", "path": "def_count.md", "pattern": "models\\.py:\\s*44",
-         "description": "models.py count = 44"},
-        {"type": "file_regex", "path": "def_count.md", "pattern": "sessions\\.py:\\s*28",
-         "description": "sessions.py count = 28"},
-        {"type": "file_regex", "path": "def_count.md", "pattern": "utils\\.py:\\s*43",
-         "description": "utils.py count = 43"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "tool_call_count",
+          "tool": "bash",
+          "equals": 8,
+          "description": "exactly 8 bash calls (one per file)"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "write",
+          "equals": 1,
+          "description": "exactly 1 write"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "read",
+          "equals": 0,
+          "description": "no read calls"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "grep",
+          "equals": 0,
+          "description": "no grep tool calls"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "glob",
+          "equals": 0,
+          "description": "no glob calls"
+        },
+        {
+          "type": "file_regex",
+          "path": "def_count.md",
+          "pattern": "adapters\\.py:\\s*20",
+          "description": "adapters.py count = 20"
+        },
+        {
+          "type": "file_regex",
+          "path": "def_count.md",
+          "pattern": "auth\\.py:\\s*19",
+          "description": "auth.py count = 19"
+        },
+        {
+          "type": "file_regex",
+          "path": "def_count.md",
+          "pattern": "cookies\\.py:\\s*49",
+          "description": "cookies.py count = 49"
+        },
+        {
+          "type": "file_regex",
+          "path": "def_count.md",
+          "pattern": "exceptions\\.py:\\s*3",
+          "description": "exceptions.py count = 3"
+        },
+        {
+          "type": "file_regex",
+          "path": "def_count.md",
+          "pattern": "hooks\\.py:\\s*2",
+          "description": "hooks.py count = 2"
+        },
+        {
+          "type": "file_regex",
+          "path": "def_count.md",
+          "pattern": "models\\.py:\\s*44",
+          "description": "models.py count = 44"
+        },
+        {
+          "type": "file_regex",
+          "path": "def_count.md",
+          "pattern": "sessions\\.py:\\s*28",
+          "description": "sessions.py count = 28"
+        },
+        {
+          "type": "file_regex",
+          "path": "def_count.md",
+          "pattern": "utils\\.py:\\s*43",
+          "description": "utils.py count = 43"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "hard"
     },
     {
       "id": 330,
@@ -900,27 +2089,71 @@
       "min_calls": 5,
       "prompt": "Perform an iteration followed by an aggregation step:\n\n1. For each of these 3 helper functions defined in `src/requests/utils.py`, count their callers in `src/requests/sessions.py` using **one separate** `grep` call per helper (3 grep calls total, in this order):\n   - `merge_setting`\n   - `to_key_val_list`\n   - `iter_slices`\n\n2. After the 3 grep calls, run **one** `bash` command: `wc -l src/requests/sessions.py` (this is the post-iteration aggregation step -- it gathers a total-context number).\n\n3. Write `summary.md` at the repo root with exactly four lines:\n\n    merge_setting: 9\n    to_key_val_list: 3\n    iter_slices: 0\n    sessions.py_total_lines: <integer from bash output>\n\nNo other tool calls. The expected helper counts are pinned above.",
       "checks": [
-        {"type": "tool_call_count", "tool": "grep", "equals": 3,
-         "description": "exactly 3 grep calls (one per helper)"},
-        {"type": "tool_call_count", "tool": "bash", "equals": 1,
-         "description": "exactly 1 bash call (post-iteration aggregation: wc -l)"},
-        {"type": "tool_call_count", "tool": "write", "equals": 1,
-         "description": "exactly 1 write"},
-        {"type": "tool_call_count", "tool": "read", "equals": 0,
-         "description": "no read calls"},
-        {"type": "tool_call_sequence", "sequence": ["grep", "grep", "grep", "bash", "write"],
-         "description": "iteration steps then aggregation then write"},
-        {"type": "file_regex", "path": "summary.md", "pattern": "merge_setting:\\s*9",
-         "description": "merge_setting count = 9"},
-        {"type": "file_regex", "path": "summary.md", "pattern": "to_key_val_list:\\s*3",
-         "description": "to_key_val_list count = 3"},
-        {"type": "file_regex", "path": "summary.md", "pattern": "iter_slices:\\s*0",
-         "description": "iter_slices count = 0"},
-        {"type": "file_regex", "path": "summary.md", "pattern": "sessions\\.py_total_lines:\\s*\\d+",
-         "description": "sessions.py total lines reported"},
-        {"type": "call_schema_valid",
-         "description": "all tool calls match opencode schemas"}
-      ]
+        {
+          "type": "tool_call_count",
+          "tool": "grep",
+          "equals": 3,
+          "description": "exactly 3 grep calls (one per helper)"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "bash",
+          "equals": 1,
+          "description": "exactly 1 bash call (post-iteration aggregation: wc -l)"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "write",
+          "equals": 1,
+          "description": "exactly 1 write"
+        },
+        {
+          "type": "tool_call_count",
+          "tool": "read",
+          "equals": 0,
+          "description": "no read calls"
+        },
+        {
+          "type": "tool_call_sequence",
+          "sequence": [
+            "grep",
+            "grep",
+            "grep",
+            "bash",
+            "write"
+          ],
+          "description": "iteration steps then aggregation then write"
+        },
+        {
+          "type": "file_regex",
+          "path": "summary.md",
+          "pattern": "merge_setting:\\s*9",
+          "description": "merge_setting count = 9"
+        },
+        {
+          "type": "file_regex",
+          "path": "summary.md",
+          "pattern": "to_key_val_list:\\s*3",
+          "description": "to_key_val_list count = 3"
+        },
+        {
+          "type": "file_regex",
+          "path": "summary.md",
+          "pattern": "iter_slices:\\s*0",
+          "description": "iter_slices count = 0"
+        },
+        {
+          "type": "file_regex",
+          "path": "summary.md",
+          "pattern": "sessions\\.py_total_lines:\\s*\\d+",
+          "description": "sessions.py total lines reported"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
+      ],
+      "difficulty": "medium"
     }
   ]
 }
