@@ -89,14 +89,9 @@ FAMILIES: dict[str, dict[str, Any]] = {
         "manifest": ROOT / "data" / "v1_skill_criteria.json",
         "default_ids": "401-430",
         "category": "skill",
-        # Skill samples use a `difficulty` field with values like
-        # "tier-a-baseline", "tier-b-discovery", "tier-c-delta",
-        # "tier-d-selectivity", "tier-e-composition". Tier order is
-        # informative for plan progress but not strictly monotonic in
-        # difficulty (composition isn't strictly harder than discovery),
-        # so gradient checks are off.
+        # Skill samples now use explicit easy/medium/hard tiers.
         "tier_field": "difficulty",
-        "tier_order": None,
+        "tier_order": ["easy", "medium", "hard"],
     },
 }
 

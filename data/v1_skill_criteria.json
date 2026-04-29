@@ -5,7 +5,8 @@
     {
       "id": 401,
       "name": "skill_workflow_review_requests",
-      "difficulty": "tier-a-baseline",
+      "legacy_difficulty": "tier-a-baseline",
+      "difficulty": "easy",
       "category": "skill",
       "structural_signature": {
         "template": "workflow",
@@ -70,7 +71,11 @@
         }
       ],
       "expected_skill_invocations": [
-        {"skill_name": "review-flow", "must_invoke": true, "must_not_invoke": false}
+        {
+          "skill_name": "review-flow",
+          "must_invoke": true,
+          "must_not_invoke": false
+        }
       ],
       "comparison_id": null,
       "_authoring_notes": "Hello-world for the SKILL family. Workflow-style skill (procedural prose) on requests. Prompt mentions 'a procedural skill' to nudge discovery; passing requires the model to actually invoke the `skill` tool with name=review-flow. Tier-A baseline; no structural-triple collisions yet."
@@ -78,7 +83,8 @@
     {
       "id": 402,
       "name": "skill_workflow_audit_autoresearch",
-      "difficulty": "tier-a-baseline",
+      "legacy_difficulty": "tier-a-baseline",
+      "difficulty": "easy",
       "category": "skill",
       "structural_signature": {
         "template": "workflow-audit",
@@ -88,28 +94,75 @@
       },
       "repo": "autoresearch",
       "skills_overlay": [
-        {"skill_name": "audit-flow", "fixture_path": ".opencode/skills/audit-flow/SKILL.md"}
+        {
+          "skill_name": "audit-flow",
+          "fixture_path": ".opencode/skills/audit-flow/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Audit the optimizer constants in this `autoresearch` repo and produce an `audit.md` summary at the repo root.\n\nThe project ships a procedural skill that defines exactly how audits should be done in this codebase. Use it.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "audit-flow", "description": "model loaded the right skill"},
-        {"type": "any_tool_name", "equals": "skill", "description": "model used the skill tool at the parent layer"},
-        {"type": "tool_before", "first": "skill", "then": "read", "description": "skill loaded BEFORE the read it prescribes"},
-        {"type": "any_tool_name", "equals": "write", "description": "model produced an artifact"},
-        {"type": "file_regex", "path": "audit.md", "pattern": "# Audit:", "description": "audit.md has the skill-prescribed heading"},
-        {"type": "file_regex", "path": "audit.md", "pattern": "## Optimizer", "description": "audit.md has the Optimizer section"},
-        {"type": "file_regex", "path": "audit.md", "pattern": "EMBEDDING_LR:\\s*0\\.6", "description": "audit reports the correct EMBEDDING_LR value"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "audit-flow",
+          "description": "model loaded the right skill"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "skill",
+          "description": "model used the skill tool at the parent layer"
+        },
+        {
+          "type": "tool_before",
+          "first": "skill",
+          "then": "read",
+          "description": "skill loaded BEFORE the read it prescribes"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "write",
+          "description": "model produced an artifact"
+        },
+        {
+          "type": "file_regex",
+          "path": "audit.md",
+          "pattern": "# Audit:",
+          "description": "audit.md has the skill-prescribed heading"
+        },
+        {
+          "type": "file_regex",
+          "path": "audit.md",
+          "pattern": "## Optimizer",
+          "description": "audit.md has the Optimizer section"
+        },
+        {
+          "type": "file_regex",
+          "path": "audit.md",
+          "pattern": "EMBEDDING_LR:\\s*0\\.6",
+          "description": "audit reports the correct EMBEDDING_LR value"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
-      "expected_skill_invocations": [{"skill_name": "audit-flow", "must_invoke": true, "must_not_invoke": false}],
+      "expected_skill_invocations": [
+        {
+          "skill_name": "audit-flow",
+          "must_invoke": true,
+          "must_not_invoke": false
+        }
+      ],
       "comparison_id": null,
       "_authoring_notes": "Workflow tier-A on autoresearch. Skill prescribes reading train.py + writing audit.md with two sections (Optimizer, Tokenizer). Distinct from #401 by template (workflow-audit) and target repo. Constants are read from the actual fixture at audit time so the synthesizer can ground-truth the values."
     },
     {
       "id": 403,
       "name": "skill_workflow_summary_httpx",
-      "difficulty": "tier-a-baseline",
+      "legacy_difficulty": "tier-a-baseline",
+      "difficulty": "easy",
       "category": "skill",
       "structural_signature": {
         "template": "workflow-summary",
@@ -119,27 +172,69 @@
       },
       "repo": "httpx",
       "skills_overlay": [
-        {"skill_name": "summary-flow", "fixture_path": ".opencode/skills/summary-flow/SKILL.md"}
+        {
+          "skill_name": "summary-flow",
+          "fixture_path": ".opencode/skills/summary-flow/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Produce a `summary.md` at the repo root reporting the count of top-level `def` definitions in `httpx/_utils.py`.\n\nThe project ships a procedural skill that defines the exact summary format. Use it.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "summary-flow", "description": "model loaded the right skill"},
-        {"type": "any_tool_name", "equals": "skill", "description": "model used the skill tool at the parent layer"},
-        {"type": "tool_before", "first": "skill", "then": "read", "description": "skill loaded BEFORE the read it prescribes"},
-        {"type": "any_tool_name", "equals": "write", "description": "model produced an artifact"},
-        {"type": "file_regex", "path": "summary.md", "pattern": "# Summary:", "description": "summary.md has the skill-prescribed heading"},
-        {"type": "file_regex", "path": "summary.md", "pattern": "## Function Count:", "description": "summary.md has the function-count subheading"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "summary-flow",
+          "description": "model loaded the right skill"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "skill",
+          "description": "model used the skill tool at the parent layer"
+        },
+        {
+          "type": "tool_before",
+          "first": "skill",
+          "then": "read",
+          "description": "skill loaded BEFORE the read it prescribes"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "write",
+          "description": "model produced an artifact"
+        },
+        {
+          "type": "file_regex",
+          "path": "summary.md",
+          "pattern": "# Summary:",
+          "description": "summary.md has the skill-prescribed heading"
+        },
+        {
+          "type": "file_regex",
+          "path": "summary.md",
+          "pattern": "## Function Count:",
+          "description": "summary.md has the function-count subheading"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
-      "expected_skill_invocations": [{"skill_name": "summary-flow", "must_invoke": true, "must_not_invoke": false}],
+      "expected_skill_invocations": [
+        {
+          "skill_name": "summary-flow",
+          "must_invoke": true,
+          "must_not_invoke": false
+        }
+      ],
       "comparison_id": null,
       "_authoring_notes": "Workflow tier-A on httpx. Skill prescribes reading _utils.py + writing summary.md with a function-count line. Triple distinct from #401/#402 via template (workflow-summary)."
     },
     {
       "id": 404,
       "name": "skill_style_naming_autoresearch",
-      "difficulty": "tier-a-baseline",
+      "legacy_difficulty": "tier-a-baseline",
+      "difficulty": "easy",
       "category": "skill",
       "structural_signature": {
         "template": "style-naming",
@@ -149,26 +244,63 @@
       },
       "repo": "autoresearch",
       "skills_overlay": [
-        {"skill_name": "naming-convention", "fixture_path": ".opencode/skills/naming-convention/SKILL.md"}
+        {
+          "skill_name": "naming-convention",
+          "fixture_path": ".opencode/skills/naming-convention/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Create a new file `helpers.py` at the repo root that defines a function returning the product of two integers.\n\nThe project ships a style-rules skill that defines the conventions any new helper file must follow in this codebase. Use it.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "naming-convention", "description": "model loaded the right skill"},
-        {"type": "any_tool_name", "equals": "skill", "description": "model used the skill tool at the parent layer"},
-        {"type": "any_tool_name", "equals": "write", "description": "model wrote the helpers.py file"},
-        {"type": "file_regex", "path": "helpers.py", "pattern": "_az_\\w+", "description": "function uses the prescribed _az_ prefix"},
-        {"type": "file_regex", "path": "helpers.py", "pattern": "# AZ_HELPER", "description": "file has the prescribed marker comment"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "naming-convention",
+          "description": "model loaded the right skill"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "skill",
+          "description": "model used the skill tool at the parent layer"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "write",
+          "description": "model wrote the helpers.py file"
+        },
+        {
+          "type": "file_regex",
+          "path": "helpers.py",
+          "pattern": "_az_\\w+",
+          "description": "function uses the prescribed _az_ prefix"
+        },
+        {
+          "type": "file_regex",
+          "path": "helpers.py",
+          "pattern": "# AZ_HELPER",
+          "description": "file has the prescribed marker comment"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
-      "expected_skill_invocations": [{"skill_name": "naming-convention", "must_invoke": true, "must_not_invoke": false}],
+      "expected_skill_invocations": [
+        {
+          "skill_name": "naming-convention",
+          "must_invoke": true,
+          "must_not_invoke": false
+        }
+      ],
       "comparison_id": null,
       "_authoring_notes": "Style tier-A on autoresearch. Skill defines a fictional in-house naming convention (`_az_` prefix + `# AZ_HELPER` marker). Tests skill-as-style-rules: model must apply skill's conventions to its own output, not just follow a procedural recipe."
     },
     {
       "id": 405,
       "name": "skill_style_api_handler_requests",
-      "difficulty": "tier-a-baseline",
+      "legacy_difficulty": "tier-a-baseline",
+      "difficulty": "easy",
       "category": "skill",
       "structural_signature": {
         "template": "style-api",
@@ -178,26 +310,63 @@
       },
       "repo": "requests",
       "skills_overlay": [
-        {"skill_name": "api-style", "fixture_path": ".opencode/skills/api-style/SKILL.md"}
+        {
+          "skill_name": "api-style",
+          "fixture_path": ".opencode/skills/api-style/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Create `src/requests/handlers.py` with a function that handles a user-registration payload (no real network logic; just validate the shape).\n\nThe project ships a style-rules skill defining the conventions any new API-handler file must follow. Use it.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "api-style", "description": "model loaded the right skill"},
-        {"type": "any_tool_name", "equals": "skill", "description": "model used the skill tool at the parent layer"},
-        {"type": "any_tool_name", "equals": "write", "description": "model wrote the handlers.py file"},
-        {"type": "file_regex", "path": "handlers.py", "pattern": "handle_\\w+", "description": "function uses the prescribed handle_ prefix"},
-        {"type": "file_regex", "path": "handlers.py", "pattern": "# API_HANDLER", "description": "file has the prescribed marker comment"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "api-style",
+          "description": "model loaded the right skill"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "skill",
+          "description": "model used the skill tool at the parent layer"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "write",
+          "description": "model wrote the handlers.py file"
+        },
+        {
+          "type": "file_regex",
+          "path": "handlers.py",
+          "pattern": "handle_\\w+",
+          "description": "function uses the prescribed handle_ prefix"
+        },
+        {
+          "type": "file_regex",
+          "path": "handlers.py",
+          "pattern": "# API_HANDLER",
+          "description": "file has the prescribed marker comment"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
-      "expected_skill_invocations": [{"skill_name": "api-style", "must_invoke": true, "must_not_invoke": false}],
+      "expected_skill_invocations": [
+        {
+          "skill_name": "api-style",
+          "must_invoke": true,
+          "must_not_invoke": false
+        }
+      ],
       "comparison_id": null,
       "_authoring_notes": "Style tier-A on requests. Direct port + tightening of v0 #16. Skill prescribes API-handler conventions; user creates a new handler. Triple distinct from #404 by template."
     },
     {
       "id": 406,
       "name": "skill_style_encoding_httpx",
-      "difficulty": "tier-a-baseline",
+      "legacy_difficulty": "tier-a-baseline",
+      "difficulty": "easy",
       "category": "skill",
       "structural_signature": {
         "template": "style-encoding",
@@ -207,26 +376,63 @@
       },
       "repo": "httpx",
       "skills_overlay": [
-        {"skill_name": "encoding-convention", "fixture_path": ".opencode/skills/encoding-convention/SKILL.md"}
+        {
+          "skill_name": "encoding-convention",
+          "fixture_path": ".opencode/skills/encoding-convention/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Create a small helper at `httpx/_url_conv.py` that converts a bytes URL into a Python string.\n\nThe project ships a style-rules skill defining encoding conventions any new bytes-handling helper must follow. Use it.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "encoding-convention", "description": "model loaded the right skill"},
-        {"type": "any_tool_name", "equals": "skill", "description": "model used the skill tool at the parent layer"},
-        {"type": "any_tool_name", "equals": "write", "description": "model wrote the _url_conv.py file"},
-        {"type": "file_regex", "path": "_url_conv.py", "pattern": "decode\\(\\s*['\\\"]utf-8['\\\"],\\s*errors=['\\\"]strict['\\\"]", "description": "uses prescribed strict UTF-8 decode"},
-        {"type": "file_regex", "path": "_url_conv.py", "pattern": "# ENCODING:", "description": "file has the prescribed encoding-comment marker"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "encoding-convention",
+          "description": "model loaded the right skill"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "skill",
+          "description": "model used the skill tool at the parent layer"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "write",
+          "description": "model wrote the _url_conv.py file"
+        },
+        {
+          "type": "file_regex",
+          "path": "_url_conv.py",
+          "pattern": "decode\\(\\s*['\\\"]utf-8['\\\"],\\s*errors=['\\\"]strict['\\\"]",
+          "description": "uses prescribed strict UTF-8 decode"
+        },
+        {
+          "type": "file_regex",
+          "path": "_url_conv.py",
+          "pattern": "# ENCODING:",
+          "description": "file has the prescribed encoding-comment marker"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
-      "expected_skill_invocations": [{"skill_name": "encoding-convention", "must_invoke": true, "must_not_invoke": false}],
+      "expected_skill_invocations": [
+        {
+          "skill_name": "encoding-convention",
+          "must_invoke": true,
+          "must_not_invoke": false
+        }
+      ],
       "comparison_id": null,
       "_authoring_notes": "Style tier-A on httpx. Skill prescribes UTF-8 strict decoding + ENCODING: comment for any new bytes-handling helper. Tests subtle style-rule discipline (errors='strict' is non-default)."
     },
     {
       "id": 407,
       "name": "skill_codebacked_validate_autoresearch",
-      "difficulty": "tier-a-baseline",
+      "legacy_difficulty": "tier-a-baseline",
+      "difficulty": "medium",
       "category": "skill",
       "structural_signature": {
         "template": "code-backed-validate",
@@ -236,27 +442,67 @@
       },
       "repo": "autoresearch",
       "skills_overlay": [
-        {"skill_name": "validate-train", "fixture_path": ".opencode/skills/validate-train/SKILL.md"},
-        {"skill_name": "validate-train", "fixture_path": ".opencode/skills/validate-train/scripts/validate.py"}
+        {
+          "skill_name": "validate-train",
+          "fixture_path": ".opencode/skills/validate-train/SKILL.md"
+        },
+        {
+          "skill_name": "validate-train",
+          "fixture_path": ".opencode/skills/validate-train/scripts/validate.py"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Validate this `autoresearch` project and report the validation code in your final reply.\n\nThe project ships a skill that bundles a validation script; use the skill to discover the script and execute it.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "validate-train", "description": "model loaded the right skill"},
-        {"type": "any_tool_name", "equals": "skill", "description": "model used the skill tool at the parent layer"},
-        {"type": "any_tool_name", "equals": "bash", "description": "model invoked bash to run the script"},
-        {"type": "any_tool_param_regex", "tool": "bash", "param": "command", "pattern": "validate\\.py", "description": "bash command runs validate.py"},
-        {"type": "text_contains", "pattern": "VALID_a8c9f1e2", "description": "response includes the validation code printed by the script"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "validate-train",
+          "description": "model loaded the right skill"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "skill",
+          "description": "model used the skill tool at the parent layer"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "bash",
+          "description": "model invoked bash to run the script"
+        },
+        {
+          "type": "any_tool_param_regex",
+          "tool": "bash",
+          "param": "command",
+          "pattern": "validate\\.py",
+          "description": "bash command runs validate.py"
+        },
+        {
+          "type": "text_contains",
+          "pattern": "VALID_a8c9f1e2",
+          "description": "response includes the validation code printed by the script"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
-      "expected_skill_invocations": [{"skill_name": "validate-train", "must_invoke": true, "must_not_invoke": false}],
+      "expected_skill_invocations": [
+        {
+          "skill_name": "validate-train",
+          "must_invoke": true,
+          "must_not_invoke": false
+        }
+      ],
       "comparison_id": null,
       "_authoring_notes": "Code-backed tier-A on autoresearch. Skill ships a sibling Python script that prints a UUID. Tests path-resolution + bash execution + report-output integration. Direct port + tightening of v0 #15."
     },
     {
       "id": 408,
       "name": "skill_codebacked_checksum_requests",
-      "difficulty": "tier-a-baseline",
+      "legacy_difficulty": "tier-a-baseline",
+      "difficulty": "medium",
       "category": "skill",
       "structural_signature": {
         "template": "code-backed-checksum",
@@ -266,27 +512,67 @@
       },
       "repo": "requests",
       "skills_overlay": [
-        {"skill_name": "compute-checksum", "fixture_path": ".opencode/skills/compute-checksum/SKILL.md"},
-        {"skill_name": "compute-checksum", "fixture_path": ".opencode/skills/compute-checksum/scripts/checksum.py"}
+        {
+          "skill_name": "compute-checksum",
+          "fixture_path": ".opencode/skills/compute-checksum/SKILL.md"
+        },
+        {
+          "skill_name": "compute-checksum",
+          "fixture_path": ".opencode/skills/compute-checksum/scripts/checksum.py"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Compute and report the checksum of `src/requests/utils.py` in your final reply.\n\nThe project ships a skill that bundles a checksum-computation script; use the skill.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "compute-checksum", "description": "model loaded the right skill"},
-        {"type": "any_tool_name", "equals": "skill", "description": "model used the skill tool at the parent layer"},
-        {"type": "any_tool_name", "equals": "bash", "description": "model invoked bash to run the script"},
-        {"type": "any_tool_param_regex", "tool": "bash", "param": "command", "pattern": "checksum\\.py", "description": "bash command runs checksum.py"},
-        {"type": "text_contains", "pattern": "f67cc0", "description": "response includes the first 6 chars of the sha256 checksum (verified against the pinned requests commit)"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "compute-checksum",
+          "description": "model loaded the right skill"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "skill",
+          "description": "model used the skill tool at the parent layer"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "bash",
+          "description": "model invoked bash to run the script"
+        },
+        {
+          "type": "any_tool_param_regex",
+          "tool": "bash",
+          "param": "command",
+          "pattern": "checksum\\.py",
+          "description": "bash command runs checksum.py"
+        },
+        {
+          "type": "text_contains",
+          "pattern": "f67cc0",
+          "description": "response includes the first 6 chars of the sha256 checksum (verified against the pinned requests commit)"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
-      "expected_skill_invocations": [{"skill_name": "compute-checksum", "must_invoke": true, "must_not_invoke": false}],
+      "expected_skill_invocations": [
+        {
+          "skill_name": "compute-checksum",
+          "must_invoke": true,
+          "must_not_invoke": false
+        }
+      ],
       "comparison_id": null,
       "_authoring_notes": "Code-backed tier-A on requests. The script prints sha256 of a file, with deterministic output for the pinned commit (we hard-code the expected first-6-chars in the manifest; the synthesizer's bash output mocks the script returning that prefix). Tests reproducibility + skill-mediated tool composition."
     },
     {
       "id": 409,
       "name": "skill_codebacked_count_imports_httpx",
-      "difficulty": "tier-a-baseline",
+      "legacy_difficulty": "tier-a-baseline",
+      "difficulty": "medium",
       "category": "skill",
       "structural_signature": {
         "template": "code-backed-count",
@@ -296,27 +582,67 @@
       },
       "repo": "httpx",
       "skills_overlay": [
-        {"skill_name": "count-imports", "fixture_path": ".opencode/skills/count-imports/SKILL.md"},
-        {"skill_name": "count-imports", "fixture_path": ".opencode/skills/count-imports/scripts/count_imports.py"}
+        {
+          "skill_name": "count-imports",
+          "fixture_path": ".opencode/skills/count-imports/SKILL.md"
+        },
+        {
+          "skill_name": "count-imports",
+          "fixture_path": ".opencode/skills/count-imports/scripts/count_imports.py"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Count the import statements in `httpx/_utils.py` and report the count in your final reply.\n\nThe project ships a skill that bundles a count-imports script; use the skill.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "count-imports", "description": "model loaded the right skill"},
-        {"type": "any_tool_name", "equals": "skill", "description": "model used the skill tool at the parent layer"},
-        {"type": "any_tool_name", "equals": "bash", "description": "model invoked bash to run the script"},
-        {"type": "any_tool_param_regex", "tool": "bash", "param": "command", "pattern": "count_imports\\.py", "description": "bash command runs count_imports.py"},
-        {"type": "text_contains", "pattern": "import_count=7", "description": "response reports the correct import_count"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "count-imports",
+          "description": "model loaded the right skill"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "skill",
+          "description": "model used the skill tool at the parent layer"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "bash",
+          "description": "model invoked bash to run the script"
+        },
+        {
+          "type": "any_tool_param_regex",
+          "tool": "bash",
+          "param": "command",
+          "pattern": "count_imports\\.py",
+          "description": "bash command runs count_imports.py"
+        },
+        {
+          "type": "text_contains",
+          "pattern": "import_count=7",
+          "description": "response reports the correct import_count"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
-      "expected_skill_invocations": [{"skill_name": "count-imports", "must_invoke": true, "must_not_invoke": false}],
+      "expected_skill_invocations": [
+        {
+          "skill_name": "count-imports",
+          "must_invoke": true,
+          "must_not_invoke": false
+        }
+      ],
       "comparison_id": null,
       "_authoring_notes": "Code-backed tier-A on httpx. Script counts `import` statements; expected count for httpx/_utils.py at the pinned commit is 7. Tests bash-with-arg + structured-output reporting."
     },
     {
       "id": 410,
       "name": "skill_discovery_two_skill_workspace",
-      "difficulty": "tier-b-discovery",
+      "legacy_difficulty": "tier-b-discovery",
+      "difficulty": "easy",
       "category": "skill",
       "structural_signature": {
         "template": "discovery-2-skills",
@@ -326,26 +652,61 @@
       },
       "repo": "requests",
       "skills_overlay": [
-        {"skill_name": "review-flow", "fixture_path": ".opencode/skills/review-flow/SKILL.md"},
-        {"skill_name": "dependency-audit", "fixture_path": ".opencode/skills/dependency-audit/SKILL.md"}
+        {
+          "skill_name": "review-flow",
+          "fixture_path": ".opencode/skills/review-flow/SKILL.md"
+        },
+        {
+          "skill_name": "dependency-audit",
+          "fixture_path": ".opencode/skills/dependency-audit/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Review `src/requests/sessions.py` for outstanding TODO comments and write a `review.md` summary at the repo root.\n\nThe project has multiple skills installed; pick whichever one matches the task and use it.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "review-flow", "description": "model selected the review-flow skill (correct match for the task)"},
-        {"type": "any_tool_name", "equals": "skill", "description": "model used the skill tool at the parent layer"},
-        {"type": "any_tool_name", "equals": "write", "description": "model produced the review artifact"},
-        {"type": "file_regex", "path": "review.md", "pattern": "# Review:", "description": "review.md has the skill-prescribed heading"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "review-flow",
+          "description": "model selected the review-flow skill (correct match for the task)"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "skill",
+          "description": "model used the skill tool at the parent layer"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "write",
+          "description": "model produced the review artifact"
+        },
+        {
+          "type": "file_regex",
+          "path": "review.md",
+          "pattern": "# Review:",
+          "description": "review.md has the skill-prescribed heading"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
-      "expected_skill_invocations": [{"skill_name": "review-flow", "must_invoke": true, "must_not_invoke": false}],
+      "expected_skill_invocations": [
+        {
+          "skill_name": "review-flow",
+          "must_invoke": true,
+          "must_not_invoke": false
+        }
+      ],
       "comparison_id": null,
       "_authoring_notes": "Tier-B discovery hello-world: 2 skills installed (review-flow + dependency-audit), only review-flow matches the user task. v1 doesn't strictly forbid loading the distractor (that's tier-D); the test just verifies the correct skill loaded. Future #411-#414 add more distractors and tighten the negation."
     },
     {
       "id": 411,
       "name": "skill_discovery_three_skill_workspace",
-      "difficulty": "tier-b-discovery",
+      "legacy_difficulty": "tier-b-discovery",
+      "difficulty": "easy",
       "category": "skill",
       "structural_signature": {
         "template": "discovery-3-skills",
@@ -355,27 +716,65 @@
       },
       "repo": "requests",
       "skills_overlay": [
-        {"skill_name": "review-flow", "fixture_path": ".opencode/skills/review-flow/SKILL.md"},
-        {"skill_name": "dependency-audit", "fixture_path": ".opencode/skills/dependency-audit/SKILL.md"},
-        {"skill_name": "validate-train", "fixture_path": ".opencode/skills/validate-train/SKILL.md"}
+        {
+          "skill_name": "review-flow",
+          "fixture_path": ".opencode/skills/review-flow/SKILL.md"
+        },
+        {
+          "skill_name": "dependency-audit",
+          "fixture_path": ".opencode/skills/dependency-audit/SKILL.md"
+        },
+        {
+          "skill_name": "validate-train",
+          "fixture_path": ".opencode/skills/validate-train/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Review `src/requests/auth.py` for outstanding TODO comments and write a `review.md` summary at the repo root.\n\nThe project has three skills installed; pick the one that matches the task and use it.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "review-flow", "description": "model selected the review-flow skill (correct match)"},
-        {"type": "any_tool_name", "equals": "skill", "description": "model used the skill tool at the parent layer"},
-        {"type": "any_tool_name", "equals": "write", "description": "model produced the review artifact"},
-        {"type": "file_regex", "path": "review.md", "pattern": "# Review:", "description": "review.md has the skill-prescribed heading"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "review-flow",
+          "description": "model selected the review-flow skill (correct match)"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "skill",
+          "description": "model used the skill tool at the parent layer"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "write",
+          "description": "model produced the review artifact"
+        },
+        {
+          "type": "file_regex",
+          "path": "review.md",
+          "pattern": "# Review:",
+          "description": "review.md has the skill-prescribed heading"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
-      "expected_skill_invocations": [{"skill_name": "review-flow", "must_invoke": true, "must_not_invoke": false}],
+      "expected_skill_invocations": [
+        {
+          "skill_name": "review-flow",
+          "must_invoke": true,
+          "must_not_invoke": false
+        }
+      ],
       "comparison_id": null,
       "_authoring_notes": "3-skill discovery: review-flow + dependency-audit + validate-train. Task matches review-flow by both name resemblance and description. Slightly harder than #410 because models with weak description-attention may load the wrong skill more often; passing requires correct skill match, no penalty for loading distractors too (that's tier D)."
     },
     {
       "id": 412,
       "name": "skill_discovery_opaque_names_workspace",
-      "difficulty": "tier-b-discovery",
+      "legacy_difficulty": "tier-b-discovery",
+      "difficulty": "easy",
       "category": "skill",
       "structural_signature": {
         "template": "discovery-5-skills-opaque",
@@ -385,29 +784,73 @@
       },
       "repo": "requests",
       "skills_overlay": [
-        {"skill_name": "xyz-001", "fixture_path": ".opencode/skills/xyz-001/SKILL.md"},
-        {"skill_name": "abc-002", "fixture_path": ".opencode/skills/abc-002/SKILL.md"},
-        {"skill_name": "def-003", "fixture_path": ".opencode/skills/def-003/SKILL.md"},
-        {"skill_name": "ghi-004", "fixture_path": ".opencode/skills/ghi-004/SKILL.md"},
-        {"skill_name": "jkl-005", "fixture_path": ".opencode/skills/jkl-005/SKILL.md"}
+        {
+          "skill_name": "xyz-001",
+          "fixture_path": ".opencode/skills/xyz-001/SKILL.md"
+        },
+        {
+          "skill_name": "abc-002",
+          "fixture_path": ".opencode/skills/abc-002/SKILL.md"
+        },
+        {
+          "skill_name": "def-003",
+          "fixture_path": ".opencode/skills/def-003/SKILL.md"
+        },
+        {
+          "skill_name": "ghi-004",
+          "fixture_path": ".opencode/skills/ghi-004/SKILL.md"
+        },
+        {
+          "skill_name": "jkl-005",
+          "fixture_path": ".opencode/skills/jkl-005/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Review `src/requests/cookies.py` for outstanding TODO comments and write a `review.md` summary at the repo root.\n\nThe project has several skills installed under opaque names; pick whichever description matches the task and use that skill.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "xyz-001", "description": "model selected the xyz-001 skill (the one whose description matches)"},
-        {"type": "any_tool_name", "equals": "skill", "description": "model used the skill tool at the parent layer"},
-        {"type": "any_tool_name", "equals": "write", "description": "model produced the review artifact"},
-        {"type": "file_regex", "path": "review.md", "pattern": "# Review:", "description": "review.md has the skill-prescribed heading"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "xyz-001",
+          "description": "model selected the xyz-001 skill (the one whose description matches)"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "skill",
+          "description": "model used the skill tool at the parent layer"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "write",
+          "description": "model produced the review artifact"
+        },
+        {
+          "type": "file_regex",
+          "path": "review.md",
+          "pattern": "# Review:",
+          "description": "review.md has the skill-prescribed heading"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
-      "expected_skill_invocations": [{"skill_name": "xyz-001", "must_invoke": true, "must_not_invoke": false}],
+      "expected_skill_invocations": [
+        {
+          "skill_name": "xyz-001",
+          "must_invoke": true,
+          "must_not_invoke": false
+        }
+      ],
       "comparison_id": null,
       "_authoring_notes": "5-skill discovery with opaque names. Models that attend to skill names (rather than descriptions) when picking will fail. Tests pure description-driven discovery -- the auto-injected catalog includes the description, so a model that reads the catalog carefully will match xyz-001 to the user task by description alone."
     },
     {
       "id": 413,
       "name": "skill_discovery_overlapping_descriptions",
-      "difficulty": "tier-b-discovery",
+      "legacy_difficulty": "tier-b-discovery",
+      "difficulty": "medium",
       "category": "skill",
       "structural_signature": {
         "template": "discovery-overlapping",
@@ -417,25 +860,80 @@
       },
       "repo": "requests",
       "skills_overlay": [
-        {"skill_name": "todo-review", "fixture_path": ".opencode/skills/todo-review/SKILL.md"},
-        {"skill_name": "code-review", "fixture_path": ".opencode/skills/code-review/SKILL.md"},
-        {"skill_name": "style-check", "fixture_path": ".opencode/skills/style-check/SKILL.md"}
+        {
+          "skill_name": "todo-review",
+          "fixture_path": ".opencode/skills/todo-review/SKILL.md"
+        },
+        {
+          "skill_name": "code-review",
+          "fixture_path": ".opencode/skills/code-review/SKILL.md"
+        },
+        {
+          "skill_name": "style-check",
+          "fixture_path": ".opencode/skills/style-check/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Review `src/requests/models.py` for outstanding TODO comments and write a `review.md` summary at the repo root.\n\nThe project has multiple review-related skills installed; pick the one whose description specifically matches a TODO-focused review.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "todo-review", "description": "model selected todo-review (most specific match for a TODO-focused review)"},
-        {"type": "no_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "code-review", "description": "model did NOT load the generic code-review distractor"},
-        {"type": "no_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "style-check", "description": "model did NOT load the style-check distractor"},
-        {"type": "any_tool_name", "equals": "skill", "description": "model used the skill tool at the parent layer"},
-        {"type": "any_tool_name", "equals": "write", "description": "model produced the review artifact"},
-        {"type": "file_regex", "path": "review.md", "pattern": "# Review:", "description": "review.md has the skill-prescribed heading"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "todo-review",
+          "description": "model selected todo-review (most specific match for a TODO-focused review)"
+        },
+        {
+          "type": "no_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "code-review",
+          "description": "model did NOT load the generic code-review distractor"
+        },
+        {
+          "type": "no_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "style-check",
+          "description": "model did NOT load the style-check distractor"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "skill",
+          "description": "model used the skill tool at the parent layer"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "write",
+          "description": "model produced the review artifact"
+        },
+        {
+          "type": "file_regex",
+          "path": "review.md",
+          "pattern": "# Review:",
+          "description": "review.md has the skill-prescribed heading"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
       "expected_skill_invocations": [
-        {"skill_name": "todo-review", "must_invoke": true, "must_not_invoke": false},
-        {"skill_name": "code-review", "must_invoke": false, "must_not_invoke": true},
-        {"skill_name": "style-check", "must_invoke": false, "must_not_invoke": true}
+        {
+          "skill_name": "todo-review",
+          "must_invoke": true,
+          "must_not_invoke": false
+        },
+        {
+          "skill_name": "code-review",
+          "must_invoke": false,
+          "must_not_invoke": true
+        },
+        {
+          "skill_name": "style-check",
+          "must_invoke": false,
+          "must_not_invoke": true
+        }
       ],
       "comparison_id": null,
       "_authoring_notes": "Hardest of the discovery tier. Three review-adjacent skills; correct match (todo-review) requires the model to attend to the SPECIFIC mention of TODOs in the description. A model that picks the most-generic-sounding skill (code-review) fails. Uses the new no_tool_param_value_recursive evaluator to forbid the wrong distractor loads."
@@ -443,7 +941,8 @@
     {
       "id": 414,
       "name": "skill_discovery_no_match_workspace",
-      "difficulty": "tier-b-discovery",
+      "legacy_difficulty": "tier-b-discovery",
+      "difficulty": "easy",
       "category": "skill",
       "structural_signature": {
         "template": "discovery-no-match",
@@ -453,23 +952,64 @@
       },
       "repo": "requests",
       "skills_overlay": [
-        {"skill_name": "validate-train", "fixture_path": ".opencode/skills/validate-train/SKILL.md"},
-        {"skill_name": "compute-checksum", "fixture_path": ".opencode/skills/compute-checksum/SKILL.md"},
-        {"skill_name": "count-imports", "fixture_path": ".opencode/skills/count-imports/SKILL.md"}
+        {
+          "skill_name": "validate-train",
+          "fixture_path": ".opencode/skills/validate-train/SKILL.md"
+        },
+        {
+          "skill_name": "compute-checksum",
+          "fixture_path": ".opencode/skills/compute-checksum/SKILL.md"
+        },
+        {
+          "skill_name": "count-imports",
+          "fixture_path": ".opencode/skills/count-imports/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Read `src/requests/utils.py` and write a one-paragraph plain-English summary of the file's purpose to `purpose.md` at the repo root.\n\nThe project has several skills installed; if none of them match this task, just solve it directly with normal tools.",
       "checks": [
-        {"type": "no_tool_name_recursive", "not_equals": "skill", "description": "model did NOT load any skill (none of the installed skills matches the task)"},
-        {"type": "any_tool_name", "equals": "read", "description": "model read the file"},
-        {"type": "any_tool_name", "equals": "write", "description": "model produced the purpose.md artifact"},
-        {"type": "file_regex", "path": "purpose.md", "pattern": "\\w+", "description": "purpose.md is non-empty"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "no_tool_name_recursive",
+          "not_equals": "skill",
+          "description": "model did NOT load any skill (none of the installed skills matches the task)"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "read",
+          "description": "model read the file"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "write",
+          "description": "model produced the purpose.md artifact"
+        },
+        {
+          "type": "file_regex",
+          "path": "purpose.md",
+          "pattern": "\\w+",
+          "description": "purpose.md is non-empty"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
       "expected_skill_invocations": [
-        {"skill_name": "validate-train", "must_invoke": false, "must_not_invoke": true},
-        {"skill_name": "compute-checksum", "must_invoke": false, "must_not_invoke": true},
-        {"skill_name": "count-imports", "must_invoke": false, "must_not_invoke": true}
+        {
+          "skill_name": "validate-train",
+          "must_invoke": false,
+          "must_not_invoke": true
+        },
+        {
+          "skill_name": "compute-checksum",
+          "must_invoke": false,
+          "must_not_invoke": true
+        },
+        {
+          "skill_name": "count-imports",
+          "must_invoke": false,
+          "must_not_invoke": true
+        }
       ],
       "comparison_id": null,
       "_authoring_notes": "Negative discovery: 3 skills, NONE match the user task (all are code-backed for narrow analytical jobs; the task is generic file summarization). Tests selectivity floor: does the model resist eagerly loading a skill just because the catalog mentions some? Failure mode: model loads validate-train hoping it does general validation. Note this sample's expected_skill_invocations entries all use must_not_invoke; G5 will require the no_tool_param_value_recursive guards in the manifest."
@@ -477,7 +1017,8 @@
     {
       "id": 415,
       "name": "skill_recipe_parallel_3_facet_audit",
-      "difficulty": "tier-c-delta",
+      "legacy_difficulty": "tier-c-delta",
+      "difficulty": "medium",
       "category": "skill",
       "structural_signature": {
         "template": "recipe-parallel-dispatch-3",
@@ -487,28 +1028,75 @@
       },
       "repo": "autoresearch",
       "skills_overlay": [
-        {"skill_name": "parallel-3-facet-audit", "fixture_path": ".opencode/skills/parallel-3-facet-audit/SKILL.md"}
+        {
+          "skill_name": "parallel-3-facet-audit",
+          "fixture_path": ".opencode/skills/parallel-3-facet-audit/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Audit this `autoresearch` repo and produce a `report.md` summary at the repo root.\n\nThe project ships a procedural skill that defines exactly how the audit should be done; use it.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "parallel-3-facet-audit", "description": "model loaded the right skill"},
-        {"type": "any_tool_name", "equals": "skill", "description": "skill loaded at parent layer"},
-        {"type": "parallel_dispatch_count", "tool": "task", "min": 3, "description": "3 task subagents dispatched in one assistant turn"},
-        {"type": "any_tool_name", "equals": "write", "description": "model produced report.md"},
-        {"type": "file_regex", "path": "report.md", "pattern": "## Optimizer", "description": "report has Optimizer section"},
-        {"type": "file_regex", "path": "report.md", "pattern": "EMBEDDING_LR.*0\\.6", "description": "EMBEDDING_LR value reported"},
-        {"type": "file_regex", "path": "report.md", "pattern": "VOCAB_SIZE.*8192", "description": "VOCAB_SIZE value reported"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "parallel-3-facet-audit",
+          "description": "model loaded the right skill"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "skill",
+          "description": "skill loaded at parent layer"
+        },
+        {
+          "type": "parallel_dispatch_count",
+          "tool": "task",
+          "min": 3,
+          "description": "3 task subagents dispatched in one assistant turn"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "write",
+          "description": "model produced report.md"
+        },
+        {
+          "type": "file_regex",
+          "path": "report.md",
+          "pattern": "## Optimizer",
+          "description": "report has Optimizer section"
+        },
+        {
+          "type": "file_regex",
+          "path": "report.md",
+          "pattern": "EMBEDDING_LR.*0\\.6",
+          "description": "EMBEDDING_LR value reported"
+        },
+        {
+          "type": "file_regex",
+          "path": "report.md",
+          "pattern": "VOCAB_SIZE.*8192",
+          "description": "VOCAB_SIZE value reported"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
-      "expected_skill_invocations": [{"skill_name": "parallel-3-facet-audit", "must_invoke": true, "must_not_invoke": false}],
+      "expected_skill_invocations": [
+        {
+          "skill_name": "parallel-3-facet-audit",
+          "must_invoke": true,
+          "must_not_invoke": false
+        }
+      ],
       "comparison_id": 301,
       "_authoring_notes": "Tier C sister of #301. Same recipe (3 parallel explore-subagents -> aggregated report), but delivered via SKILL.md. User prompt is generic 'audit this repo'; the prescribed parallel-3-shape lives in the skill body."
     },
     {
       "id": 416,
       "name": "skill_recipe_parallel_2_module_compare",
-      "difficulty": "tier-c-delta",
+      "legacy_difficulty": "tier-c-delta",
+      "difficulty": "medium",
       "category": "skill",
       "structural_signature": {
         "template": "recipe-parallel-dispatch-2",
@@ -518,29 +1106,81 @@
       },
       "repo": "requests",
       "skills_overlay": [
-        {"skill_name": "parallel-2-module-compare", "fixture_path": ".opencode/skills/parallel-2-module-compare/SKILL.md"}
+        {
+          "skill_name": "parallel-2-module-compare",
+          "fixture_path": ".opencode/skills/parallel-2-module-compare/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Compare the public APIs of `Session` (in `src/requests/sessions.py`) and `HTTPAdapter` (in `src/requests/adapters.py`). Write a `comparison.md` summary at the repo root.\n\nThe project ships a skill that defines the comparison procedure; use it.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "parallel-2-module-compare", "description": "model loaded the right skill"},
-        {"type": "any_tool_name", "equals": "skill", "description": "skill loaded at parent layer"},
-        {"type": "parallel_dispatch_count", "tool": "task", "min": 2, "description": "2 task subagents dispatched in one assistant turn"},
-        {"type": "any_tool_name", "equals": "write", "description": "model produced comparison.md"},
-        {"type": "file_regex", "path": "comparison.md", "pattern": "## Session", "description": "comparison has Session section"},
-        {"type": "file_regex", "path": "comparison.md", "pattern": "## HTTPAdapter", "description": "comparison has HTTPAdapter section"},
-        {"type": "file_regex", "path": "comparison.md", "pattern": "prepare_request", "description": "Session.prepare_request listed"},
-        {"type": "file_regex", "path": "comparison.md", "pattern": "init_poolmanager", "description": "HTTPAdapter.init_poolmanager listed"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "parallel-2-module-compare",
+          "description": "model loaded the right skill"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "skill",
+          "description": "skill loaded at parent layer"
+        },
+        {
+          "type": "parallel_dispatch_count",
+          "tool": "task",
+          "min": 2,
+          "description": "2 task subagents dispatched in one assistant turn"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "write",
+          "description": "model produced comparison.md"
+        },
+        {
+          "type": "file_regex",
+          "path": "comparison.md",
+          "pattern": "## Session",
+          "description": "comparison has Session section"
+        },
+        {
+          "type": "file_regex",
+          "path": "comparison.md",
+          "pattern": "## HTTPAdapter",
+          "description": "comparison has HTTPAdapter section"
+        },
+        {
+          "type": "file_regex",
+          "path": "comparison.md",
+          "pattern": "prepare_request",
+          "description": "Session.prepare_request listed"
+        },
+        {
+          "type": "file_regex",
+          "path": "comparison.md",
+          "pattern": "init_poolmanager",
+          "description": "HTTPAdapter.init_poolmanager listed"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
-      "expected_skill_invocations": [{"skill_name": "parallel-2-module-compare", "must_invoke": true, "must_not_invoke": false}],
+      "expected_skill_invocations": [
+        {
+          "skill_name": "parallel-2-module-compare",
+          "must_invoke": true,
+          "must_not_invoke": false
+        }
+      ],
       "comparison_id": 302,
       "_authoring_notes": "Tier C sister of #302. The user prompt names the two modules to compare but not the parallel-dispatch shape; that prescription lives in the skill."
     },
     {
       "id": 417,
       "name": "skill_recipe_chain_read_grep_edit",
-      "difficulty": "tier-c-delta",
+      "legacy_difficulty": "tier-c-delta",
+      "difficulty": "hard",
       "category": "skill",
       "structural_signature": {
         "template": "recipe-chain-3step",
@@ -550,29 +1190,83 @@
       },
       "repo": "autoresearch",
       "skills_overlay": [
-        {"skill_name": "chain-read-grep-edit", "fixture_path": ".opencode/skills/chain-read-grep-edit/SKILL.md"}
+        {
+          "skill_name": "chain-read-grep-edit",
+          "fixture_path": ".opencode/skills/chain-read-grep-edit/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Find every line in this `autoresearch` repo where the literal string `WEIGHT_DECAY` appears, and write the results to `occurrences.md` at the repo root, one occurrence per line.\n\nThe project ships a skill that defines the exact procedure; use it.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "chain-read-grep-edit", "description": "model loaded the right skill"},
-        {"type": "any_tool_name", "equals": "skill", "description": "skill loaded at parent layer"},
-        {"type": "tool_before", "first": "read", "then": "grep", "description": "read precedes grep"},
-        {"type": "tool_before", "first": "grep", "then": "write", "description": "grep precedes write"},
-        {"type": "any_tool_param_regex", "tool": "grep", "param": "pattern", "pattern": "WEIGHT_DECAY", "description": "grep searches for WEIGHT_DECAY"},
-        {"type": "file_regex", "path": "occurrences.md", "pattern": "train\\.py:443", "description": "occurrence at train.py:443 listed"},
-        {"type": "file_regex", "path": "occurrences.md", "pattern": "train\\.py:505", "description": "occurrence at train.py:505 listed"},
-        {"type": "file_regex", "path": "occurrences.md", "pattern": "train\\.py:532", "description": "occurrence at train.py:532 listed"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "chain-read-grep-edit",
+          "description": "model loaded the right skill"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "skill",
+          "description": "skill loaded at parent layer"
+        },
+        {
+          "type": "tool_before",
+          "first": "read",
+          "then": "grep",
+          "description": "read precedes grep"
+        },
+        {
+          "type": "tool_before",
+          "first": "grep",
+          "then": "write",
+          "description": "grep precedes write"
+        },
+        {
+          "type": "any_tool_param_regex",
+          "tool": "grep",
+          "param": "pattern",
+          "pattern": "WEIGHT_DECAY",
+          "description": "grep searches for WEIGHT_DECAY"
+        },
+        {
+          "type": "file_regex",
+          "path": "occurrences.md",
+          "pattern": "train\\.py:443",
+          "description": "occurrence at train.py:443 listed"
+        },
+        {
+          "type": "file_regex",
+          "path": "occurrences.md",
+          "pattern": "train\\.py:505",
+          "description": "occurrence at train.py:505 listed"
+        },
+        {
+          "type": "file_regex",
+          "path": "occurrences.md",
+          "pattern": "train\\.py:532",
+          "description": "occurrence at train.py:532 listed"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
-      "expected_skill_invocations": [{"skill_name": "chain-read-grep-edit", "must_invoke": true, "must_not_invoke": false}],
+      "expected_skill_invocations": [
+        {
+          "skill_name": "chain-read-grep-edit",
+          "must_invoke": true,
+          "must_not_invoke": false
+        }
+      ],
       "comparison_id": 303,
       "_authoring_notes": "Tier C sister of #303. User prompt names the goal (find all WEIGHT_DECAY occurrences) but not the chain shape (read -> grep -> write); the skill prescribes that order and the output format."
     },
     {
       "id": 418,
       "name": "skill_recipe_chain_extract_check_report",
-      "difficulty": "tier-c-delta",
+      "legacy_difficulty": "tier-c-delta",
+      "difficulty": "medium",
       "category": "skill",
       "structural_signature": {
         "template": "recipe-chain-extract-iter-write",
@@ -582,28 +1276,76 @@
       },
       "repo": "requests",
       "skills_overlay": [
-        {"skill_name": "chain-extract-check-report", "fixture_path": ".opencode/skills/chain-extract-check-report/SKILL.md"}
+        {
+          "skill_name": "chain-extract-check-report",
+          "fixture_path": ".opencode/skills/chain-extract-check-report/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "For each top-level function in `src/requests/api.py`, determine whether `src/requests/sessions.py` references it. Write the results to `coverage.md` at the repo root.\n\nThe project ships a skill that defines the exact procedure (which tools to call, in what order); use it.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "chain-extract-check-report", "description": "model loaded the right skill"},
-        {"type": "any_tool_name", "equals": "skill", "description": "skill loaded at parent layer"},
-        {"type": "tool_before", "first": "read", "then": "grep", "description": "read precedes greps"},
-        {"type": "tool_before", "first": "grep", "then": "write", "description": "greps precede write"},
-        {"type": "file_regex", "path": "coverage.md", "pattern": "request: used", "description": "request marked used"},
-        {"type": "file_regex", "path": "coverage.md", "pattern": "get: used", "description": "get marked used"},
-        {"type": "file_regex", "path": "coverage.md", "pattern": "delete: used", "description": "delete marked used"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "chain-extract-check-report",
+          "description": "model loaded the right skill"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "skill",
+          "description": "skill loaded at parent layer"
+        },
+        {
+          "type": "tool_before",
+          "first": "read",
+          "then": "grep",
+          "description": "read precedes greps"
+        },
+        {
+          "type": "tool_before",
+          "first": "grep",
+          "then": "write",
+          "description": "greps precede write"
+        },
+        {
+          "type": "file_regex",
+          "path": "coverage.md",
+          "pattern": "request: used",
+          "description": "request marked used"
+        },
+        {
+          "type": "file_regex",
+          "path": "coverage.md",
+          "pattern": "get: used",
+          "description": "get marked used"
+        },
+        {
+          "type": "file_regex",
+          "path": "coverage.md",
+          "pattern": "delete: used",
+          "description": "delete marked used"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
-      "expected_skill_invocations": [{"skill_name": "chain-extract-check-report", "must_invoke": true, "must_not_invoke": false}],
+      "expected_skill_invocations": [
+        {
+          "skill_name": "chain-extract-check-report",
+          "must_invoke": true,
+          "must_not_invoke": false
+        }
+      ],
       "comparison_id": 304,
       "_authoring_notes": "Tier C sister of #304. The 8-grep-per-function recipe lives in the skill; user prompt only states the deliverable goal."
     },
     {
       "id": 419,
       "name": "skill_recipe_dag_two_inputs_one_output",
-      "difficulty": "tier-c-delta",
+      "legacy_difficulty": "tier-c-delta",
+      "difficulty": "medium",
       "category": "skill",
       "structural_signature": {
         "template": "recipe-dag-2to1",
@@ -613,26 +1355,64 @@
       },
       "repo": "autoresearch",
       "skills_overlay": [
-        {"skill_name": "dag-two-inputs-one-output", "fixture_path": ".opencode/skills/dag-two-inputs-one-output/SKILL.md"}
+        {
+          "skill_name": "dag-two-inputs-one-output",
+          "fixture_path": ".opencode/skills/dag-two-inputs-one-output/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Produce a `combined.py` file at the repo root that exports the values of `EMBEDDING_LR` (from `train.py`) and `VOCAB_SIZE` (from `prepare.py`).\n\nThe project ships a skill that defines how to gather the inputs and combine them; use it.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "dag-two-inputs-one-output", "description": "model loaded the right skill"},
-        {"type": "any_tool_name", "equals": "skill", "description": "skill loaded at parent layer"},
-        {"type": "parallel_dispatch_count", "tool": "task", "min": 2, "description": "2 task subagents dispatched in one assistant turn"},
-        {"type": "file_regex", "path": "combined.py", "pattern": "EMBEDDING_LR\\s*=\\s*0\\.6", "description": "EMBEDDING_LR = 0.6"},
-        {"type": "file_regex", "path": "combined.py", "pattern": "VOCAB_SIZE\\s*=\\s*8192", "description": "VOCAB_SIZE = 8192"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "dag-two-inputs-one-output",
+          "description": "model loaded the right skill"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "skill",
+          "description": "skill loaded at parent layer"
+        },
+        {
+          "type": "parallel_dispatch_count",
+          "tool": "task",
+          "min": 2,
+          "description": "2 task subagents dispatched in one assistant turn"
+        },
+        {
+          "type": "file_regex",
+          "path": "combined.py",
+          "pattern": "EMBEDDING_LR\\s*=\\s*0\\.6",
+          "description": "EMBEDDING_LR = 0.6"
+        },
+        {
+          "type": "file_regex",
+          "path": "combined.py",
+          "pattern": "VOCAB_SIZE\\s*=\\s*8192",
+          "description": "VOCAB_SIZE = 8192"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
-      "expected_skill_invocations": [{"skill_name": "dag-two-inputs-one-output", "must_invoke": true, "must_not_invoke": false}],
+      "expected_skill_invocations": [
+        {
+          "skill_name": "dag-two-inputs-one-output",
+          "must_invoke": true,
+          "must_not_invoke": false
+        }
+      ],
       "comparison_id": 305,
       "_authoring_notes": "Tier C sister of #305. Two-input-one-output DAG; skill prescribes parallel dispatch and the combined.py format."
     },
     {
       "id": 420,
       "name": "skill_recipe_dag_response_attrs",
-      "difficulty": "tier-c-delta",
+      "legacy_difficulty": "tier-c-delta",
+      "difficulty": "medium",
       "category": "skill",
       "structural_signature": {
         "template": "recipe-dag-overlap",
@@ -642,28 +1422,76 @@
       },
       "repo": "requests",
       "skills_overlay": [
-        {"skill_name": "dag-response-attrs", "fixture_path": ".opencode/skills/dag-response-attrs/SKILL.md"}
+        {
+          "skill_name": "dag-response-attrs",
+          "fixture_path": ".opencode/skills/dag-response-attrs/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Produce an `attr_overlap.md` summary that compares the attributes assigned in `Response.__init__` (in `src/requests/models.py`) vs those assigned in `HTTPAdapter.build_response` (in `src/requests/adapters.py`), highlighting overlap.\n\nThe project ships a skill that defines the procedure; use it.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "dag-response-attrs", "description": "model loaded the right skill"},
-        {"type": "any_tool_name", "equals": "skill", "description": "skill loaded at parent layer"},
-        {"type": "parallel_dispatch_count", "tool": "task", "min": 2, "description": "2 task subagents dispatched in one assistant turn"},
-        {"type": "file_regex", "path": "attr_overlap.md", "pattern": "## __init__ attrs", "description": "report has __init__ attrs section"},
-        {"type": "file_regex", "path": "attr_overlap.md", "pattern": "## build_response attrs", "description": "report has build_response attrs section"},
-        {"type": "file_regex", "path": "attr_overlap.md", "pattern": "## overlap", "description": "report has overlap section"},
-        {"type": "file_regex", "path": "attr_overlap.md", "pattern": "status_code", "description": "status_code attr listed"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "dag-response-attrs",
+          "description": "model loaded the right skill"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "skill",
+          "description": "skill loaded at parent layer"
+        },
+        {
+          "type": "parallel_dispatch_count",
+          "tool": "task",
+          "min": 2,
+          "description": "2 task subagents dispatched in one assistant turn"
+        },
+        {
+          "type": "file_regex",
+          "path": "attr_overlap.md",
+          "pattern": "## __init__ attrs",
+          "description": "report has __init__ attrs section"
+        },
+        {
+          "type": "file_regex",
+          "path": "attr_overlap.md",
+          "pattern": "## build_response attrs",
+          "description": "report has build_response attrs section"
+        },
+        {
+          "type": "file_regex",
+          "path": "attr_overlap.md",
+          "pattern": "## overlap",
+          "description": "report has overlap section"
+        },
+        {
+          "type": "file_regex",
+          "path": "attr_overlap.md",
+          "pattern": "status_code",
+          "description": "status_code attr listed"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
-      "expected_skill_invocations": [{"skill_name": "dag-response-attrs", "must_invoke": true, "must_not_invoke": false}],
+      "expected_skill_invocations": [
+        {
+          "skill_name": "dag-response-attrs",
+          "must_invoke": true,
+          "must_not_invoke": false
+        }
+      ],
       "comparison_id": 306,
       "_authoring_notes": "Tier C sister of #306. Two parallel reads + an overlap-analysis aggregation. Skill prescribes the sectioned output format."
     },
     {
       "id": 421,
       "name": "skill_recipe_iter_def_count",
-      "difficulty": "tier-c-delta",
+      "legacy_difficulty": "tier-c-delta",
+      "difficulty": "medium",
       "category": "skill",
       "structural_signature": {
         "template": "recipe-iter-bash-foreach",
@@ -673,28 +1501,75 @@
       },
       "repo": "requests",
       "skills_overlay": [
-        {"skill_name": "iter-def-count", "fixture_path": ".opencode/skills/iter-def-count/SKILL.md"}
+        {
+          "skill_name": "iter-def-count",
+          "fixture_path": ".opencode/skills/iter-def-count/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Count the number of `def ` keyword occurrences in each of these files: `src/requests/adapters.py`, `src/requests/auth.py`, `src/requests/hooks.py`, `src/requests/sessions.py`. Write the results to `def_count.md` at the repo root, one line per file.\n\nThe project ships a skill that defines the exact procedure (which tool to use, how to iterate); use it.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "iter-def-count", "description": "model loaded the right skill"},
-        {"type": "any_tool_name", "equals": "skill", "description": "skill loaded at parent layer"},
-        {"type": "min_tool_count", "name": "bash", "min": 4, "description": "at least 4 bash calls (one per file)"},
-        {"type": "any_tool_name", "equals": "write", "description": "model produced def_count.md"},
-        {"type": "file_regex", "path": "def_count.md", "pattern": "adapters\\.py:\\s*20", "description": "adapters.py count = 20"},
-        {"type": "file_regex", "path": "def_count.md", "pattern": "hooks\\.py:\\s*2", "description": "hooks.py count = 2"},
-        {"type": "file_regex", "path": "def_count.md", "pattern": "sessions\\.py:\\s*28", "description": "sessions.py count = 28"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "iter-def-count",
+          "description": "model loaded the right skill"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "skill",
+          "description": "skill loaded at parent layer"
+        },
+        {
+          "type": "min_tool_count",
+          "name": "bash",
+          "min": 4,
+          "description": "at least 4 bash calls (one per file)"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "write",
+          "description": "model produced def_count.md"
+        },
+        {
+          "type": "file_regex",
+          "path": "def_count.md",
+          "pattern": "adapters\\.py:\\s*20",
+          "description": "adapters.py count = 20"
+        },
+        {
+          "type": "file_regex",
+          "path": "def_count.md",
+          "pattern": "hooks\\.py:\\s*2",
+          "description": "hooks.py count = 2"
+        },
+        {
+          "type": "file_regex",
+          "path": "def_count.md",
+          "pattern": "sessions\\.py:\\s*28",
+          "description": "sessions.py count = 28"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
-      "expected_skill_invocations": [{"skill_name": "iter-def-count", "must_invoke": true, "must_not_invoke": false}],
+      "expected_skill_invocations": [
+        {
+          "skill_name": "iter-def-count",
+          "must_invoke": true,
+          "must_not_invoke": false
+        }
+      ],
       "comparison_id": 307,
       "_authoring_notes": "Tier C sister of #307. The 'one bash grep -c per file' iteration recipe is in the skill; user prompt names the 4 files but not the per-file iteration."
     },
     {
       "id": 422,
       "name": "skill_recipe_iter_helper_callers",
-      "difficulty": "tier-c-delta",
+      "legacy_difficulty": "tier-c-delta",
+      "difficulty": "medium",
       "category": "skill",
       "structural_signature": {
         "template": "recipe-iter-grep-foreach",
@@ -704,28 +1579,75 @@
       },
       "repo": "requests",
       "skills_overlay": [
-        {"skill_name": "iter-helper-callers", "fixture_path": ".opencode/skills/iter-helper-callers/SKILL.md"}
+        {
+          "skill_name": "iter-helper-callers",
+          "fixture_path": ".opencode/skills/iter-helper-callers/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Compute caller counts in `src/requests/sessions.py` for these three helpers from `src/requests/utils.py`: `merge_setting`, `to_key_val_list`, `iter_slices`. Write the results to `caller_table.md` at the repo root.\n\nThe project ships a skill that defines the exact procedure (one separate grep call per helper); use it.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "iter-helper-callers", "description": "model loaded the right skill"},
-        {"type": "any_tool_name", "equals": "skill", "description": "skill loaded at parent layer"},
-        {"type": "min_tool_count", "name": "grep", "min": 3, "description": "at least 3 grep calls (one per helper)"},
-        {"type": "any_tool_name", "equals": "write", "description": "model produced caller_table.md"},
-        {"type": "file_regex", "path": "caller_table.md", "pattern": "merge_setting:\\s*9", "description": "merge_setting count = 9"},
-        {"type": "file_regex", "path": "caller_table.md", "pattern": "to_key_val_list:\\s*3", "description": "to_key_val_list count = 3"},
-        {"type": "file_regex", "path": "caller_table.md", "pattern": "iter_slices:\\s*0", "description": "iter_slices count = 0"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "iter-helper-callers",
+          "description": "model loaded the right skill"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "skill",
+          "description": "skill loaded at parent layer"
+        },
+        {
+          "type": "min_tool_count",
+          "name": "grep",
+          "min": 3,
+          "description": "at least 3 grep calls (one per helper)"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "write",
+          "description": "model produced caller_table.md"
+        },
+        {
+          "type": "file_regex",
+          "path": "caller_table.md",
+          "pattern": "merge_setting:\\s*9",
+          "description": "merge_setting count = 9"
+        },
+        {
+          "type": "file_regex",
+          "path": "caller_table.md",
+          "pattern": "to_key_val_list:\\s*3",
+          "description": "to_key_val_list count = 3"
+        },
+        {
+          "type": "file_regex",
+          "path": "caller_table.md",
+          "pattern": "iter_slices:\\s*0",
+          "description": "iter_slices count = 0"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
-      "expected_skill_invocations": [{"skill_name": "iter-helper-callers", "must_invoke": true, "must_not_invoke": false}],
+      "expected_skill_invocations": [
+        {
+          "skill_name": "iter-helper-callers",
+          "must_invoke": true,
+          "must_not_invoke": false
+        }
+      ],
       "comparison_id": 308,
       "_authoring_notes": "Tier C sister of #308. Three helpers, one grep each. Skill prescribes the exact iteration shape."
     },
     {
       "id": 423,
       "name": "skill_selectivity_review_pool_5",
-      "difficulty": "tier-d-selectivity",
+      "legacy_difficulty": "tier-d-selectivity",
+      "difficulty": "medium",
       "category": "skill",
       "structural_signature": {
         "template": "selectivity-pool-of-5",
@@ -735,31 +1657,112 @@
       },
       "repo": "requests",
       "skills_overlay": [
-        {"skill_name": "todo-review", "fixture_path": ".opencode/skills/todo-review/SKILL.md"},
-        {"skill_name": "python-code-review", "fixture_path": ".opencode/skills/python-code-review/SKILL.md"},
-        {"skill_name": "js-todo-review", "fixture_path": ".opencode/skills/js-todo-review/SKILL.md"},
-        {"skill_name": "style-check", "fixture_path": ".opencode/skills/style-check/SKILL.md"},
-        {"skill_name": "comment-review", "fixture_path": ".opencode/skills/comment-review/SKILL.md"}
+        {
+          "skill_name": "todo-review",
+          "fixture_path": ".opencode/skills/todo-review/SKILL.md"
+        },
+        {
+          "skill_name": "python-code-review",
+          "fixture_path": ".opencode/skills/python-code-review/SKILL.md"
+        },
+        {
+          "skill_name": "js-todo-review",
+          "fixture_path": ".opencode/skills/js-todo-review/SKILL.md"
+        },
+        {
+          "skill_name": "style-check",
+          "fixture_path": ".opencode/skills/style-check/SKILL.md"
+        },
+        {
+          "skill_name": "comment-review",
+          "fixture_path": ".opencode/skills/comment-review/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Review `src/requests/auth.py` SPECIFICALLY for outstanding TODO comments and write a `review.md` summary at the repo root. The file is Python; the review should focus only on TODOs (not general code style or other comment kinds).\n\nThe project has multiple review-related skills installed; pick the one whose description matches a Python TODO-focused review precisely.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "todo-review", "description": "model selected the most-specific review skill"},
-        {"type": "no_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "python-code-review", "description": "did not load the generic python code review"},
-        {"type": "no_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "js-todo-review", "description": "did not load the wrong-language TODO review"},
-        {"type": "no_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "style-check", "description": "did not load style-check"},
-        {"type": "no_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "comment-review", "description": "did not load comment-review"},
-        {"type": "any_tool_name", "equals": "skill", "description": "skill loaded at parent layer"},
-        {"type": "any_tool_name", "equals": "write", "description": "model produced the review artifact"},
-        {"type": "file_regex", "path": "review.md", "pattern": "# Review:", "description": "review.md has the prescribed heading"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "todo-review",
+          "description": "model selected the most-specific review skill"
+        },
+        {
+          "type": "no_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "python-code-review",
+          "description": "did not load the generic python code review"
+        },
+        {
+          "type": "no_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "js-todo-review",
+          "description": "did not load the wrong-language TODO review"
+        },
+        {
+          "type": "no_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "style-check",
+          "description": "did not load style-check"
+        },
+        {
+          "type": "no_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "comment-review",
+          "description": "did not load comment-review"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "skill",
+          "description": "skill loaded at parent layer"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "write",
+          "description": "model produced the review artifact"
+        },
+        {
+          "type": "file_regex",
+          "path": "review.md",
+          "pattern": "# Review:",
+          "description": "review.md has the prescribed heading"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
       "expected_skill_invocations": [
-        {"skill_name": "todo-review", "must_invoke": true, "must_not_invoke": false},
-        {"skill_name": "python-code-review", "must_invoke": false, "must_not_invoke": true},
-        {"skill_name": "js-todo-review", "must_invoke": false, "must_not_invoke": true},
-        {"skill_name": "style-check", "must_invoke": false, "must_not_invoke": true},
-        {"skill_name": "comment-review", "must_invoke": false, "must_not_invoke": true}
+        {
+          "skill_name": "todo-review",
+          "must_invoke": true,
+          "must_not_invoke": false
+        },
+        {
+          "skill_name": "python-code-review",
+          "must_invoke": false,
+          "must_not_invoke": true
+        },
+        {
+          "skill_name": "js-todo-review",
+          "must_invoke": false,
+          "must_not_invoke": true
+        },
+        {
+          "skill_name": "style-check",
+          "must_invoke": false,
+          "must_not_invoke": true
+        },
+        {
+          "skill_name": "comment-review",
+          "must_invoke": false,
+          "must_not_invoke": true
+        }
       ],
       "comparison_id": null,
       "_authoring_notes": "Tier D pool-of-5 selectivity. All 5 skills share review vocabulary; the user task is precise enough to demand 'todo-review' specifically. Tests precision-over-recall when the catalog is noisy. Authored after pilot showed #413's 3-skill pool was already discriminating; #423 raises the bar."
@@ -767,7 +1770,8 @@
     {
       "id": 424,
       "name": "skill_selectivity_no_match_plausible",
-      "difficulty": "tier-d-selectivity",
+      "legacy_difficulty": "tier-d-selectivity",
+      "difficulty": "easy",
       "category": "skill",
       "structural_signature": {
         "template": "selectivity-no-match-plausible",
@@ -777,23 +1781,64 @@
       },
       "repo": "requests",
       "skills_overlay": [
-        {"skill_name": "train-validator", "fixture_path": ".opencode/skills/train-validator/SKILL.md"},
-        {"skill_name": "lint-runner", "fixture_path": ".opencode/skills/lint-runner/SKILL.md"},
-        {"skill_name": "security-scanner", "fixture_path": ".opencode/skills/security-scanner/SKILL.md"}
+        {
+          "skill_name": "train-validator",
+          "fixture_path": ".opencode/skills/train-validator/SKILL.md"
+        },
+        {
+          "skill_name": "lint-runner",
+          "fixture_path": ".opencode/skills/lint-runner/SKILL.md"
+        },
+        {
+          "skill_name": "security-scanner",
+          "fixture_path": ".opencode/skills/security-scanner/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Read `src/requests/utils.py` and write a one-paragraph plain-English summary of the file's purpose to `purpose.md` at the repo root.\n\nThe project has several skills installed; if none of them match this task, just solve it directly with normal tools.",
       "checks": [
-        {"type": "no_tool_name_recursive", "not_equals": "skill", "description": "model did NOT load any skill (none match the summarization task)"},
-        {"type": "any_tool_name", "equals": "read", "description": "model read the file"},
-        {"type": "any_tool_name", "equals": "write", "description": "model produced the purpose.md artifact"},
-        {"type": "file_regex", "path": "purpose.md", "pattern": "\\w+", "description": "purpose.md is non-empty"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "no_tool_name_recursive",
+          "not_equals": "skill",
+          "description": "model did NOT load any skill (none match the summarization task)"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "read",
+          "description": "model read the file"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "write",
+          "description": "model produced the purpose.md artifact"
+        },
+        {
+          "type": "file_regex",
+          "path": "purpose.md",
+          "pattern": "\\w+",
+          "description": "purpose.md is non-empty"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
       "expected_skill_invocations": [
-        {"skill_name": "train-validator", "must_invoke": false, "must_not_invoke": true},
-        {"skill_name": "lint-runner", "must_invoke": false, "must_not_invoke": true},
-        {"skill_name": "security-scanner", "must_invoke": false, "must_not_invoke": true}
+        {
+          "skill_name": "train-validator",
+          "must_invoke": false,
+          "must_not_invoke": true
+        },
+        {
+          "skill_name": "lint-runner",
+          "must_invoke": false,
+          "must_not_invoke": true
+        },
+        {
+          "skill_name": "security-scanner",
+          "must_invoke": false,
+          "must_not_invoke": true
+        }
       ],
       "comparison_id": null,
       "_authoring_notes": "Refinement of #414. Distractors share vocabulary with the user task ('validation' / 'check' / 'analyze') but none does file summarization. Pilot data showed #414's distractors were too obviously off-topic (every model passed); these distractors should produce non-trivial discrimination."
@@ -801,7 +1846,8 @@
     {
       "id": 425,
       "name": "skill_selectivity_language_discrimination",
-      "difficulty": "tier-d-selectivity",
+      "legacy_difficulty": "tier-d-selectivity",
+      "difficulty": "easy",
       "category": "skill",
       "structural_signature": {
         "template": "selectivity-language",
@@ -811,22 +1857,64 @@
       },
       "repo": "requests",
       "skills_overlay": [
-        {"skill_name": "python-review", "fixture_path": ".opencode/skills/python-review/SKILL.md"},
-        {"skill_name": "javascript-review", "fixture_path": ".opencode/skills/javascript-review/SKILL.md"}
+        {
+          "skill_name": "python-review",
+          "fixture_path": ".opencode/skills/python-review/SKILL.md"
+        },
+        {
+          "skill_name": "javascript-review",
+          "fixture_path": ".opencode/skills/javascript-review/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Review `src/requests/auth.py` for outstanding TODO comments and write a `review.md` summary at the repo root.\n\nThe project ships language-specific review skills; pick the one for the target file's language.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "python-review", "description": "model selected the Python review skill"},
-        {"type": "no_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "javascript-review", "description": "did not load the JS review skill"},
-        {"type": "any_tool_name", "equals": "skill", "description": "skill loaded at parent layer"},
-        {"type": "any_tool_name", "equals": "write", "description": "model produced the review artifact"},
-        {"type": "file_regex", "path": "review.md", "pattern": "# Review:", "description": "review.md has the prescribed heading"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "python-review",
+          "description": "model selected the Python review skill"
+        },
+        {
+          "type": "no_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "javascript-review",
+          "description": "did not load the JS review skill"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "skill",
+          "description": "skill loaded at parent layer"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "write",
+          "description": "model produced the review artifact"
+        },
+        {
+          "type": "file_regex",
+          "path": "review.md",
+          "pattern": "# Review:",
+          "description": "review.md has the prescribed heading"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
       "expected_skill_invocations": [
-        {"skill_name": "python-review", "must_invoke": true, "must_not_invoke": false},
-        {"skill_name": "javascript-review", "must_invoke": false, "must_not_invoke": true}
+        {
+          "skill_name": "python-review",
+          "must_invoke": true,
+          "must_not_invoke": false
+        },
+        {
+          "skill_name": "javascript-review",
+          "must_invoke": false,
+          "must_not_invoke": true
+        }
       ],
       "comparison_id": null,
       "_authoring_notes": "Selectivity by file-language. Both skills do code review; only one is for the right language. Tests file-extension-aware selection."
@@ -834,7 +1922,8 @@
     {
       "id": 426,
       "name": "skill_selectivity_vocabulary_pollution",
-      "difficulty": "tier-d-selectivity",
+      "legacy_difficulty": "tier-d-selectivity",
+      "difficulty": "medium",
       "category": "skill",
       "structural_signature": {
         "template": "selectivity-vocab-pollution",
@@ -844,25 +1933,80 @@
       },
       "repo": "requests",
       "skills_overlay": [
-        {"skill_name": "code-review", "fixture_path": ".opencode/skills/code-review/SKILL.md"},
-        {"skill_name": "code-style-format", "fixture_path": ".opencode/skills/code-style-format/SKILL.md"},
-        {"skill_name": "code-coverage-report", "fixture_path": ".opencode/skills/code-coverage-report/SKILL.md"}
+        {
+          "skill_name": "code-review",
+          "fixture_path": ".opencode/skills/code-review/SKILL.md"
+        },
+        {
+          "skill_name": "code-style-format",
+          "fixture_path": ".opencode/skills/code-style-format/SKILL.md"
+        },
+        {
+          "skill_name": "code-coverage-report",
+          "fixture_path": ".opencode/skills/code-coverage-report/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Review `src/requests/auth.py` (a code-quality review focused on outstanding issues) and write a `review.md` summary at the repo root.\n\nThe project has multiple 'code' skills installed; pick the one that matches a code-quality review.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "code-review", "description": "model selected code-review"},
-        {"type": "no_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "code-style-format", "description": "did not load code-style-format"},
-        {"type": "no_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "code-coverage-report", "description": "did not load code-coverage-report"},
-        {"type": "any_tool_name", "equals": "skill", "description": "skill loaded at parent layer"},
-        {"type": "any_tool_name", "equals": "write", "description": "model produced the review artifact"},
-        {"type": "file_regex", "path": "review.md", "pattern": "# Review:", "description": "review.md has the prescribed heading"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "code-review",
+          "description": "model selected code-review"
+        },
+        {
+          "type": "no_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "code-style-format",
+          "description": "did not load code-style-format"
+        },
+        {
+          "type": "no_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "code-coverage-report",
+          "description": "did not load code-coverage-report"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "skill",
+          "description": "skill loaded at parent layer"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "write",
+          "description": "model produced the review artifact"
+        },
+        {
+          "type": "file_regex",
+          "path": "review.md",
+          "pattern": "# Review:",
+          "description": "review.md has the prescribed heading"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
       "expected_skill_invocations": [
-        {"skill_name": "code-review", "must_invoke": true, "must_not_invoke": false},
-        {"skill_name": "code-style-format", "must_invoke": false, "must_not_invoke": true},
-        {"skill_name": "code-coverage-report", "must_invoke": false, "must_not_invoke": true}
+        {
+          "skill_name": "code-review",
+          "must_invoke": true,
+          "must_not_invoke": false
+        },
+        {
+          "skill_name": "code-style-format",
+          "must_invoke": false,
+          "must_not_invoke": true
+        },
+        {
+          "skill_name": "code-coverage-report",
+          "must_invoke": false,
+          "must_not_invoke": true
+        }
       ],
       "comparison_id": null,
       "_authoring_notes": "Vocabulary-pollution selectivity. All 3 skills start with 'code-'; descriptions disambiguate. Tests whether a model is anchored on shared vocabulary vs reading descriptions carefully."
@@ -870,7 +2014,8 @@
     {
       "id": 427,
       "name": "skill_composition_validate_then_review",
-      "difficulty": "tier-e-composition",
+      "legacy_difficulty": "tier-e-composition",
+      "difficulty": "hard",
       "category": "skill",
       "structural_signature": {
         "template": "composition-2-sequential",
@@ -880,25 +2025,80 @@
       },
       "repo": "autoresearch",
       "skills_overlay": [
-        {"skill_name": "validate-train", "fixture_path": ".opencode/skills/validate-train/SKILL.md"},
-        {"skill_name": "validate-train", "fixture_path": ".opencode/skills/validate-train/scripts/validate.py"},
-        {"skill_name": "review-flow", "fixture_path": ".opencode/skills/review-flow/SKILL.md"}
+        {
+          "skill_name": "validate-train",
+          "fixture_path": ".opencode/skills/validate-train/SKILL.md"
+        },
+        {
+          "skill_name": "validate-train",
+          "fixture_path": ".opencode/skills/validate-train/scripts/validate.py"
+        },
+        {
+          "skill_name": "review-flow",
+          "fixture_path": ".opencode/skills/review-flow/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "First, validate the training pipeline of this `autoresearch` project (run the validation script and capture its token). Then write the validation output to `validation_output.md`, INCLUDING a `# TODO: investigate this token` line. Finally, perform a TODO-focused code review of `validation_output.md` and produce a `review.md` summary at the repo root.\n\nThe project ships skills for both the validation step and the review step; use both.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "validate-train", "description": "validate-train skill loaded"},
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "review-flow", "description": "review-flow skill loaded"},
-        {"type": "any_tool_name", "equals": "bash", "description": "model ran the validation script"},
-        {"type": "any_tool_name", "equals": "write", "description": "model produced the review artifact"},
-        {"type": "file_regex", "path": "review.md", "pattern": "# Review:", "description": "review.md has the prescribed heading"},
-        {"type": "file_regex", "path": "review.md", "pattern": "## TODO Count: 1", "description": "review reports the 1 TODO"},
-        {"type": "file_regex", "path": "review.md", "pattern": "VALID_", "description": "review references the validation token"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "validate-train",
+          "description": "validate-train skill loaded"
+        },
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "review-flow",
+          "description": "review-flow skill loaded"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "bash",
+          "description": "model ran the validation script"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "write",
+          "description": "model produced the review artifact"
+        },
+        {
+          "type": "file_regex",
+          "path": "review.md",
+          "pattern": "# Review:",
+          "description": "review.md has the prescribed heading"
+        },
+        {
+          "type": "file_regex",
+          "path": "review.md",
+          "pattern": "## TODO Count: 1",
+          "description": "review reports the 1 TODO"
+        },
+        {
+          "type": "file_regex",
+          "path": "review.md",
+          "pattern": "VALID_",
+          "description": "review references the validation token"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
       "expected_skill_invocations": [
-        {"skill_name": "validate-train", "must_invoke": true, "must_not_invoke": false},
-        {"skill_name": "review-flow", "must_invoke": true, "must_not_invoke": false}
+        {
+          "skill_name": "validate-train",
+          "must_invoke": true,
+          "must_not_invoke": false
+        },
+        {
+          "skill_name": "review-flow",
+          "must_invoke": true,
+          "must_not_invoke": false
+        }
       ],
       "comparison_id": null,
       "_authoring_notes": "Two-skill sequential composition. First skill produces the input, second skill consumes it. Tests whether the model can chain two skill loads in a single session."
@@ -906,7 +2106,8 @@
     {
       "id": 428,
       "name": "skill_composition_audit_and_naming_independent",
-      "difficulty": "tier-e-composition",
+      "legacy_difficulty": "tier-e-composition",
+      "difficulty": "medium",
       "category": "skill",
       "structural_signature": {
         "template": "composition-2-independent",
@@ -916,23 +2117,72 @@
       },
       "repo": "autoresearch",
       "skills_overlay": [
-        {"skill_name": "audit-flow", "fixture_path": ".opencode/skills/audit-flow/SKILL.md"},
-        {"skill_name": "naming-convention", "fixture_path": ".opencode/skills/naming-convention/SKILL.md"}
+        {
+          "skill_name": "audit-flow",
+          "fixture_path": ".opencode/skills/audit-flow/SKILL.md"
+        },
+        {
+          "skill_name": "naming-convention",
+          "fixture_path": ".opencode/skills/naming-convention/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Two tasks for this `autoresearch` repo:\n\n1. Audit the optimizer constants in `train.py` and produce `audit.md` at the repo root.\n2. Add a new helper function to a new `helpers.py` file at the repo root that returns the product of two integers.\n\nThe project ships separate skills for each task; use both.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "audit-flow", "description": "audit-flow skill loaded"},
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "naming-convention", "description": "naming-convention skill loaded"},
-        {"type": "min_tool_count", "name": "write", "min": 2, "description": "at least 2 writes (audit.md + helpers.py)"},
-        {"type": "file_regex", "path": "audit.md", "pattern": "## Optimizer", "description": "audit.md has Optimizer section"},
-        {"type": "file_regex", "path": "helpers.py", "pattern": "_az_\\w+", "description": "helpers.py uses _az_ naming"},
-        {"type": "file_regex", "path": "helpers.py", "pattern": "# AZ_HELPER", "description": "helpers.py has AZ_HELPER marker"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "audit-flow",
+          "description": "audit-flow skill loaded"
+        },
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "naming-convention",
+          "description": "naming-convention skill loaded"
+        },
+        {
+          "type": "min_tool_count",
+          "name": "write",
+          "min": 2,
+          "description": "at least 2 writes (audit.md + helpers.py)"
+        },
+        {
+          "type": "file_regex",
+          "path": "audit.md",
+          "pattern": "## Optimizer",
+          "description": "audit.md has Optimizer section"
+        },
+        {
+          "type": "file_regex",
+          "path": "helpers.py",
+          "pattern": "_az_\\w+",
+          "description": "helpers.py uses _az_ naming"
+        },
+        {
+          "type": "file_regex",
+          "path": "helpers.py",
+          "pattern": "# AZ_HELPER",
+          "description": "helpers.py has AZ_HELPER marker"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
       "expected_skill_invocations": [
-        {"skill_name": "audit-flow", "must_invoke": true, "must_not_invoke": false},
-        {"skill_name": "naming-convention", "must_invoke": true, "must_not_invoke": false}
+        {
+          "skill_name": "audit-flow",
+          "must_invoke": true,
+          "must_not_invoke": false
+        },
+        {
+          "skill_name": "naming-convention",
+          "must_invoke": true,
+          "must_not_invoke": false
+        }
       ],
       "comparison_id": null,
       "_authoring_notes": "Two-skill independent composition. Both skills must be loaded; their outputs are uncoupled. Tests whether a model can hold two distinct skill recipes in working memory."
@@ -940,7 +2190,8 @@
     {
       "id": 429,
       "name": "skill_composition_prose_chained",
-      "difficulty": "tier-e-composition",
+      "legacy_difficulty": "tier-e-composition",
+      "difficulty": "medium",
       "category": "skill",
       "structural_signature": {
         "template": "composition-prose-chain",
@@ -950,19 +2201,49 @@
       },
       "repo": "requests",
       "skills_overlay": [
-        {"skill_name": "super-review", "fixture_path": ".opencode/skills/super-review/SKILL.md"}
+        {
+          "skill_name": "super-review",
+          "fixture_path": ".opencode/skills/super-review/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Use the `super-review` skill to review `src/requests/auth.py` and write a `review.md` summary at the repo root.\n\nFollow the skill's prescribed steps exactly, including any sub-skills it tells you to load.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "super-review", "description": "super-review skill loaded"},
-        {"type": "any_tool_name", "equals": "write", "description": "model produced the review artifact"},
-        {"type": "file_regex", "path": "review.md", "pattern": "# Review:", "description": "review.md has the prescribed heading"},
-        {"type": "file_regex", "path": "review.md", "pattern": "## TODO Count:", "description": "review.md has the TODO Count subheading"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "super-review",
+          "description": "super-review skill loaded"
+        },
+        {
+          "type": "any_tool_name",
+          "equals": "write",
+          "description": "model produced the review artifact"
+        },
+        {
+          "type": "file_regex",
+          "path": "review.md",
+          "pattern": "# Review:",
+          "description": "review.md has the prescribed heading"
+        },
+        {
+          "type": "file_regex",
+          "path": "review.md",
+          "pattern": "## TODO Count:",
+          "description": "review.md has the TODO Count subheading"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
       "expected_skill_invocations": [
-        {"skill_name": "super-review", "must_invoke": true, "must_not_invoke": false}
+        {
+          "skill_name": "super-review",
+          "must_invoke": true,
+          "must_not_invoke": false
+        }
       ],
       "comparison_id": null,
       "_authoring_notes": "Prose-chain composition. The skill body itself prescribes the recipe (read + count + write); the model just needs to load super-review and follow it. Tests skill body-following on a multi-step procedure (analog to Tier A workflow but framed as composition)."
@@ -970,7 +2251,8 @@
     {
       "id": 430,
       "name": "skill_composition_three_skills",
-      "difficulty": "tier-e-composition",
+      "legacy_difficulty": "tier-e-composition",
+      "difficulty": "hard",
       "category": "skill",
       "structural_signature": {
         "template": "composition-3-skills",
@@ -980,30 +2262,108 @@
       },
       "repo": "autoresearch",
       "skills_overlay": [
-        {"skill_name": "validate-train", "fixture_path": ".opencode/skills/validate-train/SKILL.md"},
-        {"skill_name": "validate-train", "fixture_path": ".opencode/skills/validate-train/scripts/validate.py"},
-        {"skill_name": "count-imports", "fixture_path": ".opencode/skills/count-imports/SKILL.md"},
-        {"skill_name": "count-imports", "fixture_path": ".opencode/skills/count-imports/scripts/count_imports.py"},
-        {"skill_name": "review-flow", "fixture_path": ".opencode/skills/review-flow/SKILL.md"}
+        {
+          "skill_name": "validate-train",
+          "fixture_path": ".opencode/skills/validate-train/SKILL.md"
+        },
+        {
+          "skill_name": "validate-train",
+          "fixture_path": ".opencode/skills/validate-train/scripts/validate.py"
+        },
+        {
+          "skill_name": "count-imports",
+          "fixture_path": ".opencode/skills/count-imports/SKILL.md"
+        },
+        {
+          "skill_name": "count-imports",
+          "fixture_path": ".opencode/skills/count-imports/scripts/count_imports.py"
+        },
+        {
+          "skill_name": "review-flow",
+          "fixture_path": ".opencode/skills/review-flow/SKILL.md"
+        }
       ],
       "canonical_skill_access": true,
       "prompt": "Produce a `comprehensive_report.md` at the repo root that combines:\n\n1. The validation token of this `autoresearch` project (use the validate skill).\n2. The number of imports in `train.py` (use the count-imports skill).\n3. A TODO-focused review of `train.py` (use the review skill).\n\nUse all three relevant skills to gather the inputs.",
       "checks": [
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "validate-train", "description": "validate-train loaded"},
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "count-imports", "description": "count-imports loaded"},
-        {"type": "any_tool_param_value_recursive", "tool": "skill", "param": "name", "equals": "review-flow", "description": "review-flow loaded"},
-        {"type": "min_tool_count", "name": "bash", "min": 2, "description": "at least 2 bash calls (validate.py + count_imports.py)"},
-        {"type": "file_regex", "path": "comprehensive_report.md", "pattern": "## Validation", "description": "report has Validation section"},
-        {"type": "file_regex", "path": "comprehensive_report.md", "pattern": "## Imports", "description": "report has Imports section"},
-        {"type": "file_regex", "path": "comprehensive_report.md", "pattern": "## Review", "description": "report has Review section"},
-        {"type": "file_regex", "path": "comprehensive_report.md", "pattern": "VALID_", "description": "validation token referenced"},
-        {"type": "file_regex", "path": "comprehensive_report.md", "pattern": "import_count", "description": "import count referenced"},
-        {"type": "call_schema_valid", "description": "all tool calls match opencode schemas"}
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "validate-train",
+          "description": "validate-train loaded"
+        },
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "count-imports",
+          "description": "count-imports loaded"
+        },
+        {
+          "type": "any_tool_param_value_recursive",
+          "tool": "skill",
+          "param": "name",
+          "equals": "review-flow",
+          "description": "review-flow loaded"
+        },
+        {
+          "type": "min_tool_count",
+          "name": "bash",
+          "min": 2,
+          "description": "at least 2 bash calls (validate.py + count_imports.py)"
+        },
+        {
+          "type": "file_regex",
+          "path": "comprehensive_report.md",
+          "pattern": "## Validation",
+          "description": "report has Validation section"
+        },
+        {
+          "type": "file_regex",
+          "path": "comprehensive_report.md",
+          "pattern": "## Imports",
+          "description": "report has Imports section"
+        },
+        {
+          "type": "file_regex",
+          "path": "comprehensive_report.md",
+          "pattern": "## Review",
+          "description": "report has Review section"
+        },
+        {
+          "type": "file_regex",
+          "path": "comprehensive_report.md",
+          "pattern": "VALID_",
+          "description": "validation token referenced"
+        },
+        {
+          "type": "file_regex",
+          "path": "comprehensive_report.md",
+          "pattern": "import_count",
+          "description": "import count referenced"
+        },
+        {
+          "type": "call_schema_valid",
+          "description": "all tool calls match opencode schemas"
+        }
       ],
       "expected_skill_invocations": [
-        {"skill_name": "validate-train", "must_invoke": true, "must_not_invoke": false},
-        {"skill_name": "count-imports", "must_invoke": true, "must_not_invoke": false},
-        {"skill_name": "review-flow", "must_invoke": true, "must_not_invoke": false}
+        {
+          "skill_name": "validate-train",
+          "must_invoke": true,
+          "must_not_invoke": false
+        },
+        {
+          "skill_name": "count-imports",
+          "must_invoke": true,
+          "must_not_invoke": false
+        },
+        {
+          "skill_name": "review-flow",
+          "must_invoke": true,
+          "must_not_invoke": false
+        }
       ],
       "comparison_id": null,
       "_authoring_notes": "Three-skill composition. Stress test for skill-load chaining and aggregation. Most demanding sample in the family."
