@@ -1,6 +1,7 @@
 #!/bin/bash
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "${SCRIPT_DIR}/../.." && pwd)
+CONFIG_DIR=${REPO_ROOT}/cluster_configs
 
 MODEL="sft-all_0417.final.alex"
 STEPS="100 200 300"
@@ -21,6 +22,7 @@ python "${REPO_ROOT}/run_cluster.py"  \
 --retry-on-timeout ${RETRIES} \
 --timeout ${TIMEOUT} \
 --cluster ${CLUSTER} \
+--config-dir ${CONFIG_DIR} \
 --model ${CKPT} \
 -j ${JOBS} \
 --server-gpus 8 \

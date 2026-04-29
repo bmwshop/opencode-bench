@@ -1,6 +1,7 @@
 #!/bin/bash
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "${SCRIPT_DIR}/../.." && pwd)
+CONFIG_DIR=${REPO_ROOT}/cluster_configs
 
 MODEL=Qwen2.5-7B-Instruct
 TP=4
@@ -17,6 +18,7 @@ python "${REPO_ROOT}/run_cluster.py"  \
 --retry-on-timeout ${RETRIES} \
 --timeout ${TIMEOUT} \
 --cluster ${CLUSTER} \
+--config-dir ${CONFIG_DIR} \
 --model /hf_models/${MODEL} \
 -j ${JOBS} \
 --server-gpus 8 \
