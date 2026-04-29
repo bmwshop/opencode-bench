@@ -133,8 +133,8 @@ def check(tools, texts, chk):
     timeout = int(chk.get("timeout", 10))
     needles = _needles(chk)
 
-    source_path = project_dir / source_rel
-    script_path = project_dir / script_rel
+    source_path = (project_dir / source_rel).resolve()
+    script_path = (project_dir / script_rel).resolve()
 
     if not script_path.exists():
         return False, f"script not found: {script_rel}"
@@ -219,7 +219,7 @@ def check(tools, texts, chk):
                 capture_output=True,
                 text=True,
                 timeout=timeout,
-                cwd=str(project_dir),
+                cwd=str(Path(project_dir).resolve()),
                 env=env,
             )
         except subprocess.TimeoutExpired:

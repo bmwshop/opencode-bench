@@ -139,6 +139,7 @@ def evaluate(sample, run_dir):
     name = sample.get("name", str(sid))
     label = f"#{sid} {name}"
 
+    run_dir = run_dir.resolve()
     trace = run_dir / f"{trace_name(sample)}.jsonl"
     if not trace.exists():
         return Result(label, sample["category"], failed=["trace not found"],
