@@ -73,11 +73,9 @@ FAMILIES: dict[str, dict[str, Any]] = {
         "manifest": ROOT / "data" / "v1_mutant_criteria.json",
         "default_ids": "201-230",
         "category": "tool_restriction",
-        # Mutants have no natural difficulty tiering -- group by mutation_kind
-        # for per-restriction-kind aggregation. Gradient analysis is skipped
-        # (tier_order=None) because the kinds aren't ordered.
-        "tier_field": "mutation_kind",
-        "tier_order": None,
+        # Tool-restriction samples now use explicit easy/medium/hard tiers.
+        "tier_field": "difficulty",
+        "tier_order": ["easy", "medium", "hard"],
     },
     "orchestration": {
         "manifest": ROOT / "data" / "v1_orchestration_criteria.json",
