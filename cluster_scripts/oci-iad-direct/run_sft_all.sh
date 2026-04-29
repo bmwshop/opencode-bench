@@ -33,16 +33,16 @@ server_args_for_run() {
 
   case "${run_name}" in
     *qwen2.5_7b*)
-      echo "--tensor-parallel-size 4 --pipeline-parallel-size 2 --enable-auto-tool-choice --reasoning-parser qwen3 --tool-call-parser qwen3_coder"
+      echo "--tensor-parallel-size 4 --pipeline-parallel-size 2 --enable-auto-tool-choice --reasoning-parser qwen3 --tool-call-parser hermes"
       ;;
     *qwen2.5_14b*)
-      echo "--tensor-parallel-size 8 --data-parallel-size 1 --enable-auto-tool-choice --reasoning-parser qwen3 --tool-call-parser qwen3_coder"
+      echo "--tensor-parallel-size 8 --data-parallel-size 1 --enable-auto-tool-choice --reasoning-parser qwen3 --tool-call-parser hermes"
       ;;
     *qwen3_8b*)
-      echo "--tensor-parallel-size 4 --pipeline-parallel-size 2 --enable-auto-tool-choice --reasoning-parser qwen3 --tool-call-parser qwen3_coder"
+      echo "--tensor-parallel-size 4 --pipeline-parallel-size 2 --enable-auto-tool-choice --reasoning-parser qwen3 --tool-call-parser hermes"
       ;;
     *qwen3_30b_a3b*)
-      echo "--tensor-parallel-size 1 --data-parallel-size 8 --enable-expert-parallel --enable-auto-tool-choice --reasoning-parser qwen3 --tool-call-parser qwen3_coder"
+      echo "--tensor-parallel-size 1 --data-parallel-size 8 --enable-expert-parallel --enable-auto-tool-choice --reasoning-parser qwen3 --tool-call-parser hermes"
       ;;
     *)
       echo "ERROR: don't know vLLM server args for run '${run_name}'" >&2
