@@ -81,10 +81,10 @@ for model_dir in "${SOURCE_ROOT}"/*/final_hf_model; do
     --mount-paths "${WORKSPACE_MOUNT}" \
     --server-nodes 1 \
     --server-gpus 8 \
-    --timeout 300 \
+    --timeout 600 \
     --output-dir "${output_dir}" \
     --server-args "${server_args}" \
-    --time-min "00:30:00" \
+    --time-min "01:45:00" \
     -j 4 \
     --retry-on-timeout 5 \
     --dependent-jobs 0 \
