@@ -2,9 +2,9 @@
 set -euo pipefail
 shopt -s nullglob
 
-SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-REPO_ROOT=$(cd "${SCRIPT_DIR}/../.." && pwd)
+REPO_ROOT=${REPO_ROOT:-/lustre/fsw/portfolios/llmservice/users/drekesh/code/opencode-bench}
 CONFIG_DIR=${REPO_ROOT}/cluster_configs
+cd "${REPO_ROOT}"
 
 CLUSTER=${CLUSTER:-oci-iad-direct}
 SOURCE_ROOT=${SOURCE_ROOT:-/lustre/fsw/portfolios/llmservice/users/smajumdar/results/opencode_paper/v1}
@@ -12,9 +12,9 @@ OUTPUT_ROOT=${OUTPUT_ROOT:-/lustre/fsw/portfolios/llmservice/users/drekesh/resul
 WORKSPACE_MOUNT="${SOURCE_ROOT}:/workspace"
 
 # Optional:
-#   DRY_RUN=1 bash cluster_scripts/oci-iad-direct/run_smajumdar_v1_all.sh
-#   BENCHMARK_ARGS="--benchmark-id 21" bash cluster_scripts/oci-iad-direct/run_smajumdar_v1_all.sh
-#   RUN_FILTER="qwen2.5_7b" bash cluster_scripts/oci-iad-direct/run_smajumdar_v1_all.sh
+#   DRY_RUN=1 bash cluster_scripts/oci-iad-direct/run_sft_all.sh
+#   BENCHMARK_ARGS="--benchmark-id 21" bash cluster_scripts/oci-iad-direct/run_sft_all.sh
+#   RUN_FILTER="qwen2.5_7b" bash cluster_scripts/oci-iad-direct/run_sft_all.sh
 DRY_RUN=${DRY_RUN:-0}
 BENCHMARK_ARGS=${BENCHMARK_ARGS:-}
 RUN_FILTER=${RUN_FILTER:-}
@@ -81,10 +81,12 @@ for model_dir in "${SOURCE_ROOT}"/*/final_hf_model; do
     --mount-paths "${WORKSPACE_MOUNT}" \
     --server-nodes 1 \
     --server-gpus 8 \
+    --timeout 300 \
     --output-dir "${output_dir}" \
     --server-args "${server_args}" \
     --time-min "00:30:00" \
-    --workers 8 \
+    -j 4 \
+    --retry-on-timeout 5 \
     --dependent-jobs 0 \
     --parallel-jobs 4 \
     --max-output-tokens 8192 \
