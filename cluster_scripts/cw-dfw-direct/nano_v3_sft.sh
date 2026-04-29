@@ -6,6 +6,7 @@ CONFIG_DIR=${REPO_ROOT}/cluster_configs
 MODEL="sft-all_0417.final.alex"
 STEPS="100 200 300"
 BASE_DIR=/lustre/fsw/portfolios/llmservice/users/drekesh/results/sft/${MODEL}
+MODEL_MOUNT=${BASE_DIR}:${BASE_DIR}
 TP=8
 CLUSTER=cw-dfw-direct
 PARTITION=batch_short
@@ -24,6 +25,7 @@ python "${REPO_ROOT}/run_cluster.py"  \
 --cluster ${CLUSTER} \
 --config-dir ${CONFIG_DIR} \
 --model ${CKPT} \
+--mount-paths ${MODEL_MOUNT} \
 -j ${JOBS} \
 --server-gpus 8 \
 --output-dir ${OUTPUT_DIR} \
