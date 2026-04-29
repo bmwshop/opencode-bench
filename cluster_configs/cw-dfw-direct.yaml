@@ -27,7 +27,7 @@ env_vars:
   - "HF_HOME=/hf"
 
 timeouts:
-  batch: 03:00:00
+  batch: 03:50:00
   batch_short: 02:00:00
   interactive: 01:00:00
-  cpu_short: 03:00:00
+  cpu_short: 04:00:00
