@@ -88,7 +88,6 @@ for model_dir in "${SOURCE_ROOT}"/*/final_hf_model; do
     -j 4 \
     --retry-on-timeout 5 \
     --dependent-jobs 0 \
-    --parallel-jobs 4 \
     --max-output-tokens 8192 \
     --reuse-code \
     --skip-schema-check \
