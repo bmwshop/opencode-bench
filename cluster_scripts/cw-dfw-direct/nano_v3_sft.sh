@@ -1,4 +1,7 @@
 #!/bin/bash
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+REPO_ROOT=$(cd "${SCRIPT_DIR}/../.." && pwd)
+
 MODEL="sft-all_0417.final.alex"
 STEPS="100 200 300"
 BASE_DIR=/lustre/fsw/portfolios/llmservice/users/drekesh/results/sft/${MODEL}
@@ -14,7 +17,7 @@ for STEP in ${STEPS}; do
 ITER=$(printf "iter_%07d" "${STEP}")
 CKPT="${BASE_DIR}/checkpoints/${ITER}/evals/hf/hf"
 
-python run_cluster.py  \
+python "${REPO_ROOT}/run_cluster.py"  \
 --retry-on-timeout ${RETRIES} \
 --timeout ${TIMEOUT} \
 --cluster ${CLUSTER} \

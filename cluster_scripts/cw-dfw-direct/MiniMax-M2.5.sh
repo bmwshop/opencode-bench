@@ -1,4 +1,7 @@
 #!/bin/bash
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+REPO_ROOT=$(cd "${SCRIPT_DIR}/../.." && pwd)
+
 MODEL=MiniMax-M2.5
 TP=8
 CLUSTER=cw-dfw-direct
@@ -8,7 +11,7 @@ TIMEOUT=300
 RETRIES=5
 OUTPUT_DIR=/lustre/fsw/portfolios/llmservice/users/$USER/opencode-bench-results
 
-python run_cluster.py  \
+python "${REPO_ROOT}/run_cluster.py"  \
 --retry-on-timeout ${RETRIES} \
 --timeout ${TIMEOUT} \
 --cluster ${CLUSTER} \
