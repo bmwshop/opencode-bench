@@ -477,7 +477,8 @@ def _capture_subagents(trace_path, cwd, argv):
 def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
         vllm_url=None, vllm_model_id=None, vllm_api_key="EMPTY",
         max_output_tokens=DEFAULT_MAX_OUTPUT_TOKENS,
-        retry_on_timeout=0, cap_src=None, auto_repair_fixtures=False):
+        retry_on_timeout=0, cap_src=None, auto_repair_fixtures=False,
+        cleanup_projects=False):
     sid = sample["id"]
     name = sample.get("name", str(sid))
     src = project_dir(sample)
@@ -620,6 +621,8 @@ def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
                     except OSError:
                         pass
         print(f"{header} \u2014 dropped", flush=True)
+        if cleanup_projects:
+            shutil.rmtree(cwd, ignore_errors=True)
         return None
 
     out = run_dir / f"{stem}.jsonl"
@@ -646,6 +649,13 @@ def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
     # Single write so `--workers > 1` can't splice header and stats across
     # samples. POSIX guarantees writes <= PIPE_BUF are atomic.
     print(f"{header}\n         {len(lines)} events, {tools} tool calls{suffix}", flush=True)
+
+    # Optional per-sample disk cleanup after trace + subagents are captured.
+    # Saves disk during long sweeps but is destructive to future re-scoring,
+    # since file-reading evaluators (file_regex_disk, exec_assert,
+    # exec_function) need the workspace to score the run again.
+    if cleanup_projects:
+        shutil.rmtree(cwd, ignore_errors=True)
 
     return out
 
@@ -723,6 +733,16 @@ def main():
              "version (default: v1). Run v0 separately with --version v0.",
     )
     parser.add_argument("--clean", action="store_true", help="Wipe runs/ first")
+    parser.add_argument(
+        "--cleanup-projects",
+        action="store_true",
+        help="After each sample's trace is captured, delete its per-task "
+             "project copy at run_dir/projects/{NNN}/. Trace JSONL, subagent "
+             "sidecars, captures/, and meta.json are kept; only the workspace "
+             "copy is removed. Saves disk during long sweeps but is "
+             "destructive to future re-scoring (file-reading evaluators "
+             "need the workspace). Mirrors eval.py's --cleanup-projects.",
+    )
     parser.add_argument(
         "--model",
         "-m",
@@ -1019,6 +1039,7 @@ def main():
                 retry_on_timeout=args.retry_on_timeout,
                 cap_src=cap_src,
                 auto_repair_fixtures=args.auto_repair_fixtures,
+                cleanup_projects=args.cleanup_projects,
             )
             for sample in samples
         ]
