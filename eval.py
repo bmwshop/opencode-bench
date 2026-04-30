@@ -463,10 +463,15 @@ def main():
     )
     parser.add_argument(
         "--cleanup-projects",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=True,
         help="After evaluating each sample, delete its per-task project copy "
              "at run_dir/projects/{NNN}/. Trace JSONL, subagent sidecars, "
-             "captures/, scores.json, and meta.json are kept.",
+             "captures/, scores.json, and meta.json are kept. ON by default; "
+             "pass --no-cleanup-projects to retain workspaces (needed if you "
+             "intend to re-score the run later, since file-graded evaluators "
+             "exec_assert / exec_function / file_regex_disk read source files "
+             "from the workspace).",
     )
     args = parser.parse_args()
 
