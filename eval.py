@@ -19,6 +19,7 @@ Usage:
 """
 
 import json
+import shutil
 import sys
 import argparse
 import importlib
@@ -460,6 +461,13 @@ def main():
         help="Re-extract data/tool_schemas.json from opencode before evaluating "
              "(uses $OPENCODE_BIN / $OPENCODE_CWD if set).",
     )
+    parser.add_argument(
+        "--cleanup-projects",
+        action="store_true",
+        help="After evaluating each sample, delete its per-task project copy "
+             "at run_dir/projects/{NNN}/. Trace JSONL, subagent sidecars, "
+             "captures/, scores.json, and meta.json are kept.",
+    )
     args = parser.parse_args()
 
     if args.refresh_schemas:
@@ -511,7 +519,17 @@ def main():
         print("No matching samples found.")
         sys.exit(1)
 
-    results = [evaluate(s, run_dir) for s in samples]
+    results = []
+    cleaned = 0
+    for s in samples:
+        results.append(evaluate(s, run_dir))
+        if args.cleanup_projects:
+            pdir = run_dir / "projects" / run_project_name(s)
+            if pdir.is_dir():
+                shutil.rmtree(pdir, ignore_errors=True)
+                cleaned += 1
+    if args.cleanup_projects:
+        print(f"Cleaned {cleaned} project copy(ies) under {run_dir / 'projects'}/")
     data = build(results, meta=meta)
     output = format_json(data) if args.format == "json" else format_text(data)
     print(output)
