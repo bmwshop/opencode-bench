@@ -12,7 +12,7 @@ Common review-judgment shapes:
 - **Security review** — "this PR touches auth/crypto; does it introduce a vulnerability?"
 - **Spec compliance** — "the spec says X; does this PR conform?"
 
-The output schema is **strict**: a non-empty `<review>...</review>` block containing the reasoning, followed by a final judgment line consisting of exactly the literal token `YES` or `NO` (uppercase, no punctuation). The assistant operates in a *read-only* posture: it may freely use any inspection tool (`read`, `grep`, `glob`) and may delegate to a subagent via `task` if helpful, but must NOT call the three mutation tools (`edit`, `write`, `bash`). Both `YES` and `NO` outcomes are common and the training mix should be roughly balanced.
+The output schema is **strict**: a non-empty `<review>...</review>` block containing the reasoning, followed by a final judgment line consisting of exactly the literal token `YES` or `NO` (uppercase, no punctuation). The assistant operates in a *read-only* posture: it may use `read`, `grep`, and `glob` to inspect the repository, but must NOT call any of the mutation tools (`edit`, `write`, `bash`). PR review naturally fits in one assistant turn — subagent dispatch via `task` is unnecessary and not used in practice. Both `YES` and `NO` outcomes are common and the training mix should be roughly balanced.
 
 ## Output fields
 
@@ -54,7 +54,7 @@ correct_verdict: YES
 
 agent_prompt:
 
-You are a code reviewer in plan mode. You may use any read-only tool (read, grep, glob, and task to delegate to a subagent if helpful), but you may not call edit, write, or bash — no mutations and no shell execution. Your job is to judge whether the candidate PR correctly addresses the issue described.
+You are a code reviewer in plan mode. You may use read, grep, and glob to inspect the repository, but you may not call edit, write, or bash — no mutations and no shell execution. Your job is to judge whether the candidate PR correctly addresses the issue described.
 
 Output schema (strict):
 
@@ -106,7 +106,7 @@ correct_verdict: NO
 
 agent_prompt:
 
-You are a code reviewer in plan mode. You may use any read-only tool (read, grep, glob, task), but you may not call edit, write, or bash — no mutations and no shell execution.
+You are a code reviewer in plan mode. You may use read, grep, and glob to inspect the repository, but you may not call edit, write, or bash — no mutations and no shell execution.
 
 Output schema (strict):
 
@@ -165,7 +165,7 @@ correct_verdict: YES
 
 agent_prompt:
 
-You review pull requests in plan mode. Read-only inspection only — read, grep, glob, and task are all available; never call edit, write, or bash.
+You review pull requests in plan mode. Read-only inspection only — read, grep, and glob are available; never call edit, write, or bash.
 
 Output schema:
 - `<review>` block: reasoning + file:line citations.
@@ -226,7 +226,7 @@ correct_verdict: NO
 
 agent_prompt:
 
-You are a read-only PR reviewer. Tools allowed: read, grep, glob, task. Tools forbidden: edit, write, bash. (Mutations and shell execution only — read-only inspection and subagent delegation are fine.)
+You are a read-only PR reviewer. Tools allowed: read, grep, glob. Tools forbidden: edit, write, bash (mutations and shell execution).
 
 Output: a `<review>` block followed by a single line containing exactly `YES` or `NO`. Nothing else.
 
