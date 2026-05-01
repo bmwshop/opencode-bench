@@ -2,7 +2,16 @@
 
 ## Description
 
-In OpenCode (an agentic CLI similar to Claude Code), tool restrictions are enforced through three orthogonal channels — top-level system prompt, an `AGENTS.md` file at the project root, or a custom primary-agent definition at `.opencode/agents/<name>.md` (activated via the run row's `agent:` field). This archetype covers the tool-restriction surface tested by the v1 benchmark: a normal coding/search/triage task is wrapped with a tool denial (or affirmative requirement), and the model must accomplish the task by **rerouting through a less-obvious tool** while honoring the restriction.
+In OpenCode (an agentic CLI similar to Claude Code), tool restrictions can be applied via three mechanisms; this archetype covers the **two soft (prompt-based) mechanisms**, where every tool remains visible in the model's schema and the restriction is enforced by *prompted compliance*:
+
+- **`agents_md`** — an `AGENTS.md` file at the project root. OpenCode auto-discovers it at session start and **appends its content to the agent's system prompt**. The default agent stays active.
+- **`custom_primary_agent`** — a primary-agent definition file at `.opencode/agents/<name>.md` with `mode: primary`. Activated by the run row's `agent: <name>` field. Its body **replaces** the default agent's system prompt entirely.
+
+The third (hard) mechanism — `opencode.json` `permission` config — actually **removes** denied tools from the model's schema so the model literally can't see them. That mechanism is covered by **[archetype 11 (`tool_restriction_permissions`)](11-tool_restriction_permissions.md)** and is out of scope here.
+
+In the v1 benchmark `tool_restriction` family (samples #201–#230), the soft channels split roughly 11 `agents_md` to 3 `custom_primary_agent` (78%/22% of the soft slice; the other 16 samples use the hard `opencode.json` mechanism). This archetype's example mix mirrors the soft-channel ratio.
+
+The training signal is *creative compliance under restriction*: a normal coding/search/triage task is wrapped with a tool denial (or affirmative requirement), and the model must accomplish the task by **rerouting through a less-obvious tool** while honoring the restriction.
 
 Common restriction shapes the model must learn:
 
@@ -10,44 +19,39 @@ Common restriction shapes the model must learn:
 - **`grep` and/or `glob` denied → search via `bash`** (`rg`, `find`, `ls -R`, `grep -r`) **or via plain `read`** of suspected files.
 - **`bash`-only mode → search/read/write all via `bash`** — `rg` for search, `cat` for read, `tee` / `>` for write — even though specialised tools would be more natural.
 - **Subagent-required mode → parent must dispatch at least one `task` subagent** for every read/grep operation; specialised tools forbidden at the parent layer.
-- (other shapes from the benchmark not exemplified here but generators may produce: `no_write`, `no_glob` alone, `parent_no_read`)
-
-The user's task should be a **normal coding/search/triage task** that would naturally invite the forbidden tool; the agent prompt enforces the restriction in one of the three channels. The deliverable should be a tangible artifact (a written file, a structured response) so the model can't satisfice with a chat-style answer that sidesteps the restriction.
 
 ### Restriction mechanism vs. restriction type — keep separate
 
 Two distinct concepts that are easy to conflate:
 
-- **Restriction *mechanism*** = where the restriction text physically lives. Three channels: `system_prompt` (text prepended to the default agent's system prompt; no custom agent file), `agents_md` (an `AGENTS.md` file at the project root, auto-loaded by OpenCode), or `custom_primary_agent` (a primary-agent definition file at `.opencode/agents/<name>.md`, activated by the run row).
+- **Restriction *mechanism*** = where the restriction text physically lives. Two soft channels (covered here): `agents_md` and `custom_primary_agent`. Plus the hard `opencode.json` channel (covered by archetype 11).
 - **Restriction *type*** = what the rule requires. Common types: `no_bash`, `no_grep_no_glob`, `bash_only`, `subagent_required`, etc. Some types (e.g. `subagent_required`) require the model to use the `task` tool to delegate, but **the subagent itself is not a restriction mechanism** — it's a tool the model is *required to use* when the restriction type calls for it.
 
 A given restriction type can ride on any channel; the benchmark mixes them.
 
-## Distribution targets (mirror v1 `tool_restriction` benchmark)
+## Distribution targets (mirror v1 `tool_restriction` benchmark, soft-channel slice)
 
-The v1 benchmark `tool_restriction` family (samples #201–#230) has the following distribution; the example mix below is sized to match it within rounding:
-
-| axis | benchmark | this archetype (4 examples) |
+| axis | benchmark (soft slice only) | this archetype (4 examples) |
 |---|---|---|
-| **channel** — `system_prompt` / `agents_md` / `custom_primary_agent` | 53% / 37% / 10% (16/11/3) | 50% / 25% / 25% (2/1/1) |
-| **parent task shape** — localization / editing / review | 53% / 33% / 14% (16/10/4) | 25% / 50% / 25% (1/2/1) |
+| **channel** — `agents_md` / `custom_primary_agent` | 78% / 22% (11/3) | 75% / 25% (3/1) |
+| **parent task shape** — localization / editing / review | 53% / 33% / 14% (16/10/4) overall | 25% / 50% / 25% (1/2/1) |
 | **restriction shape coverage** | 7+ shapes used | covers the 4 most common (~63% of benchmark samples) |
 
-Generators sampling from this archetype can extend the example mix to cover the rarer shapes (`no_write`, `no_glob` alone, `parent_no_read`); those follow the same pattern.
+For the 53% of benchmark `tool_restriction` samples that use `opencode.json` permission gating (mutation kinds with `_system` suffix), see archetype 11.
 
 ## Output fields
 
 Output a JSON object with these fields:
 
 - `"question"`: string — the full user prompt the model sees. For localization-shaped samples, must include the structured-artifact format spec (`file::QualifiedName` lines, lex order, trailing newline). For editing-shaped samples, must include the function name and behavior contract. For review-shaped samples, must include the embedded PR diff inside `<candidate_diff>` tags plus the strict YES/NO + `<review>` schema.
-- `"agent_name"`: string — kebab-case name describing the restriction (e.g. `"no-bash-editor"`, `"subagent-only-locator"`).
-- `"agent_content"`: string — markdown with YAML frontmatter (`mode: primary` only required when `channel == "custom_primary_agent"`). Body explicitly enumerates allowed tools AND forbidden tools. For non-trivial restrictions, **suggests the rerouting path** the model should take.
-- `"channel"`: string — exactly one of `"system_prompt"`, `"agents_md"`, `"custom_primary_agent"`. Indicates which delivery channel the restriction rides on (the harness uses this to install the restriction in the right place).
+- `"agent_name"`: string — kebab-case name describing the restriction (e.g. `"no-bash-editor"`, `"subagent-only-reviewer"`, `"bash-only-editor"`). For `agents_md` channel this name is informational only (used in the `<filename>` of the file); for `custom_primary_agent` channel it MUST match the `name:` in the frontmatter and the run row's `agent:` field.
+- `"agent_content"`: string — the rule text. For `agents_md` channel: plain markdown (typically a `## Tool Restriction` heading + bulleted rules); no YAML frontmatter required. For `custom_primary_agent` channel: must include YAML frontmatter (`name`, `mode: primary`, `description`) followed by the body. Body explicitly enumerates allowed tools AND forbidden tools. For non-trivial restrictions, **suggests the rerouting path** the model should take.
+- `"channel"`: string — exactly one of `"agents_md"` or `"custom_primary_agent"`. Indicates which delivery channel the restriction rides on (the harness uses this to install the file at the right path).
 - `"pre_command"`: string — bash to materialize the project the task operates on.
 
 ## Examples (4)
 
-### Example 1 (system_prompt + no_bash + editing-shape)
+### Example 1 (agents_md + no_bash + editing-shape)
 
 ```
 question:
@@ -58,11 +62,13 @@ agent_name: no-bash-editor
 
 agent_content:
 
+## Tool Restriction
+
 You may use: read, write, edit, glob, grep, task.
 
 You may NOT use the bash tool. No shell commands, no `npm`, no `python`, no `git`, no `pytest`. If verification is needed (e.g. confirming a substitution landed correctly), do it by reading the file you just edited.
 
-channel: system_prompt
+channel: agents_md
 
 pre_command:
 
@@ -83,6 +89,8 @@ There's a config value called `RETRY_BACKOFF_MS` referenced across this microser
 agent_name: no-grep-no-glob
 
 agent_content:
+
+## Tool Restriction
 
 You may use: read, write, edit, bash, task.
 
@@ -116,7 +124,7 @@ def heartbeat(): time.sleep(1.0)
 EOF
 ```
 
-### Example 3 (system_prompt + subagent_required + review-shape)
+### Example 3 (agents_md + subagent_required + review-shape)
 
 ```
 question:
@@ -153,13 +161,15 @@ agent_name: subagent-only-reviewer
 
 agent_content:
 
+## Tool Restriction
+
 You are a PR reviewer in a delegation-only posture. You may use: task (to delegate inspection to a subagent).
 
 You may NOT use read, grep, glob, edit, write, or bash directly. To inspect any file beyond what's already in the user prompt's diff, dispatch a subagent via task (e.g. `task(subagent_type="explore", prompt="...")`) and synthesise its summary.
 
 Output the YES/NO + `<review>` schema requested by the user.
 
-channel: system_prompt
+channel: agents_md
 
 pre_command:
 
@@ -228,10 +238,11 @@ EOF
 
 ## Notes on the schema
 
-- **Channel `system_prompt`** is the most common in the benchmark (53%) and this archetype mirrors that — 2 of 4 examples use it. A generator producing samples should default to `system_prompt` unless the scenario specifically benefits from `agents_md` (project-specific conventions) or `custom_primary_agent` (custom-agent identity).
+- **Channel `agents_md`** is the dominant soft-restriction channel in the benchmark (78% of the soft slice — 11 of 14 soft samples) and this archetype mirrors that — 3 of 4 examples use it. Generators sampling from this archetype should default to `agents_md` unless the scenario specifically benefits from a custom primary agent (full system-prompt replacement, agent identity reframing).
+- **Channel `custom_primary_agent`** replaces the default agent's system prompt entirely and requires both the `mode: primary` frontmatter and a matching `agent:` field on the run row. Use it when the restriction is strong enough to warrant a complete identity reframe ("you are a strict bash-only editor"); use `agents_md` for additive policy text on top of the default agent.
 - **Parent task shape variety** matters: tool_restriction is layered on top of localization / editing / review tasks in the benchmark, so the archetype includes one example of each shape combined with a restriction. The localization example (#2) carries the structured-artifact pattern; the editing examples (#1, #4) carry behavior contracts; the review example (#3) carries the YES/NO + `<review>` schema from archetype 12 plus the subagent-required restriction.
 - **Restriction shape coverage** spans no_bash (Ex 1), no_grep_no_glob (Ex 2), subagent_required (Ex 3), bash_only (Ex 4) — the 4 most common shapes in the benchmark, together accounting for ~63% of `tool_restriction` samples. Generators may extend with `no_write`, `no_glob` alone, or `parent_no_read` (rarer shapes from the same restriction family); the patterns transfer.
-- **`mode: primary` frontmatter** is only present when `channel == "custom_primary_agent"` (Ex 4). For `system_prompt` and `agents_md` channels the agent_content is just the rule text — no frontmatter is needed because the harness installs the text into the default agent's system prompt or into `AGENTS.md` directly.
+- **For `*_system` mutation kinds** (16 of 30 benchmark samples = 53%) the restriction is enforced by the *hard* mechanism — `opencode.json` `permission` config that removes the tool from the model's schema entirely. That is **archetype 11's** territory, not this one. The two archetypes are complementary: 11 covers schema-gating (model literally cannot see the tool); 13 covers prompted compliance (model sees the tool but is told not to use it).
 
 ## Overlap notes
 
@@ -243,4 +254,4 @@ All four examples use synthetic projects and synthetic identifiers:
 
 None of these match v1 benchmark function names, file paths, or skill names. The benchmark's `tool_restriction` samples target callers of `merge_cookies`, `Session.prepare_request`, `RequestsCookieJar.update`, `iter_slices`, `unquote_header_value`, etc. — all explicitly avoided here.
 
-The four examples deliberately span all three injection channels (`system_prompt`, `agents_md`, `custom_primary_agent`) in a 2/1/1 ratio that approximates the benchmark's 16/11/3 distribution. They also span localization, editing, and review parent shapes (1/2/1) so the trained model learns that tool restrictions compose with each underlying task type.
+The four examples deliberately span both soft injection channels (`agents_md`, `custom_primary_agent`) in a 3/1 ratio that approximates the benchmark's soft-channel split (11/3). They also span localization, editing, and review parent shapes (1/2/1) so the trained model learns that tool restrictions compose with each underlying task type.
