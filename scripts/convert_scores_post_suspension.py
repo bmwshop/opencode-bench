@@ -26,7 +26,9 @@ What it does NOT do:
 
 Default behaviour (``python scripts/convert_scores_post_suspension.py``):
 
-  * Walks ``runs/v1/**/scores.json``.
+  * Walks ``runs/v1/**/scores.json`` under the repo root. Override with
+    ``--results-root PATH`` to walk a different tree (e.g. shared lustre
+    results), or pass explicit positional paths to convert just those.
   * Skips files modified before the latest grader fix (2026-04-29 12:00
     local) so legacy buggy scores aren't promoted as if they were current.
     Use ``--all-runs`` or ``--since`` to override.
@@ -41,6 +43,8 @@ Examples:
     python scripts/convert_scores_post_suspension.py --all-runs
     python scripts/convert_scores_post_suspension.py --since 2026-04-29
     python scripts/convert_scores_post_suspension.py runs/v1/<model>/<ts>/scores.json
+    python scripts/convert_scores_post_suspension.py \\
+        --results-root /lustre/.../smajumdar/results/opencode_paper/v1 --dry-run
 """
 from __future__ import annotations
 
@@ -58,7 +62,8 @@ SUSPENDED_IDS = {12, 13, 14, 15}
 SUSPENDED_CATEGORY = "code_authoring"
 
 DEFAULT_SINCE = datetime(2026, 4, 29, 12, 0, 0)
-DEFAULT_RUNS_GLOB = "runs/v1/**/scores.json"
+DEFAULT_RESULTS_ROOT = REPO_ROOT / "runs" / "v1"
+SCORES_GLOB = "**/scores.json"
 BACKUP_SUFFIX = ".pre-v0.5.bak"
 
 LABEL_RE = re.compile(r"^#(\d+)\s")
@@ -272,7 +277,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "paths", nargs="*", type=Path,
         help="Specific scores.json files to convert. "
-             "If omitted, walks runs/v1/**/scores.json.")
+             "If omitted, walks --results-root/**/scores.json.")
+    p.add_argument(
+        "--results-root", type=Path, default=DEFAULT_RESULTS_ROOT,
+        help=f"Root directory to walk for scores.json when no positional "
+             f"paths are given. Default: {DEFAULT_RESULTS_ROOT}")
     p.add_argument(
         "--dry-run", action="store_true",
         help="Print what would change without writing anything.")
@@ -307,7 +316,10 @@ def _resolve_since(args: argparse.Namespace) -> datetime | None:
 def _collect_paths(args: argparse.Namespace) -> list[Path]:
     if args.paths:
         return [p.resolve() for p in args.paths]
-    return sorted(REPO_ROOT.glob(DEFAULT_RUNS_GLOB))
+    root = args.results_root.resolve()
+    if not root.exists():
+        sys.exit(f"--results-root does not exist: {root}")
+    return sorted(root.glob(SCORES_GLOB))
 
 
 def main() -> int:
