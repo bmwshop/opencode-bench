@@ -41,8 +41,6 @@ HEADER = [
     "pass@1_avg",
     "pass@1_std",
     "pass@n",
-    "auth_pass@1",
-    "auth_pass@n",
     "edit_pass@1",
     "edit_pass@n",
     "loc_pass@1",
