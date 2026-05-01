@@ -462,16 +462,17 @@ def main():
              "(uses $OPENCODE_BIN / $OPENCODE_CWD if set).",
     )
     parser.add_argument(
-        "--cleanup-projects",
-        action=argparse.BooleanOptionalAction,
+        "--no-cleanup-projects",
+        dest="cleanup_projects",
+        action="store_false",
         default=True,
-        help="After evaluating each sample, delete its per-task project copy "
-             "at run_dir/projects/{NNN}/. Trace JSONL, subagent sidecars, "
-             "captures/, scores.json, and meta.json are kept. ON by default; "
-             "pass --no-cleanup-projects to retain workspaces (needed if you "
-             "intend to re-score the run later, since file-graded evaluators "
-             "exec_assert / exec_function / file_regex_disk read source files "
-             "from the workspace).",
+        help="Retain per-task project copies at run_dir/projects/{NNN}/ after "
+             "evaluation. By default eval.py deletes them — saves disk but "
+             "prevents future re-scoring (file-graded evaluators exec_assert, "
+             "exec_function, and file_regex_disk read source files from the "
+             "workspace). Pass this flag if you intend to re-score the run "
+             "later (e.g. after a grader fix). Trace JSONL, subagent sidecars, "
+             "captures/, scores.json, and meta.json are always kept regardless.",
     )
     args = parser.parse_args()
 
