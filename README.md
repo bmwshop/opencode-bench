@@ -42,9 +42,11 @@ To run the benchmark on a Slurm cluster with a GPU-hosted vLLM server, see [CLUS
 The bench is split into two tiers:
 
 - **v0** — 33 curated tiny projects under [projects/v0/](projects/v0/). Fast to run, exercises opencode's tool discipline (routing, efficiency, plan-mode adherence, subagents, skills, etc.). Run with `--version v0`.
-- **v1** — tasks against real pinned open-source repos, vendored as git submodules under [projects/v1/](projects/v1/). This is the default when no `--version` flag is passed; `python run.py` runs every v1 sample across every category. Each repo is declared once in [data/v1_repos.json](data/v1_repos.json) with its upstream URL and exact pinned SHA. Current repos:
-  - `autoresearch` — [karpathy/autoresearch](https://github.com/karpathy/autoresearch)
+- **v1** — 164 tasks against real pinned open-source repos, vendored as git submodules under [projects/v1/](projects/v1/). This is the default when no `--version` flag is passed; `python run.py` runs every v1 sample across every category. Each repo is declared once in [data/v1_repos.json](data/v1_repos.json) with its upstream URL and exact pinned SHA. Current repos:
   - `requests` — [psf/requests](https://github.com/psf/requests)
+  - `httpx` — [encode/httpx](https://github.com/encode/httpx)
+  - `click` — [pallets/click](https://github.com/pallets/click)
+  - `autoresearch` — [karpathy/autoresearch](https://github.com/karpathy/autoresearch)
 
 A single run targets exactly one version (`run.py --version v0` or `--version v1`). Run the two tiers as separate invocations.
 
@@ -80,7 +82,7 @@ Each run creates an isolated directory with:
 - `meta.json` — model, date, timeout, sample IDs, `version`, `v1_repo_pins`, full command-line arguments
 - `scores.json` — machine-readable scores (produced by `eval.py`)
 - `{id:03d}_{name}.jsonl` — per-sample opencode trace (e.g. `001_camel_case.jsonl`)
-- `projects/{id:03d}/` — per-sample workspace, copied from the canonical fixture before the sample runs and left in place afterwards for inspection
+- `projects/{id:03d}/` — per-sample workspace, copied from the canonical fixture before the sample runs. Left in place after `run.py` finishes; `eval.py` deletes it by default after scoring (pass `--no-cleanup-projects` to retain it for re-scoring later)
 - `captures/` (when `--proxy` is set) — proxy request/response logs for this run
 - `stitched/` (after `stitch.py` runs) — stitched multi-turn traces
 
@@ -216,7 +218,10 @@ python eval.py --format json                               # machine-readable JS
 python eval.py --format json --output scores.json          # JSON output to stdout and file
 python eval.py --output scores.txt                         # text output to stdout and file
 python eval.py --refresh-schemas                           # re-extract data/tool_schemas.json first
+python eval.py --no-cleanup-projects                       # keep workspaces; needed for future re-scoring
 ```
+
+By default `eval.py` deletes each per-sample workspace at `runs/.../projects/{NNN}/` after scoring (saves disk; a 164-sample × 3-seed sweep generates ~80 GB of project copies). Pass `--no-cleanup-projects` to retain them — required if you intend to re-score the run later, since the file-graded evaluators (`exec_assert`, `exec_function`, `file_regex_disk`) read source files directly from the workspace. Trace JSONL, subagent sidecars, `captures/`, `scores.json`, and `meta.json` are always kept regardless.
 
 When using `--format json`, the output includes a `"run"` object with the model name, date, and timestamp from `meta.json`, making each score file self-describing.
 
@@ -321,7 +326,14 @@ data/
   samples_v0.jsonl       # v0 test definitions (prompts + checks)
   samples_v1.jsonl       # v1 test definitions (real-repo tasks)
   v1_repos.json          # v1 repo declarations (slug -> url, pin, submodule_path)
+  v1_editing_criteria.json    # source-of-truth manifest for v1 code_editing samples
+  v1_localization_criteria.json # source-of-truth manifest for v1 code_localization samples
+  v1_review_criteria.json     # source-of-truth manifest for v1 code_review samples
+  v1_orchestration_criteria.json # source-of-truth manifest for v1 orchestration samples
+  v1_skill_criteria.json      # source-of-truth manifest for v1 skill samples
+  v1_mutant_criteria.json     # source-of-truth manifest for v1 tool_restriction samples
   tool_schemas.json      # opencode tool schemas (for call_schema_valid)
+  archetypes/v1/         # 15 training-data archetype specs (one .md per category)
   specs/                 # per-sample documentation (capability, pass/fail criteria)
     v0/
       001_camel_case.md
@@ -340,8 +352,13 @@ projects/                # canonical per-sample fixtures, read-only at runtime
     ...
     033/
   v1/
-    autoresearch/        #   git submodule pinned via data/v1_repos.json
     requests/            #   git submodule pinned via data/v1_repos.json
+    httpx/               #   git submodule pinned via data/v1_repos.json
+    click/               #   git submodule pinned via data/v1_repos.json
+    autoresearch/        #   git submodule pinned via data/v1_repos.json
+    skills/              #   per-skill-sample fixtures (SKILL.md + sibling scripts)
+    mutants/             #   per-mutant overlay (AGENTS.md / persona / opencode.json)
+    orchestration/       #   per-orchestration sample overlay
 scripts/
   extract_schemas.py     # re-extracts data/tool_schemas.json from opencode serve
 evaluators/              # check implementations (auto-registered)
@@ -368,6 +385,22 @@ captures/                # staging dir for switchyard output (git-ignored)
 
 ## Sample Categories
 
+### v1 (164 samples)
+
+| Category | n | What it tests |
+|---|---|---|
+| `code_editing` | 30 | Localized behavioral change to a real Python function across `requests` / `httpx` / `click` / `autoresearch`. Easy/medium/hard tiers vary by leak (function name) + scope (single- vs multi-file). Graded by `exec_assert` against an assertion checklist. |
+| `code_localization` | 30 | Find every function matching a behavior description and write `location.txt` with `file::QualifiedName` lines (lex order, anchored regex). Graded by `file_regex_disk`. |
+| `code_review` | 10 | Yes/no PR judgment in plan mode. Model emits `<review>...</review>` + literal `YES`/`NO`. Graded by `text_contains` + `no_tool_name` (forbids edit/write/bash). |
+| `orchestration` | 31 | Prescribed multi-step workflows — parallel dispatch, sequential chain, DAG join, merge, iteration. Graded by topology checks (`parallel_dispatch_count`, `tool_call_count`, `tool_call_sequence`, etc.) + artifact checks. |
+| `skill` | 30 | Load and follow custom `SKILL.md` files. 5 internal tiers (load+follow / discovery / behavioral delta / selectivity / composition). Graded by `any_tool_param_value_recursive` + `file_regex`. |
+| `tool_restriction` | 30 | Mutants of editing/localization/review samples with tool denials (`no write`, `no grep+glob`, `bash-only`, `subagent-required`). Three injection channels: system prompt, `AGENTS.md`, custom-agent persona. Graded by `no_tool_name_recursive` + parent's grader. |
+| `code_authoring` | 3 | Synthesize an artifact (a runnable Python script) from a behavior spec. Graded by `exec_function` against an AST-extracted stub. |
+
+For per-archetype training-data templates that match these categories, see [data/archetypes/v1/](data/archetypes/v1/).
+
+### v0 (33 samples — legacy curated tier)
+
 | Category | Samples | What it tests |
 |---|---|---|
 | `agents_md` | #1-2 | Adherence to project-level `AGENTS.md` instructions and custom primary agent prompts |
@@ -381,24 +414,22 @@ captures/                # staging dir for switchyard output (git-ignored)
 | `tool_orchestration` | #23-24 | Sequential tool chaining (read then edit) and parallel tool execution (two reads in one step) |
 | `tool_schema` | #25-33 | Correct tool names and parameter shapes, and irrelevance detection (e.g., `filePath` not `path`, `oldString` not `old_string`) |
 
-## Contract Types
+## Contract / Surface Types (v0 only)
 
-Each sample has a `contract` field that declares what the checks verify:
+The `contract` and `surface` fields below are bookkeeping for the legacy v0 tier (33 samples) and are not used by v1. v1 samples instead carry a `difficulty` tier (`easy` / `medium` / `hard`) on most categories — see the v1 categories table above.
 
-| Contract | Count | Meaning |
+Each v0 sample has a `contract` field that declares what the checks verify:
+
+| Contract | Count (v0) | Meaning |
 |---|---|---|
 | `completion` | 26 | Checks verify the actual task outcome — file content on disk, extracted values in response, correct tool arguments, or correct command execution |
 | `routing` | 7 | Checks verify only the delegation or prompt-adherence choice — correct tool/subagent selected, correct prefix in response — without validating the outcome of the delegated work |
 
-Routing samples: #2, #9, #10, #18, #19, #20, #21. All other samples are completion.
+Routing samples (v0): #2, #9, #10, #18, #19, #20, #21. All other v0 samples are completion.
 
-This distinction is useful for stratified scoring: routing tests measure whether the model *knows which tool to use*, while completion tests measure whether it *uses the tool correctly*.
+Each v0 sample also has a `surface` field identifying the opencode capability tested:
 
-## Surface Types
-
-Each sample has a `surface` field identifying the opencode capability being tested:
-
-| Surface | Count | What it covers |
+| Surface | Count (v0) | What it covers |
 |---|---|---|
 | `tools` | 17 | Core tool usage — correct tool selection, parameter schemas, parallel/sequential orchestration, distractor resistance, efficiency, and irrelevance detection |
 | `agents` | 2 | Project-level `AGENTS.md` instruction following and custom primary agent prompts |
@@ -460,19 +491,28 @@ Category and overall scores are averages of the per-sample scores.
 - `any_tool_param_absent` — a tool call does *not* have a parameter
 - `any_tool_param_value` — a tool parameter equals an exact value
 - `any_tool_param_regex` — a tool parameter matches a regex
+- `no_tool_param_value` — a tool parameter does NOT equal a forbidden value
 - `min_tool_count` — at least N calls to a named tool
 - `max_tool_count` — at most N tool calls (optionally filtered by tool name)
+- `tool_call_count` — exactly N calls to a named tool (with optional ordering)
+- `tool_call_sequence` — calls match a prescribed ordered sequence (e.g. `read → grep → write`)
 - `tool_count_score` — pass if total tool calls ≤ limit; reports optimal vs actual count
+- `parallel_dispatch_count` — N calls to a tool issued in a single assistant turn (e.g. `task` × 3 fan-out)
 - `any_tool_param_array_min` — a tool parameter is an array with at least N items
 - `any_tool_param_array_item_fields` — every item in an array parameter has the required fields
 - `no_tool_any` — no tool calls were made at all (irrelevance detection)
 - `call_schema_valid` — every tool call validates against `data/tool_schemas.json` (see the "Tool schema validation" section above)
 
+Most tool checks have a paired `_recursive` variant (`any_tool_name_recursive`, `no_tool_name_recursive`, `min_tool_count_recursive`, `any_tool_param_value_recursive`, `no_tool_param_value_recursive`, `max_tool_count_recursive`, `no_tool_any_recursive`, `tool_count_score_recursive`, `any_tool_param_regex_recursive`, `any_tool_param_array_item_fields_recursive`) that walks subagent traces in addition to the parent. Use the recursive form when behavior is allowed to occur inside a delegated subagent.
+
 **Content checks** — verify output:
 - `text_contains` — agent response text matches a regex
 - `text_contains_from_file` — response text mentions a value extracted from a fixture file at eval time (`source` + `extract` regex group)
-- `file_regex` — content written via `write`/`edit` tools (or existing on disk) matches a regex
-- `file_exists` — a file or directory exists in the project after the run (currently unused; available for fixture-shape assertions)
+- `file_regex` — content written via `write`/`edit` tools (read from trace first, falls back to disk) matches a regex
+- `file_regex_disk` — content of a file on disk matches a regex (always reads disk; no trace fallback). Used by code_localization to check `location.txt` against an anchored gold regex
+- `file_exists` — a file or directory exists in the project after the run
+- `exec_assert` — runs Python assertions against an AST-extracted slice of a target source file. Used by code_editing to verify behavior. Supports single-file and multi-file (`targets`) shapes
+- `exec_function` — runs the model's authored script in a subprocess against an AST-extracted stub of a target module, checks stdout for needles. Used by code_authoring
 
 **Orchestration checks** — verify ordering:
 - `tool_before` — one tool was called before another
