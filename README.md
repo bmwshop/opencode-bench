@@ -42,7 +42,7 @@ To run the benchmark on a Slurm cluster with a GPU-hosted vLLM server, see [CLUS
 The bench is split into two tiers:
 
 - **v0** — 33 curated tiny projects under [projects/v0/](projects/v0/). Fast to run, exercises opencode's tool discipline (routing, efficiency, plan-mode adherence, subagents, skills, etc.). Run with `--version v0`.
-- **v1** — 164 tasks against real pinned open-source repos, vendored as git submodules under [projects/v1/](projects/v1/). This is the default when no `--version` flag is passed; `python run.py` runs every v1 sample across every category. Each repo is declared once in [data/v1_repos.json](data/v1_repos.json) with its upstream URL and exact pinned SHA. Current repos:
+- **v1** — 160 tasks against real pinned open-source repos, vendored as git submodules under [projects/v1/](projects/v1/). This is the default when no `--version` flag is passed; `python run.py` runs every v1 sample across every category. Each repo is declared once in [data/v1_repos.json](data/v1_repos.json) with its upstream URL and exact pinned SHA. Current repos:
   - `requests` — [psf/requests](https://github.com/psf/requests)
   - `httpx` — [encode/httpx](https://github.com/encode/httpx)
   - `click` — [pallets/click](https://github.com/pallets/click)
@@ -221,7 +221,7 @@ python eval.py --refresh-schemas                           # re-extract data/too
 python eval.py --no-cleanup-projects                       # keep workspaces; needed for future re-scoring
 ```
 
-By default `eval.py` deletes each per-sample workspace at `runs/.../projects/{NNN}/` after scoring (saves disk; a 164-sample × 3-seed sweep generates ~80 GB of project copies). Pass `--no-cleanup-projects` to retain them — required if you intend to re-score the run later, since the file-graded evaluators (`exec_assert`, `exec_function`, `file_regex_disk`) read source files directly from the workspace. Trace JSONL, subagent sidecars, `captures/`, `scores.json`, and `meta.json` are always kept regardless.
+By default `eval.py` deletes each per-sample workspace at `runs/.../projects/{NNN}/` after scoring (saves disk; a 160-sample × 3-seed sweep generates ~80 GB of project copies). Pass `--no-cleanup-projects` to retain them — required if you intend to re-score the run later, since the file-graded evaluators (`exec_assert`, `exec_function`, `file_regex_disk`) read source files directly from the workspace. Trace JSONL, subagent sidecars, `captures/`, `scores.json`, and `meta.json` are always kept regardless.
 
 When using `--format json`, the output includes a `"run"` object with the model name, date, and timestamp from `meta.json`, making each score file self-describing.
 
@@ -385,17 +385,16 @@ captures/                # staging dir for switchyard output (git-ignored)
 
 ## Sample Categories
 
-### v1 (164 samples)
+### v1 (160 samples)
 
 | Category | n | What it tests |
 |---|---|---|
 | `code_editing` | 30 | Localized behavioral change to a real Python function across `requests` / `httpx` / `click` / `autoresearch`. Easy/medium/hard tiers vary by leak (function name) + scope (single- vs multi-file). Graded by `exec_assert` against an assertion checklist. |
 | `code_localization` | 30 | Find every function matching a behavior description and write `location.txt` with `file::QualifiedName` lines (lex order, anchored regex). Graded by `file_regex_disk`. |
 | `code_review` | 10 | Yes/no PR judgment in plan mode. Model emits `<review>...</review>` + literal `YES`/`NO`. Graded by `text_contains` + `no_tool_name` (forbids edit/write/bash). |
-| `orchestration` | 31 | Prescribed multi-step workflows — parallel dispatch, sequential chain, DAG join, merge, iteration. Graded by topology checks (`parallel_dispatch_count`, `tool_call_count`, `tool_call_sequence`, etc.) + artifact checks. |
+| `orchestration` | 30 | Prescribed multi-step workflows — parallel dispatch, sequential chain, DAG join, merge, iteration. Graded by topology checks (`parallel_dispatch_count`, `tool_call_count`, `tool_call_sequence`, etc.) + artifact checks. |
 | `skill` | 30 | Load and follow custom `SKILL.md` files. 5 internal tiers (load+follow / discovery / behavioral delta / selectivity / composition). Graded by `any_tool_param_value_recursive` + `file_regex`. |
 | `tool_restriction` | 30 | Mutants of editing/localization/review samples with tool denials (`no write`, `no grep+glob`, `bash-only`, `subagent-required`). Three injection channels: system prompt, `AGENTS.md`, custom-agent persona. Graded by `no_tool_name_recursive` + parent's grader. |
-| `code_authoring` | 3 | Synthesize an artifact (a runnable Python script) from a behavior spec. Graded by `exec_function` against an AST-extracted stub. |
 
 For per-archetype training-data templates that match these categories, see [data/archetypes/v1/](data/archetypes/v1/).
 
@@ -512,7 +511,7 @@ Most tool checks have a paired `_recursive` variant (`any_tool_name_recursive`, 
 - `file_regex_disk` — content of a file on disk matches a regex (always reads disk; no trace fallback). Used by code_localization to check `location.txt` against an anchored gold regex
 - `file_exists` — a file or directory exists in the project after the run
 - `exec_assert` — runs Python assertions against an AST-extracted slice of a target source file. Used by code_editing to verify behavior. Supports single-file and multi-file (`targets`) shapes
-- `exec_function` — runs the model's authored script in a subprocess against an AST-extracted stub of a target module, checks stdout for needles. Used by code_authoring
+- `exec_function` — runs the model's authored script in a subprocess against an AST-extracted stub of a target module, checks stdout for needles
 
 **Orchestration checks** — verify ordering:
 - `tool_before` — one tool was called before another

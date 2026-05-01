@@ -61,14 +61,13 @@ HEADER = [
 
 EXPECTED_HEADER = (
     "model,run_n,never_completed,pass@1_avg,pass@1_std,pass@n,"
-    "auth_pass@1,auth_pass@n,edit_pass@1,edit_pass@n,loc_pass@1,loc_pass@n,"
+    "edit_pass@1,edit_pass@n,loc_pass@1,loc_pass@n,"
     "review_pass@1,review_pass@n,orch_pass@1,orch_pass@n,skill_pass@1,"
     "skill_pass@n,restriction_pass@1,restriction_pass@n,timed_out_avg,"
     "context_overflow_avg"
 )
 
 CATEGORY_COLUMNS = [
-    ("code_authoring", "auth"),
     ("code_editing", "edit"),
     ("code_localization", "loc"),
     ("code_review", "review"),
