@@ -535,7 +535,16 @@ def main():
                 shutil.rmtree(pdir, ignore_errors=True)
                 cleaned += 1
     if args.cleanup_projects:
-        print(f"Cleaned {cleaned} project copy(ies) under {run_dir / 'projects'}/")
+        projects_root = run_dir / "projects"
+        removed_root = False
+        if projects_root.is_dir() and not any(projects_root.iterdir()):
+            try:
+                projects_root.rmdir()
+                removed_root = True
+            except OSError:
+                pass
+        suffix = " (and removed empty projects/ root)" if removed_root else ""
+        print(f"Cleaned {cleaned} project copy(ies) under {projects_root}/" + suffix)
     data = build(results, meta=meta)
     output = format_json(data) if args.format == "json" else format_text(data)
     print(output)
