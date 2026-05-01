@@ -1,0 +1,31 @@
+executor: slurm
+
+# Use this when running directly on the EOS login node.
+# Unlike eos.yaml, this config does not require an ssh_tunnel.identity.
+job_dir: /lustre/fsw/llmservice_nemo_long-context/drekesh/nemo-run/
+
+account: nemotron_reason_code
+partition: batch,backfill,interactive
+job_name_prefix: ""
+
+disable_gpus_per_node: True
+dependency_type: "afterany"
+
+containers:
+  vllm: /lustre/share/llmservice_nemo_reasoning/images/nemo-skills-vllm-v0.19.1.sqsh
+  sandbox: /lustre/share/llmservice_nemo_reasoning/images/nemo-skills-sandbox-latest.sqsh
+  nemo-skills: /lustre/share/llmservice_nemo_reasoning/images/nemo-skills-latest.sqsh
+
+mounts:
+  - /lustre/fsw/llmservice_nemo_reasoning/hf_models:/hf_models
+  - /lustre/fsw/llmservice_nemo_reasoning/images/swe-bench:/swe-bench-images
+  - /lustre/fsw/llmservice_nemo_long-context/drekesh/hf:/hf
+  # Add extra mounts here if the job needs direct access to more paths.
+
+env_vars:
+  - "HF_HOME=/hf"
+
+timeouts:
+  batch: 04:00:00
+  backfill: 04:00:00
+  interactive: 02:00:00
