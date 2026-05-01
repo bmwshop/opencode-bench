@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import io
 import json
 import re
 import statistics
@@ -31,6 +32,7 @@ from typing import Any, Iterable
 DEFAULT_RESULTS_ROOT = Path(
     "/lustre/fsw/portfolios/llmservice/users/drekesh/opencode-bench-results"
 )
+DEFAULT_OUTPUT = Path("summary.csv")
 
 HEADER = [
     "model",
@@ -54,13 +56,15 @@ HEADER = [
     "restriction_pass@1",
     "restriction_pass@n",
     "timed_out_avg",
+    "context_overflow_avg",
 ]
 
 EXPECTED_HEADER = (
     "model,run_n,never_completed,pass@1_avg,pass@1_std,pass@n,"
     "auth_pass@1,auth_pass@n,edit_pass@1,edit_pass@n,loc_pass@1,loc_pass@n,"
     "review_pass@1,review_pass@n,orch_pass@1,orch_pass@n,skill_pass@1,"
-    "skill_pass@n,restriction_pass@1,restriction_pass@n,timed_out_avg"
+    "skill_pass@n,restriction_pass@1,restriction_pass@n,timed_out_avg,"
+    "context_overflow_avg"
 )
 
 CATEGORY_COLUMNS = [
@@ -91,6 +95,7 @@ class RunResult:
     mtime: datetime
     samples: list[SampleResult]
     categories: dict[str, list[SampleResult]]
+    context_overflow_count: int | None
 
     @property
     def incomplete_count(self) -> int:
@@ -157,7 +162,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output",
         type=Path,
-        help="CSV output path. If omitted, CSV is written to stdout.",
+        help=(
+            "CSV output path. Default: ./summary.csv relative to the current "
+            "working directory."
+        ),
+    )
+    parser.add_argument(
+        "--no-print",
+        action="store_true",
+        help="Write the CSV file without also printing it to stdout.",
+    )
+    parser.add_argument(
+        "--stdout-only",
+        action="store_true",
+        help="Print the CSV to stdout without writing a file.",
     )
     args = parser.parse_args()
 
@@ -166,6 +184,10 @@ def parse_args() -> argparse.Namespace:
     )
     if explicit_date_filters > 1:
         parser.error("Use only one of --today, --date, or --since.")
+    if args.stdout_only and args.output is not None:
+        parser.error("--stdout-only cannot be used with --output.")
+    if args.stdout_only and args.no_print:
+        parser.error("--stdout-only cannot be used with --no-print.")
 
     return args
 
@@ -200,7 +222,7 @@ def main() -> int:
         return 1
 
     rows = summarize_runs(runs, args.group_by)
-    write_csv(rows, args.output)
+    emit_csv(render_csv(rows), args)
     return 0
 
 
@@ -286,6 +308,7 @@ def load_runs(paths: Iterable[Path], results_root: Path) -> list[RunResult]:
                 mtime=datetime.fromtimestamp(path.stat().st_mtime),
                 samples=parse_samples(payload.get("samples", [])),
                 categories=parse_categories(payload.get("categories", {})),
+                context_overflow_count=parse_context_overflow_count(payload),
             )
         )
     return runs
@@ -327,6 +350,60 @@ def parse_sample(sample: dict[str, Any]) -> SampleResult:
         passed=bool(sample.get("pass", False)),
         completed=sample.get("completed", True) is not False,
     )
+
+
+def parse_context_overflow_count(payload: dict[str, Any]) -> int | None:
+    aggregate = payload.get("context_overflow")
+    if isinstance(aggregate, dict) and "samples_flagged" in aggregate:
+        count = numeric_count(aggregate.get("samples_flagged"))
+        if count is not None:
+            return count
+
+    sample_count = context_overflow_count_from_samples(payload.get("samples", []))
+    if sample_count is not None:
+        return sample_count
+
+    raw_categories = payload.get("categories", {})
+    if not isinstance(raw_categories, dict):
+        return None
+
+    saw_context_overflow = False
+    total = 0
+    for category_payload in raw_categories.values():
+        if not isinstance(category_payload, dict):
+            continue
+        category_count = context_overflow_count_from_samples(
+            category_payload.get("samples", [])
+        )
+        if category_count is not None:
+            saw_context_overflow = True
+            total += category_count
+    return total if saw_context_overflow else None
+
+
+def numeric_count(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    return None
+
+
+def context_overflow_count_from_samples(raw_samples: Any) -> int | None:
+    if not isinstance(raw_samples, list):
+        return None
+
+    saw_context_overflow = False
+    total = 0
+    for sample in raw_samples:
+        if not isinstance(sample, dict) or "context_overflow" not in sample:
+            continue
+        saw_context_overflow = True
+        if sample.get("context_overflow") is True:
+            total += 1
+    return total if saw_context_overflow else None
 
 
 def sample_id(label: str) -> str:
@@ -377,6 +454,18 @@ def summarize_group(model: str, runs: list[RunResult]) -> dict[str, str]:
         row[f"{prefix}_pass@n"] = format_percent(pass_n(category_samples))
 
     row["timed_out_avg"] = format_count_avg(mean(run.incomplete_count for run in runs))
+    # Mixed old/new selections average only runs that expose the new metadata;
+    # all-legacy groups remain explicitly marked as unavailable.
+    context_overflow_counts = [
+        run.context_overflow_count
+        for run in runs
+        if run.context_overflow_count is not None
+    ]
+    row["context_overflow_avg"] = (
+        format_count_avg(mean(context_overflow_counts))
+        if context_overflow_counts
+        else "n/a"
+    )
     return row
 
 
@@ -429,18 +518,28 @@ def no_space_identifier(value: str) -> str:
     return re.sub(r"\s+", "_", value.strip())
 
 
-def write_csv(rows: list[dict[str, str]], output: Path | None) -> None:
-    if output is None:
-        writer = csv.DictWriter(sys.stdout, fieldnames=HEADER, lineterminator="\n")
-        writer.writeheader()
-        writer.writerows(rows)
+def render_csv(rows: list[dict[str, str]]) -> str:
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=HEADER, lineterminator="\n")
+    writer.writeheader()
+    writer.writerows(rows)
+    return buffer.getvalue()
+
+
+def emit_csv(csv_content: str, args: argparse.Namespace) -> None:
+    if args.stdout_only:
+        sys.stdout.write(csv_content)
         return
 
+    write_csv(csv_content, args.output or DEFAULT_OUTPUT)
+    if not args.no_print:
+        sys.stdout.write(csv_content)
+
+
+def write_csv(csv_content: str, output: Path) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=HEADER, lineterminator="\n")
-        writer.writeheader()
-        writer.writerows(rows)
+        handle.write(csv_content)
 
 
 if __name__ == "__main__":

@@ -19,6 +19,7 @@ Usage:
 """
 
 import json
+import re
 import shutil
 import sys
 import argparse
@@ -93,6 +94,9 @@ class Result:
     min_calls: int | None = None
     tool_calls_recursive: int | None = None
     difficulty: str | None = None
+    stderr_present: bool = False
+    context_overflow: bool = False
+    context_overflow_signals: list[str] = field(default_factory=list)
 
     @property
     def ok(self):
@@ -102,6 +106,50 @@ class Result:
     def score(self):
         total = len(self.passed) + len(self.failed)
         return len(self.passed) / total if total else 0.0
+
+
+CONTEXT_OVERFLOW_DETECTION_VERSION = 1
+CONTEXT_OVERFLOW_PATTERNS = (
+    ("ContextOverflowError", re.compile(r"\bContextOverflowError\b", re.IGNORECASE)),
+    (
+        "context_length_exceeded",
+        re.compile(r"\bcontext[_ -]?length[_ -]?exceeded\b", re.IGNORECASE),
+    ),
+    (
+        "context length",
+        re.compile(
+            r"\bcontext\s+length\b.*\b(exceed|exceeded|limit|maximum|max|too long)\b"
+            r"|\b(exceed|exceeded|limit|maximum|max|too long)\b.*\bcontext\s+length\b",
+            re.IGNORECASE,
+        ),
+    ),
+    ("maximum context", re.compile(r"\bmaximum\s+context\b", re.IGNORECASE)),
+    ("max_model_len", re.compile(r"\bmax[_-]?model[_-]?len\b", re.IGNORECASE)),
+    (
+        "max_tokens",
+        re.compile(
+            r"\bmax[_-]?tokens\b.*\b(exceed|exceeded|limit|maximum|context|too long)\b"
+            r"|\b(exceed|exceeded|limit|maximum|context|too long)\b.*\bmax[_-]?tokens\b",
+            re.IGNORECASE,
+        ),
+    ),
+)
+
+
+def detect_context_overflow(stderr_path):
+    """Return conservative overflow metadata from a per-sample stderr sidecar."""
+    if not stderr_path.is_file():
+        return False, False, []
+    try:
+        stderr_text = stderr_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return True, False, []
+
+    signals = []
+    for name, pattern in CONTEXT_OVERFLOW_PATTERNS:
+        if pattern.search(stderr_text):
+            signals.append(f"stderr:{name}")
+    return True, bool(signals), signals
 
 
 def extract(path):
@@ -142,14 +190,23 @@ def evaluate(sample, run_dir):
 
     run_dir = run_dir.resolve()
     trace = run_dir / f"{trace_name(sample)}.jsonl"
+    stderr_present, context_overflow, context_overflow_signals = detect_context_overflow(
+        run_dir / f"{trace_name(sample)}.err"
+    )
     if not trace.exists():
         return Result(label, sample["category"], failed=["trace not found"],
-                      completed=False, difficulty=sample.get("difficulty"))
+                      completed=False, difficulty=sample.get("difficulty"),
+                      stderr_present=stderr_present,
+                      context_overflow=context_overflow,
+                      context_overflow_signals=context_overflow_signals)
 
     tools, texts = extract(trace)
     if not tools and not texts:
         return Result(label, sample["category"], failed=["empty trace"],
-                      completed=False, difficulty=sample.get("difficulty"))
+                      completed=False, difficulty=sample.get("difficulty"),
+                      stderr_present=stderr_present,
+                      context_overflow=context_overflow,
+                      context_overflow_signals=context_overflow_signals)
 
     project = run_dir / "projects" / run_project_name(sample)
     if not project.is_dir():
@@ -161,6 +218,9 @@ def evaluate(sample, run_dir):
     result.min_calls = sample.get("min_calls")
     result.tool_calls_recursive = len(_real_tools(_collect_recursive_tools(trace)))
     result.difficulty = sample.get("difficulty")
+    result.stderr_present = stderr_present
+    result.context_overflow = context_overflow
+    result.context_overflow_signals = context_overflow_signals
     for chk in sample.get("checks", []):
         fn = evaluators.get(chk["type"])
         if not fn:
@@ -283,6 +343,9 @@ def build(results, meta=None):
                 "min_calls": r.min_calls,
                 "tool_calls_recursive": r.tool_calls_recursive,
                 "difficulty": r.difficulty,
+                "stderr_present": r.stderr_present,
+                "context_overflow": r.context_overflow,
+                "context_overflow_signals": r.context_overflow_signals,
             })
         cat_eff, cat_eff_n = _efficiency(rs)
         categories[cat] = {
@@ -327,6 +390,10 @@ def build(results, meta=None):
         "efficiency": round(eff, 4) if eff is not None else None,
         "efficiency_n": eff_n,
         "timed_out": total - total_completed,
+        "context_overflow": {
+            "detection_version": CONTEXT_OVERFLOW_DETECTION_VERSION,
+            "samples_flagged": sum(1 for r in results if r.context_overflow),
+        },
         "checks_passed": all_passed,
         "checks_total": all_checks,
         "samples": flat,
