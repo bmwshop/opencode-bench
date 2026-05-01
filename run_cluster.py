@@ -262,8 +262,16 @@ def build_benchmark_command(opencode_model, provider, server_url, timeout,
     """
     parts = []
 
-    # Point RUNS to the mounted /runs directory
+    # Point all three workspace paths under the per-job mounted /runs
+    # directory. This gives each parallel Slurm job (--parallel-jobs > 1)
+    # an isolated PROJECTS/CAPTURES tree, avoiding `git clone` races in
+    # hydrate_v1_repos.py when multiple jobs share the /nemo_run/code mount.
+    # Exporting only RUNS would leave PROJECTS falling back to
+    # /nemo_run/code/projects, which is the same path across all parallel
+    # containers and triggers concurrent rmtree+clone on the v1 fixtures.
     parts.append("export OPENCODE_BENCH_RUNS=/runs")
+    parts.append("export OPENCODE_BENCH_PROJECTS=/runs/projects")
+    parts.append("export OPENCODE_BENCH_CAPTURES=/runs/captures")
 
     # Extract model ID (part after provider/) for config registration
     model_id = opencode_model.split("/", 1)[1] if "/" in opencode_model else opencode_model
