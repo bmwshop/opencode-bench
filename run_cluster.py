@@ -81,7 +81,16 @@ DEFAULT_INSTALL_CMD = (
     "curl -fsSL https://opencode.ai/install | bash -s -- --no-modify-path "
     f"--version {PINNED_OPENCODE_VERSION}"
     ") && "
-    "ln -sf $HOME/.opencode/bin/opencode /usr/local/bin/opencode"
+    "ln -sf $HOME/.opencode/bin/opencode /usr/local/bin/opencode && "
+    # Pre-warm the one-time sqlite migration the CLI runs on first invocation.
+    # Without this, the migration banner ("Performing one time database
+    # migration ... sqlite-migration:done ... Database migration complete.")
+    # lands in the first sample's stderr and inflates `stderr_present` in
+    # eval.py. Several light subcommands are tried because we don't want to
+    # depend on which one happens to open the session DB in a given release.
+    # All output is discarded and failure is non-fatal.
+    "(opencode --version; opencode auth list; opencode mcp list) "
+    ">/dev/null 2>&1 || true"
 )
 
 DEFAULT_SERVER_PORT = 5000
@@ -171,7 +180,7 @@ def build_parser():
         "--benchmark-category", action="append", default=None,
         help="Run samples in a category (repeatable, forwarded as --category)",
     )
-    bench.add_argument("--timeout", type=int, default=180, help="Per-sample timeout in seconds")
+    bench.add_argument("--timeout", type=int, default=300, help="Per-sample timeout in seconds")
     bench.add_argument(
         "--opencode-model", default=None,
         help="Model name in provider/model format for run.py (default: {provider}/{basename(model)})",

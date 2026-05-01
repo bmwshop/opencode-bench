@@ -161,8 +161,42 @@ from common import (
 )
 from scripts.hydrate_v1_repos import hydrate_all  # noqa: E402
 
-DEFAULT_TIMEOUT = 180
+DEFAULT_TIMEOUT = 300
+DEFAULT_RETRY_ON_TIMEOUT = 1
 DEFAULT_MAX_OUTPUT_TOKENS = 8192
+
+# opencode prints a handful of advisory lines to stderr that are not failures:
+# permission rejections for paths the model hallucinated outside its sandbox,
+# fallback notices when the model invents an agent name, and one-time sqlite
+# migration progress on first invocation. Letting these reach the per-sample
+# .err file makes eval.py flag the sample with `stderr_present=True`, which
+# misrepresents the run's error rate. Strip ANSI colors before matching so the
+# patterns work against opencode's bracketed-color output.
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+_BENIGN_STDERR_PATTERNS = (
+    re.compile(r"permission requested:\s*external_directory"),
+    re.compile(r'agent\s+"[^"]+"\s+not found\.\s*Falling back to default agent'),
+    re.compile(r"Performing one time database migration"),
+    re.compile(r"sqlite-migration:done"),
+    re.compile(r"Database migration complete\."),
+)
+
+
+def _filter_benign_stderr(stderr: str) -> str:
+    """Drop opencode advisory lines; keep anything else verbatim.
+
+    Returns "" when only benign content remained, so the caller can skip
+    writing the .err file entirely.
+    """
+    kept = []
+    for raw in stderr.splitlines():
+        bare = _ANSI_RE.sub("", raw).strip()
+        if not bare:
+            continue
+        if any(p.search(bare) for p in _BENIGN_STDERR_PATTERNS):
+            continue
+        kept.append(raw)
+    return "\n".join(kept) + ("\n" if kept else "")
 
 
 def _assert_fixture_clean(src: Path, auto_repair: bool = True) -> None:
@@ -625,8 +659,9 @@ def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
     out = run_dir / f"{stem}.jsonl"
     out.write_text(stdout)
 
-    if stderr.strip():
-        (run_dir / f"{stem}.err").write_text(stderr)
+    filtered_stderr = _filter_benign_stderr(stderr)
+    if filtered_stderr.strip():
+        (run_dir / f"{stem}.err").write_text(filtered_stderr)
 
     lines = [l for l in stdout.strip().split("\n") if l.strip()]
     tools = sum(1 for l in lines if '"tool_use"' in l)
@@ -743,10 +778,11 @@ def main():
     parser.add_argument(
         "--retry-on-timeout",
         type=int,
-        default=0,
+        default=DEFAULT_RETRY_ON_TIMEOUT,
         metavar="N",
-        help="On TimeoutExpired, retry the sample up to N additional times "
-             "(default: 0). Only the final attempt's trace/captures are kept.",
+        help=f"On TimeoutExpired, retry the sample up to N additional times "
+             f"(default: {DEFAULT_RETRY_ON_TIMEOUT}). Only the final attempt's "
+             f"trace/captures are kept.",
     )
     parser.add_argument(
         "--workers",
