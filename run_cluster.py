@@ -120,6 +120,15 @@ def build_parser():
     cluster.add_argument("--dry-run", action="store_true", help="Validate arguments without submitting")
     cluster.add_argument("--reuse-code", action="store_true", help="Reuse code from previous experiment")
     cluster.add_argument(
+        "--legacy-shared-projects",
+        action="store_true",
+        help=(
+            "Restore pre-isolation PROJECTS behavior by leaving PROJECTS/CAPTURES "
+            "under /nemo_run/code. Useful for debugging exact legacy behavior, "
+            "but can reintroduce v1 hydration races with --parallel-jobs > 1."
+        ),
+    )
+    cluster.add_argument(
         "--dependent-jobs", type=int, default=0,
         help=(
             "Number of dependent sequential jobs, chained inside each experiment "
@@ -251,9 +260,43 @@ def build_config_inject_cmd(provider, model_id, server_url):
     )
 
 
+def build_static_fixture_seed_cmd():
+    """Copy static project fixtures into the isolated /runs/projects tree.
+
+    The real v1 repos are hydrated under OPENCODE_BENCH_PROJECTS by run.py,
+    but static fixture trees from the staged code (v0 fixtures and v1 overlays)
+    are not git-hydrated and must be seeded explicitly.
+    """
+    code = r"""
+import shutil
+from pathlib import Path
+
+src_root = Path("/nemo_run/code/projects")
+dst_root = Path("/runs/projects")
+copies = [
+    (src_root / "v0", dst_root / "v0"),
+    (src_root / "v1" / "skills", dst_root / "v1" / "skills"),
+    (src_root / "v1" / "mutants", dst_root / "v1" / "mutants"),
+    (src_root / "v1" / "orchestration", dst_root / "v1" / "orchestration"),
+]
+
+for src, dst in copies:
+    if not src.exists():
+        print(f"Static fixture missing (skip): {src}", flush=True)
+        continue
+    if dst.exists():
+        shutil.rmtree(dst)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(src, dst)
+    print(f"Seeded static fixture: {src} -> {dst}", flush=True)
+"""
+    return f"python3 -c {shlex.quote(code)}"
+
+
 def build_benchmark_command(opencode_model, provider, server_url, timeout,
                             benchmark_ids, benchmark_categories,
-                            max_output_tokens, extra_run_args=None):
+                            max_output_tokens, extra_run_args=None,
+                            legacy_shared_projects=False):
     """Build the in-container shell command that runs the benchmark.
 
     ``extra_run_args`` is a list of additional tokens appended verbatim to the
@@ -262,16 +305,24 @@ def build_benchmark_command(opencode_model, provider, server_url, timeout,
     """
     parts = []
 
-    # Point all three workspace paths under the per-job mounted /runs
-    # directory. This gives each parallel Slurm job (--parallel-jobs > 1)
-    # an isolated PROJECTS/CAPTURES tree, avoiding `git clone` races in
-    # hydrate_v1_repos.py when multiple jobs share the /nemo_run/code mount.
-    # Exporting only RUNS would leave PROJECTS falling back to
-    # /nemo_run/code/projects, which is the same path across all parallel
-    # containers and triggers concurrent rmtree+clone on the v1 fixtures.
     parts.append("export OPENCODE_BENCH_RUNS=/runs")
-    parts.append("export OPENCODE_BENCH_PROJECTS=/runs/projects")
-    parts.append("export OPENCODE_BENCH_CAPTURES=/runs/captures")
+    if legacy_shared_projects:
+        # Exact pre-1acb5bc behavior: PROJECTS/CAPTURES fall back to
+        # /nemo_run/code/{projects,captures}. This is useful for debugging but
+        # can reintroduce shared hydration races with --parallel-jobs > 1.
+        parts.append("unset OPENCODE_BENCH_PROJECTS")
+        parts.append("unset OPENCODE_BENCH_CAPTURES")
+    else:
+        # Point all three workspace paths under the per-job mounted /runs
+        # directory. This gives each parallel Slurm job (--parallel-jobs > 1)
+        # an isolated PROJECTS/CAPTURES tree, avoiding `git clone` races in
+        # hydrate_v1_repos.py when multiple jobs share the /nemo_run/code mount.
+        # Exporting only RUNS would leave PROJECTS falling back to
+        # /nemo_run/code/projects, which is the same path across all parallel
+        # containers and triggers concurrent rmtree+clone on the v1 fixtures.
+        parts.append("export OPENCODE_BENCH_PROJECTS=/runs/projects")
+        parts.append("export OPENCODE_BENCH_CAPTURES=/runs/captures")
+        parts.append(build_static_fixture_seed_cmd())
 
     # Extract model ID (part after provider/) for config registration
     model_id = opencode_model.split("/", 1)[1] if "/" in opencode_model else opencode_model
@@ -405,6 +456,7 @@ def main():
             benchmark_categories=args.benchmark_category,
             max_output_tokens=args.max_output_tokens,
             extra_run_args=extra_run_args,
+            legacy_shared_projects=args.legacy_shared_projects,
         )
 
         copies.append({
@@ -434,6 +486,10 @@ def main():
               + (f"  per copy" if args.parallel_jobs > 1 else ""))
     elif args.server_address:
         print(f"  Server addr:    {args.server_address} (external)")
+    if args.legacy_shared_projects:
+        print("  Projects:       legacy shared /nemo_run/code/projects")
+    else:
+        print("  Projects:       isolated /runs/projects (static fixtures seeded)")
     print(f"  Output dir:     {args.output_dir}")
     if args.parallel_jobs == 1:
         print(f"  Runs dir:       {copies[0]['runs_dir']}")
