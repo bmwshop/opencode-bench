@@ -11,7 +11,7 @@ BASE_DIR=/lustre/fsw/portfolios/llmservice/users/drekesh/results/sft/${MODEL}
 MODEL_MOUNT=${BASE_DIR}:${BASE_DIR}
 TP=8
 CLUSTER=cw-dfw-direct
-PARTITION=batch_short
+PARTITION=batch_short,interactive
 JOBS=4
 NEVALS=4
 TIMEOUT=450
@@ -34,7 +34,7 @@ python "${REPO_ROOT}/run_cluster.py"  \
 --output-dir ${OUTPUT_DIR} \
 --expname ${MODEL}-${ITER} \
 --parallel-jobs=${NEVALS} \
---partition ${PARTITION} \
+--partition "${PARTITION}" \
 --skip-schema-check \
 --server-args "--tensor-parallel-size ${TP} --gpu-memory-utilization 0.8 --enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser deepseek_r1 --mamba_ssm_cache_dtype float32"
 done
