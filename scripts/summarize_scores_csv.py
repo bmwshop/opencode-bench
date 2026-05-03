@@ -75,6 +75,7 @@ CATEGORY_COLUMNS = [
 ]
 
 SAMPLE_ID_RE = re.compile(r"#(\d+)")
+PARALLEL_COPY_SUFFIX_RE = re.compile(r"-\d{2,}$")
 
 
 @dataclass(frozen=True)
@@ -157,6 +158,16 @@ def parse_args() -> argparse.Namespace:
         help="Group rows by top-level family or by individual run path. Default: family.",
     )
     parser.add_argument(
+        "--no-merge-parallel-jobs",
+        dest="merge_parallel_jobs",
+        action="store_false",
+        default=True,
+        help=(
+            "Do not merge result families with run_cluster.py parallel-copy "
+            "suffixes like '-00' or '-001' when grouping by family."
+        ),
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         help=(
@@ -218,7 +229,7 @@ def main() -> int:
         print("No matching scores.json files found.", file=sys.stderr)
         return 1
 
-    rows = summarize_runs(runs, args.group_by)
+    rows = summarize_runs(runs, args.group_by, args.merge_parallel_jobs)
     emit_csv(render_csv(rows), args)
     return 0
 
@@ -408,10 +419,12 @@ def sample_id(label: str) -> str:
     return match.group(1) if match else label.strip()
 
 
-def summarize_runs(runs: list[RunResult], group_by: str) -> list[dict[str, str]]:
+def summarize_runs(
+    runs: list[RunResult], group_by: str, merge_parallel_jobs: bool
+) -> list[dict[str, str]]:
     groups: dict[str, list[RunResult]] = {}
     for run in runs:
-        key = group_key(run, group_by)
+        key = group_key(run, group_by, merge_parallel_jobs)
         groups.setdefault(key, []).append(run)
 
     return [
@@ -420,10 +433,16 @@ def summarize_runs(runs: list[RunResult], group_by: str) -> list[dict[str, str]]
     ]
 
 
-def group_key(run: RunResult, group_by: str) -> str:
+def group_key(run: RunResult, group_by: str, merge_parallel_jobs: bool) -> str:
     if group_by == "family":
-        return run.family
+        return family_group_name(run.family, merge_parallel_jobs)
     return no_space_identifier(run.relative_parent)
+
+
+def family_group_name(family: str, merge_parallel_jobs: bool) -> str:
+    if not merge_parallel_jobs:
+        return family
+    return PARALLEL_COPY_SUFFIX_RE.sub("", family)
 
 
 def summarize_group(model: str, runs: list[RunResult]) -> dict[str, str]:
