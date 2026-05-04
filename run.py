@@ -48,6 +48,7 @@ Usage:
     python run.py --timeout 120      # custom timeout
     python run.py --retry-on-timeout 2  # retry each sample up to 2x on TimeoutExpired
     python run.py --workers 4        # run up to 4 samples in parallel
+    python run.py --no-capture-reasoning  # drop --thinking; only text+tool_use in traces
 
     # Local vLLM server (vllm/ prefix is auto-injected)
     python run.py --vllm http://localhost:8000/v1 --model Qwen/Qwen2.5-32B-Instruct
@@ -477,7 +478,8 @@ def _capture_subagents(trace_path, cwd, argv):
 def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
         vllm_url=None, vllm_model_id=None, vllm_api_key="EMPTY",
         max_output_tokens=DEFAULT_MAX_OUTPUT_TOKENS,
-        retry_on_timeout=0, cap_src=None, auto_repair_fixtures=False):
+        retry_on_timeout=0, cap_src=None, auto_repair_fixtures=False,
+        capture_reasoning=True):
     sid = sample["id"]
     name = sample.get("name", str(sid))
     src = project_dir(sample)
@@ -531,6 +533,13 @@ def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
     argv, _, _ = resolve_opencode_cmd()
     popen_argv = (
         [*argv, "run", "--format", "json"]
+        # `--thinking` makes opencode emit `reasoning` events to the JSON
+        # stream AND persist reasoning parts to its session DB. Without it,
+        # reasoning is silently dropped (CLI emit gate, run.ts:505) and never
+        # makes it to disk — even when the provider returned reasoning text.
+        # Subagent reasoning rides along automatically because `_capture_subagents`
+        # uses `opencode export`, which reads from the persisted DB.
+        + (["--thinking"] if capture_reasoning else [])
         + (["--model", model] if model else [])
         + (["--agent", sample["agent"]] if "agent" in sample else [])
         + [sample["prompt"]]
@@ -803,6 +812,18 @@ def main():
              "to fail loudly instead (aborts the entire eval, not just the sample).",
     )
     parser.add_argument(
+        "--capture-reasoning",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Pass --thinking to `opencode run` so reasoning parts are emitted to "
+             "the JSON stream and persisted to the session DB. Required to capture "
+             "reasoning text from Claude extended thinking, DeepSeek-R1, Qwen3-think, "
+             "etc.; OpenAI GPT-5.x/o-series will still only return reasoning *token "
+             "counts* because the upstream API doesn't expose plaintext reasoning. "
+             "Default: on (with reasoning, traces can be 5-50x larger on hard samples). "
+             "Pass --no-capture-reasoning to drop back to text+tool_use only.",
+    )
+    parser.add_argument(
         "--workspace",
         default=None,
         help="Workspace dir to host projects/, runs/, and captures/ (sets the "
@@ -979,6 +1000,7 @@ def main():
         "proxy": args.proxy,
         "vllm": args.vllm,
         "max_output_tokens": args.max_output_tokens,
+        "capture_reasoning": args.capture_reasoning,
         "argv": sys.argv,
         "opencode": oc_meta,
     }
@@ -1019,6 +1041,7 @@ def main():
                 retry_on_timeout=args.retry_on_timeout,
                 cap_src=cap_src,
                 auto_repair_fixtures=args.auto_repair_fixtures,
+                capture_reasoning=args.capture_reasoning,
             )
             for sample in samples
         ]
