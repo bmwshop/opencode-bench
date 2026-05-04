@@ -424,6 +424,7 @@ def build(results, meta=None):
     sum_strict = 0
     sum_partial = 0.0
     categories = {}
+    all_samples = []
 
     for cat, rs in sorted(by_cat.items()):
         cat_strict = sum(1 for r in rs if r.ok)
@@ -474,6 +475,7 @@ def build(results, meta=None):
                 "context_overflow": r.context_overflow,
                 "context_overflow_signals": r.context_overflow_signals,
             })
+        all_samples.extend(samples)
         cat_eff, cat_eff_n = _efficiency(rs)
         categories[cat] = {
             "strict": cat_strict,
@@ -484,7 +486,11 @@ def build(results, meta=None):
             "checks_passed": cat_passed,
             "checks_total": cat_checks,
             "by_difficulty": _bucket_by_difficulty(rs),
-            "samples": samples,
+            # The per-category `samples` array used to live here, duplicating
+            # the top-level flat samples list. Now that every entry in the
+            # top-level `samples` carries `category`, downstream tools can
+            # group on demand: e.g. `[s for s in payload["samples"] if s["category"] == cat]`.
+            # Removed to halve scores.json size after the per-sample enrichment.
         }
         sum_strict += cat_strict
         sum_partial += sum(r.score for r in rs)
@@ -493,7 +499,7 @@ def build(results, meta=None):
     all_passed = sum(c["checks_passed"] for c in categories.values())
 
     flat = sorted(
-        [s for c in categories.values() for s in c["samples"]],
+        all_samples,
         key=lambda s: int(s["label"].split()[0].lstrip("#")),
     )
 
@@ -547,6 +553,10 @@ def format_text(data):
         date = run_info.get("date", "unknown")
         lines.append(f"  Run: {model}  ({date})")
 
+    samples_by_cat: dict[str, list] = {}
+    for s in data.get("samples", []):
+        samples_by_cat.setdefault(s.get("category", ""), []).append(s)
+
     for cat, info in sorted(data["categories"].items()):
         lines.append(f"\n{'='*60}")
         eff_tok = (
@@ -569,7 +579,7 @@ def format_text(data):
             if parts:
                 lines.append(f"    by difficulty: {', '.join(parts)}")
         lines.append(f"{'='*60}")
-        for s in info["samples"]:
+        for s in samples_by_cat.get(cat, []):
             icon = "PASS" if s["pass"] else "FAIL"
             diff_tag = f" [{s['difficulty']}]" if s.get("difficulty") else ""
             lines.append(f"  [{icon}] {s['label']}{diff_tag} "

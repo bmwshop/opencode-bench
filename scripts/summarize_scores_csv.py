@@ -83,6 +83,7 @@ class SampleResult:
     sample_id: str
     passed: bool
     completed: bool
+    category: str = ""
 
 
 @dataclass(frozen=True)
@@ -308,14 +309,17 @@ def load_runs(paths: Iterable[Path], results_root: Path) -> list[RunResult]:
             continue
 
         relative_parent = safe_relative(path.parent, results_root).as_posix()
+        samples = parse_samples(payload.get("samples", []))
         runs.append(
             RunResult(
                 path=path,
                 family=family_name(path, results_root),
                 relative_parent=relative_parent,
                 mtime=datetime.fromtimestamp(path.stat().st_mtime),
-                samples=parse_samples(payload.get("samples", [])),
-                categories=parse_categories(payload.get("categories", {})),
+                samples=samples,
+                categories=group_samples_by_category(
+                    samples, payload.get("categories", {})
+                ),
                 context_overflow_count=parse_context_overflow_count(payload),
             )
         )
@@ -340,15 +344,38 @@ def parse_samples(raw_samples: Any) -> list[SampleResult]:
     return [parse_sample(sample) for sample in raw_samples if isinstance(sample, dict)]
 
 
-def parse_categories(raw_categories: Any) -> dict[str, list[SampleResult]]:
-    if not isinstance(raw_categories, dict):
-        return {}
-    parsed: dict[str, list[SampleResult]] = {}
+def group_samples_by_category(
+    samples: list[SampleResult], raw_categories: Any
+) -> dict[str, list[SampleResult]]:
+    """Group already-parsed top-level samples by their `category` field.
+
+    Modern scores.json (post the `samples` removal under `categories`) carries
+    `category` on every entry of the top-level `samples` array, so the grouping
+    is just a bucket fold. We still scan `raw_categories` so the returned dict
+    has an entry for every declared category, even ones with zero samples — and
+    so legacy scores.json files (where each category had its own embedded
+    `samples` list and the top-level entries lacked `category`) keep working.
+    """
+    grouped: dict[str, list[SampleResult]] = {}
+    if isinstance(raw_categories, dict):
+        for category in raw_categories:
+            grouped.setdefault(category, [])
+
+    grouped_from_samples = False
+    for sample in samples:
+        if not sample.category:
+            continue
+        grouped.setdefault(sample.category, []).append(sample)
+        grouped_from_samples = True
+
+    if grouped_from_samples or not isinstance(raw_categories, dict):
+        return grouped
+
     for category, payload in raw_categories.items():
         if not isinstance(payload, dict):
             continue
-        parsed[category] = parse_samples(payload.get("samples", []))
-    return parsed
+        grouped[category] = parse_samples(payload.get("samples", []))
+    return grouped
 
 
 def parse_sample(sample: dict[str, Any]) -> SampleResult:
@@ -357,6 +384,7 @@ def parse_sample(sample: dict[str, Any]) -> SampleResult:
         sample_id=sample_id(label),
         passed=bool(sample.get("pass", False)),
         completed=sample.get("completed", True) is not False,
+        category=str(sample.get("category", "")),
     )
 
 
