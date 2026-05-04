@@ -97,6 +97,25 @@ class Result:
     stderr_present: bool = False
     context_overflow: bool = False
     context_overflow_signals: list[str] = field(default_factory=list)
+    # Reproducibility/inspection fields surfaced into scores.json so a single
+    # file lets a reviewer see what was asked, what the model did, why each
+    # check passed or failed, and what the ground truth was for each check.
+    # Naming follows the HF-datasets convention: `input` for the prompt,
+    # `prediction` for the model's visible output. Both `prediction` and
+    # `reasoning` are lists of per-turn strings (lossless; .join() if you
+    # want a single string).
+    input: str = ""
+    prediction: list = field(default_factory=list)
+    reasoning: list = field(default_factory=list)
+    # Aggregated token counts across all step_finish events, with a per_step
+    # breakdown. Always populated (the counts are present even when the
+    # provider hides plaintext reasoning, e.g. OpenAI o-series/GPT-5.x).
+    tokens: dict = field(default_factory=dict)
+    # checks_detail mirrors `passed`/`failed` but keeps per-check structure:
+    #   {type, description, params (ground truth), passed: bool, reason: str|None}
+    # The flat `passed`/`failed` lists are retained for back-compat with
+    # cross_model_table.py and other consumers that read them directly.
+    checks_detail: list = field(default_factory=list)
 
     @property
     def ok(self):
@@ -152,11 +171,27 @@ def detect_context_overflow(stderr_path):
     return True, bool(signals), signals
 
 
+def _empty_tokens():
+    """Token-accounting shape used in scores.json. Keys mirror the underlying
+    opencode `step_finish.part.tokens` payload, flattened so `cache.read` and
+    `cache.write` become top-level `cache_read` / `cache_write` for grep-ability.
+    `per_step` preserves per-step counts so reasoning-over-time analysis is
+    possible without re-walking the trace."""
+    return {
+        "input": 0, "output": 0, "reasoning": 0,
+        "cache_read": 0, "cache_write": 0,
+        "total": 0, "steps": 0,
+        "per_step": [],
+    }
+
+
 def extract(path):
     tools = []
-    texts = []
+    prediction = []
+    reasoning = []
+    tokens = _empty_tokens()
     if not path.exists():
-        return tools, texts
+        return tools, prediction, reasoning, tokens
     step = 0
     with open(path) as f:
         for line in f:
@@ -167,9 +202,10 @@ def extract(path):
                 evt = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            if evt.get("type") == "step_start":
+            etype = evt.get("type")
+            if etype == "step_start":
                 step += 1
-            if evt.get("type") == "tool_use":
+            elif etype == "tool_use":
                 part = evt.get("part", {})
                 state = part.get("state", {})
                 tools.append({
@@ -178,9 +214,44 @@ def extract(path):
                     "output": state.get("output", ""),
                     "step": step,
                 })
-            if evt.get("type") == "text":
-                texts.append(evt.get("part", {}).get("text", ""))
-    return tools, texts
+            elif etype == "text":
+                prediction.append(evt.get("part", {}).get("text", ""))
+            # Reasoning events are emitted only when run.py runs opencode with
+            # --thinking (default for capture_reasoning=True). Providers that
+            # return plaintext reasoning (Claude extended thinking, DeepSeek-R1,
+            # Qwen3-think, ...) populate `part.text`; OpenAI o-series/GPT-5.x
+            # leave it empty because the upstream API only exposes a token count.
+            elif etype == "reasoning":
+                reasoning.append(evt.get("part", {}).get("text", ""))
+            elif etype == "step_finish":
+                # `tokens` is always present (the count, not the text). It's
+                # the only reasoning signal that survives for OpenAI o-series
+                # / GPT-5.x where plaintext reasoning is hidden by the API.
+                t = evt.get("part", {}).get("tokens") or {}
+                cache = t.get("cache") or {}
+                t_input = int(t.get("input") or 0)
+                t_output = int(t.get("output") or 0)
+                t_reason = int(t.get("reasoning") or 0)
+                t_c_read = int(cache.get("read") or 0)
+                t_c_write = int(cache.get("write") or 0)
+                t_total = int(t.get("total") or 0)
+                tokens["input"] += t_input
+                tokens["output"] += t_output
+                tokens["reasoning"] += t_reason
+                tokens["cache_read"] += t_c_read
+                tokens["cache_write"] += t_c_write
+                tokens["total"] += t_total
+                tokens["steps"] += 1
+                tokens["per_step"].append({
+                    "step": step,
+                    "input": t_input,
+                    "output": t_output,
+                    "reasoning": t_reason,
+                    "cache_read": t_c_read,
+                    "cache_write": t_c_write,
+                    "total": t_total,
+                })
+    return tools, prediction, reasoning, tokens
 
 
 def evaluate(sample, run_dir):
@@ -200,13 +271,17 @@ def evaluate(sample, run_dir):
                       context_overflow=context_overflow,
                       context_overflow_signals=context_overflow_signals)
 
-    tools, texts = extract(trace)
-    if not tools and not texts:
+    tools, prediction, reasoning, tokens = extract(trace)
+    if not tools and not prediction:
         return Result(label, sample["category"], failed=["empty trace"],
                       completed=False, difficulty=sample.get("difficulty"),
                       stderr_present=stderr_present,
                       context_overflow=context_overflow,
-                      context_overflow_signals=context_overflow_signals)
+                      context_overflow_signals=context_overflow_signals,
+                      input=sample.get("prompt", ""),
+                      prediction=prediction,
+                      reasoning=reasoning,
+                      tokens=tokens)
 
     project = run_dir / "projects" / run_project_name(sample)
     if not project.is_dir():
@@ -221,10 +296,23 @@ def evaluate(sample, run_dir):
     result.stderr_present = stderr_present
     result.context_overflow = context_overflow
     result.context_overflow_signals = context_overflow_signals
+    result.input = sample.get("prompt", "")
+    result.prediction = prediction
+    result.reasoning = reasoning
+    result.tokens = tokens
     for chk in sample.get("checks", []):
         fn = evaluators.get(chk["type"])
+        desc = chk.get("description", chk["type"])
         if not fn:
-            result.failed.append(f"unknown check type: {chk['type']!r}")
+            msg = f"unknown check type: {chk['type']!r}"
+            result.failed.append(msg)
+            result.checks_detail.append({
+                "type": chk["type"],
+                "description": desc,
+                "params": {k: v for k, v in chk.items() if k not in ("type", "description")},
+                "passed": False,
+                "reason": msg,
+            })
             continue
         chk["_project_dir"] = str(project)
         # Evaluators that need the trace path so they can walk
@@ -241,14 +329,27 @@ def evaluate(sample, run_dir):
             "tool_call_sequence",
         }
         if chk["type"].endswith("_recursive") or chk["type"] in TRACE_AWARE:
-            ok, reason = fn(tools, texts, chk, trace_path=trace)
+            ok, reason = fn(tools, prediction, chk, trace_path=trace)
         else:
-            ok, reason = fn(tools, texts, chk)
-        desc = chk.get("description", chk["type"])
+            ok, reason = fn(tools, prediction, chk)
         if ok:
             result.passed.append(desc)
         else:
             result.failed.append(f"{desc}: {reason}" if reason and reason != desc else desc)
+        # Strip eval-only scaffolding from the params snapshot. `_project_dir`
+        # is injected above; `description` and `type` are split out into their
+        # own fields. Everything else is the check's declared ground truth
+        # (regex, expected substring, expected tool name, count bounds, etc.).
+        result.checks_detail.append({
+            "type": chk["type"],
+            "description": desc,
+            "params": {
+                k: v for k, v in chk.items()
+                if k not in ("type", "description", "_project_dir")
+            },
+            "passed": ok,
+            "reason": reason if reason else None,
+        })
 
     return result
 
@@ -333,6 +434,7 @@ def build(results, meta=None):
         for r in rs:
             samples.append({
                 "label": r.label,
+                "category": r.category,
                 "pass": r.ok,
                 "score": round(r.score, 4),
                 "completed": r.completed,
@@ -340,6 +442,31 @@ def build(results, meta=None):
                 "checks_total": _checks(r),
                 "passed": r.passed,
                 "failed": r.failed,
+                # Per-check breakdown with declared ground truth (params), the
+                # check's pass/fail outcome, and the failure reason when it
+                # failed. Mirrors `passed`/`failed` but keeps structure so a
+                # reviewer can inspect why a sample passed or failed without
+                # cross-referencing samples_v{0,1}.jsonl.
+                "checks": r.checks_detail,
+                # Inputs and outputs verbatim, for reproducibility / failure
+                # triage without having to chase the trace .jsonl on disk.
+                # Naming follows the HF-datasets convention: `input` is the
+                # prompt sent to the model; `prediction` is the model's
+                # visible-text output. Both `prediction` and `reasoning` are
+                # lists of per-turn strings.
+                "input": r.input,
+                "prediction": r.prediction,
+                # Reasoning text is empty unless run.py was invoked with
+                # --capture-reasoning (default on) AND the provider returned
+                # plaintext reasoning. OpenAI o-series/GPT-5.x leave this empty
+                # because their API only exposes a token count (see
+                # `tokens.reasoning` below, which is non-zero for them).
+                "reasoning": r.reasoning,
+                # Aggregated token counts across all step_finish events, with
+                # a `per_step` breakdown. `reasoning` here is non-zero for
+                # any provider that bills reasoning tokens, even when the
+                # plaintext is hidden (OpenAI o-series/GPT-5.x).
+                "tokens": r.tokens,
                 "min_calls": r.min_calls,
                 "tool_calls_recursive": r.tool_calls_recursive,
                 "difficulty": r.difficulty,
