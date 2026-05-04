@@ -5,8 +5,9 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "${SCRIPT_DIR}/../.." && pwd)
 CONFIG_DIR=${REPO_ROOT}/cluster_configs
 
-MODEL="sft-all_0502.final_alex"
-ITER="iter_0000300"
+# MODEL="sft-all_0502.final_alex"
+MODEL="sft-all_0502b.final_alex"
+ITER="iter_0001500"
 BASE_DIR="/lustre/fsw/portfolios/llmservice/users/drekesh/results/sft/${MODEL}"
 CKPT="${BASE_DIR}/checkpoints/${ITER}/evals/hf/hf"
 MODEL_MOUNT="${BASE_DIR}:${BASE_DIR}"
