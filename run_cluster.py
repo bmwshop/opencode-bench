@@ -199,6 +199,13 @@ def build_parser():
             "ContextOverflowError. Default: 8192."
         ),
     )
+    bench.add_argument(
+        "--no-cleanup-projects",
+        dest="cleanup_projects",
+        action="store_false",
+        default=True,
+        help="Forward --no-cleanup-projects to eval.py so per-sample workspaces are retained.",
+    )
 
     # -- Output & Installation -------------------------------------------
     output = parser.add_argument_group("Output & Installation")
@@ -296,7 +303,8 @@ for src, dst in copies:
 def build_benchmark_command(opencode_model, provider, server_url, timeout,
                             benchmark_ids, benchmark_categories,
                             max_output_tokens, extra_run_args=None,
-                            legacy_shared_projects=False):
+                            legacy_shared_projects=False,
+                            cleanup_projects=True):
     """Build the in-container shell command that runs the benchmark.
 
     ``extra_run_args`` is a list of additional tokens appended verbatim to the
@@ -366,6 +374,8 @@ def build_benchmark_command(opencode_model, provider, server_url, timeout,
     if benchmark_categories:
         for cat in benchmark_categories:
             eval_args.append(f"--category {cat}")
+    if not cleanup_projects:
+        eval_args.append("--no-cleanup-projects")
     parts.append(" ".join(eval_args))
 
     return " && ".join(parts)
@@ -457,6 +467,7 @@ def main():
             max_output_tokens=args.max_output_tokens,
             extra_run_args=extra_run_args,
             legacy_shared_projects=args.legacy_shared_projects,
+            cleanup_projects=args.cleanup_projects,
         )
 
         copies.append({
