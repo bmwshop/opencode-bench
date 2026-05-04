@@ -123,7 +123,7 @@ Mechanical proof that label = `YES` is correct: apply the reference_edit patch f
 - `label=YES` -> exec_assert PASSES (all asserts in source.asserts evaluate True)
 - `label=NO` -> exec_assert FAILS at least one assert
 
-Verified mechanically by `python3 scripts/audit_review.py --id 95` (Pass 1).
+Verified mechanically by `python3 data/scripts/audit_review.py --id 95` (Pass 1).
 
 ## Shortest path
 
@@ -147,7 +147,7 @@ Verified mechanically by `python3 scripts/audit_review.py --id 95` (Pass 1).
 
 This sample is the paper-faithful `code_review` atomic skill (Ma et al. arXiv:2604.05013), implemented via cross-reference to the `code_editing` source manifest. The PR diff is constructed mechanically; the gold label is mechanically derived from `exec_assert` against the source's truth table. The agent's role is to JUDGE, not to PATCH.
 
-If the source manifest changes, re-run `scripts/regen_review.py` and `scripts/audit_review.py`.
+If the source manifest changes, re-run `data/scripts/regen_review.py` and `data/scripts/audit_review.py`.
 
 ## Lock-in hash
 

@@ -28,9 +28,9 @@ If any gate fails, the run aborts without touching samples_v1.jsonl. Pass --dry-
 to print what would change without writing.
 
 Usage:
-    python3 scripts/regen_skill.py
-    python3 scripts/regen_skill.py --id 401
-    python3 scripts/regen_skill.py --dry-run
+    python3 data/scripts/regen_skill.py
+    python3 data/scripts/regen_skill.py --id 401
+    python3 data/scripts/regen_skill.py --dry-run
 """
 from __future__ import annotations
 

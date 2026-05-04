@@ -32,7 +32,7 @@ Cross-reference rules
   `source.targets[0].path`).
 - `label` MUST match the truth-table outcome under that variant: YES iff
   exec_assert PASSES, NO iff at least one assert FAILS. This is enforced
-  mechanically by `scripts/audit_review.py`.
+  mechanically by `data/scripts/audit_review.py`.
 
 Prompt construction
 -------------------
@@ -50,9 +50,9 @@ Pass criteria
 
 Usage
 -----
-    python3 scripts/regen_review.py            # regenerate everything
-    python3 scripts/regen_review.py --dry-run  # plan only, no writes
-    python3 scripts/regen_review.py --id 91    # one sample
+    python3 data/scripts/regen_review.py            # regenerate everything
+    python3 data/scripts/regen_review.py --dry-run  # plan only, no writes
+    python3 data/scripts/regen_review.py --id 91    # one sample
 """
 from __future__ import annotations
 
@@ -64,7 +64,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from common import PROJECTS  # noqa: E402
 
@@ -372,7 +372,7 @@ Mechanical proof that label = `{label}` is correct: apply the {variant} patch fr
 - `label=YES` -> exec_assert PASSES (all asserts in source.asserts evaluate True)
 - `label=NO` -> exec_assert FAILS at least one assert
 
-Verified mechanically by `python3 scripts/audit_review.py --id {sid}` (Pass 1).
+Verified mechanically by `python3 data/scripts/audit_review.py --id {sid}` (Pass 1).
 
 ## Shortest path
 
@@ -396,7 +396,7 @@ Verified mechanically by `python3 scripts/audit_review.py --id {sid}` (Pass 1).
 
 This sample is the paper-faithful `code_review` atomic skill (Ma et al. arXiv:2604.05013), implemented via cross-reference to the `code_editing` source manifest. The PR diff is constructed mechanically; the gold label is mechanically derived from `exec_assert` against the source's truth table. The agent's role is to JUDGE, not to PATCH.
 
-If the source manifest changes, re-run `scripts/regen_review.py` and `scripts/audit_review.py`.
+If the source manifest changes, re-run `data/scripts/regen_review.py` and `data/scripts/audit_review.py`.
 
 ## Lock-in hash
 

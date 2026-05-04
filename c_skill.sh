@@ -38,7 +38,7 @@
 # After this finishes:
 #
 #   # Analyzer support for --family skill is not yet wired into
-#   # scripts/analyze_localization_panel.py. Until then, use eval.py
+#   # data/scripts/analyze_localization_panel.py. Until then, use eval.py
 #   # directly to score and inspect:
 #
 #   python3 eval.py --version v1 --category skill --format text \
@@ -46,7 +46,7 @@
 #
 #   # Per-sample pass-rate breakdown across the most recent 3 runs per
 #   # model can be read from each run-dir's scores.json. A
-#   # `scripts/analyze_localization_panel.py --family skill` extension
+#   # `data/scripts/analyze_localization_panel.py --family skill` extension
 #   # is on the v1 SKILL plan (phase 6).
 #
 # Single-sample dev test (skip the model x seed grid; useful for spot-

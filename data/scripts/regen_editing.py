@@ -51,7 +51,7 @@ The manifest is the single source of truth. For each sample entry it lists:
     mutants         - optional list of misstep-tagged mutation patches
                       `{misstep, patch: {oldString, newString} | null,
                         path?}`. Each must FAIL >= 1 assert (validated
-                      by scripts/score_editing_candidate.py).
+                      by data/scripts/score_editing_candidate.py).
     prompt_capability  - 1-2 sentences that frame the target without
                          naming the file path; renders into the spec.
     prompt_required_literals - optional list of strings that MUST appear
@@ -85,7 +85,7 @@ For each entry this script:
        min_calls=3.
 
 This is a deliberate extension of the mechanical-criterion pattern
-established for v1 #21-#30 (see scripts/regen_localization.py).
+established for v1 #21-#30 (see data/scripts/regen_localization.py).
 Localization pins the oracle as `rg -l -w -e <tok> ...`; editing pins
 the oracle as the literal list of Python assertions that the patched
 function must satisfy. In both cases the prompt embeds enough of the
@@ -93,9 +93,9 @@ oracle that a faithful agent can self-verify its answer.
 
 Usage
 -----
-    python3 scripts/regen_editing.py           # regenerate everything
-    python3 scripts/regen_editing.py --dry-run # print plan, no writes
-    python3 scripts/regen_editing.py --id 51   # just one sample
+    python3 data/scripts/regen_editing.py           # regenerate everything
+    python3 data/scripts/regen_editing.py --dry-run # print plan, no writes
+    python3 data/scripts/regen_editing.py --id 51   # just one sample
 """
 from __future__ import annotations
 
@@ -108,7 +108,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 MANIFEST_PATH = ROOT / "data" / "v1_editing_criteria.json"
 V1_REPOS_PATH = ROOT / "data" / "v1_repos.json"
 SPEC_DIR = ROOT / "data" / "specs" / "v1"

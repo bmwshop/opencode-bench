@@ -24,10 +24,10 @@ Pass 2 - end-to-end through eval.py
 
 Usage
 -----
-    python3 scripts/audit_review.py            # all samples, both passes
-    python3 scripts/audit_review.py --id 91    # one sample
-    python3 scripts/audit_review.py --pass 1
-    python3 scripts/audit_review.py --pass 2
+    python3 data/scripts/audit_review.py            # all samples, both passes
+    python3 data/scripts/audit_review.py --id 91    # one sample
+    python3 data/scripts/audit_review.py --pass 1
+    python3 data/scripts/audit_review.py --pass 2
 """
 from __future__ import annotations
 
@@ -39,12 +39,12 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 import evaluators  # noqa: E402
 from common import SAMPLES_V1, PROJECTS  # noqa: E402
-from scripts.regen_review import (  # noqa: E402
+from data.scripts.regen_review import (  # noqa: E402
     REVIEW_IDS,
     authoring_gates,
     build_prompt,
@@ -124,7 +124,7 @@ def _strip_assert_fields(a: dict) -> dict:
 def _exec_assert_chk_for_source(source: dict, td_path: Path) -> dict:
     """Build an exec_assert check config from the SOURCE manifest entry.
 
-    Mirrors the logic in scripts/audit_editing.py::_chk_from_entry.
+    Mirrors the logic in data/scripts/audit_editing.py::_chk_from_entry.
     """
     asserts = [_strip_assert_fields(a) for a in source["asserts"]]
     if source.get("targets"):

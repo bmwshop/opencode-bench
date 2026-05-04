@@ -225,3 +225,7 @@ node_modules/
 package-lock.json
 projects/**/.opencode/package.json
 a.sh
+
+# Generated CSV outputs from analysis scripts
+scripts/*.csv
+analysis/*.csv

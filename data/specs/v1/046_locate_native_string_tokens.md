@@ -50,7 +50,7 @@ Answer shape: 8 entries across 5 file(s). Unique structural trait: `internal_uti
 
 ## Ground truth (gold answer)
 
-Derived mechanically by [scripts/derive_046_ground_truth.py](../../../scripts/derive_046_ground_truth.py) against pin `79f4df84cf77`. 8 entries, already in lexicographic order:
+Derived mechanically by [data/scripts/derive_046_ground_truth.py](../../scripts/derive_046_ground_truth.py) against pin `79f4df84cf77`. 8 entries, already in lexicographic order:
 
 ```text
 src/requests/_internal_utils.py::to_native_string
@@ -67,10 +67,10 @@ SHA-256 of the gold string (with trailing newline): `faa6fe4c1e4600a154ac4f4b59e
 
 ## Five-layer verification
 
-1. **AST derivation** via the shared [scripts/localization_oracle.py](../../../scripts/localization_oracle.py) (`T1` template). Every `FunctionDef` / `AsyncFunctionDef` in scope is walked; `ast.Call` nodes whose `func.id` or `func.attr` matches the anchor/target name produce the "direct call" relation.
+1. **AST derivation** via the shared [data/scripts/localization_oracle.py](../../scripts/localization_oracle.py) (`T1` template). Every `FunctionDef` / `AsyncFunctionDef` in scope is walked; `ast.Call` nodes whose `func.id` or `func.attr` matches the anchor/target name produce the "direct call" relation.
 2. **`rg` cross-check**: every AST-discovered call line must appear in `rg -n -w --with-filename <name> <scope_files>` output. Catches dynamic/meta-programming patterns or AST/rg drift.
 3. **Anchor-kind assertion**: the oracle asserts exactly one `to_native_string` definition matching the declared `module_level=True` kind in `src/requests/_internal_utils.py`, with no decorators, before emitting gold.
-4. **Evaluator audit** via [scripts/audit_localization_structured.py](../../../scripts/audit_localization_structured.py): Pass 1 (positive + negative `location.txt` variants through the real `file_regex_disk` evaluator) and Pass 2 (end-to-end `eval.evaluate()` with synthesized trace).
+4. **Evaluator audit** via [data/scripts/audit_localization_structured.py](../../scripts/audit_localization_structured.py): Pass 1 (positive + negative `location.txt` variants through the real `file_regex_disk` evaluator) and Pass 2 (end-to-end `eval.evaluate()` with synthesized trace).
 5. **Pilot panel** (post-locking): 5 models × 3 seeds; top-tier model must reach ≥ 2/3; per-tier pass-rate correlation matrix < 0.85 between any two samples in the same tier.
 
 ## Setup

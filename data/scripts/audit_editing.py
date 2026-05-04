@@ -3,7 +3,7 @@
 Audit harness for v1 code-editing samples (#51 - #60).
 
 Ground truth is the manifest at `data/v1_editing_criteria.json`, consumed
-by `scripts/regen_editing.py`. The audit does NOT hand-code assert lists;
+by `data/scripts/regen_editing.py`. The audit does NOT hand-code assert lists;
 it derives them from the same manifest and checks that the jsonl row,
 the spec markdown, and the on-disk evaluator behavior are all mutually
 consistent -- and that the reference edit produces the expected
@@ -47,10 +47,10 @@ Pass 2 - end-to-end through eval.py
       is memoized on content.
 
 Usage
-    python3 scripts/audit_editing.py             # all v1 editing samples
-    python3 scripts/audit_editing.py --id 51     # one sample
-    python3 scripts/audit_editing.py --pass 1    # only pass 1
-    python3 scripts/audit_editing.py --pass 2    # only pass 2
+    python3 data/scripts/audit_editing.py             # all v1 editing samples
+    python3 data/scripts/audit_editing.py --id 51     # one sample
+    python3 data/scripts/audit_editing.py --pass 1    # only pass 1
+    python3 data/scripts/audit_editing.py --pass 2    # only pass 2
 """
 from __future__ import annotations
 
@@ -62,12 +62,12 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 import evaluators  # noqa: E402
 from common import SAMPLES_V1  # noqa: E402
-from scripts.regen_editing import (  # noqa: E402
+from data.scripts.regen_editing import (  # noqa: E402
     authoring_gates,
     build_prompt,
     build_row,

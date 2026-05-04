@@ -20,16 +20,16 @@ de-leaked editing sample:
 For each candidate we predict a difficulty tier (`easy` / `medium` / `hard`)
 using the heuristic in `docs/building_editing_samples.md` and emit a
 machine-readable JSON suitable for piping into
-`scripts/score_editing_candidate.py`.
+`data/scripts/score_editing_candidate.py`.
 
 Filters out functions that are already targeted by an existing entry in
 `data/v1_editing_criteria.json` (file + name match).
 
 Usage
 -----
-    python3 scripts/propose_editing_candidates.py --top 15
-    python3 scripts/propose_editing_candidates.py --tier hard --multi-file
-    python3 scripts/propose_editing_candidates.py --format json > /tmp/edit_proposals.json
+    python3 data/scripts/propose_editing_candidates.py --top 15
+    python3 data/scripts/propose_editing_candidates.py --tier hard --multi-file
+    python3 data/scripts/propose_editing_candidates.py --format json > /tmp/edit_proposals.json
 """
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 MANIFEST_PATH = ROOT / "data" / "v1_editing_criteria.json"

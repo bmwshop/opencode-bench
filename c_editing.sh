@@ -22,9 +22,9 @@
 #
 # After this finishes:
 #
-#   python3 scripts/analyze_localization_panel.py --family editing \
+#   python3 data/scripts/analyze_localization_panel.py --family editing \
 #       --exclude-incomplete > analysis/editing_panel_snapshot.txt
-#   python3 scripts/analyze_localization_panel.py --family editing \
+#   python3 data/scripts/analyze_localization_panel.py --family editing \
 #       --exclude-incomplete --json > analysis/editing_panel_snapshot.json
 #
 # Acceptance criteria (see analysis/README.md):

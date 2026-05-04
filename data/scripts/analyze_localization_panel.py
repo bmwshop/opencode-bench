@@ -30,14 +30,14 @@ Outputs:
 Usage
 -----
     # Localization (default).
-    python3 scripts/analyze_localization_panel.py
-    python3 scripts/analyze_localization_panel.py --models claude-opus-4-6 minimax-m2.5 \
+    python3 data/scripts/analyze_localization_panel.py
+    python3 data/scripts/analyze_localization_panel.py --models claude-opus-4-6 minimax-m2.5 \
         --ids 21-50 --seeds-per-model 3
-    python3 scripts/analyze_localization_panel.py --json > /tmp/panel.json
+    python3 data/scripts/analyze_localization_panel.py --json > /tmp/panel.json
 
     # Editing (#51-60 de-leaked samples).
-    python3 scripts/analyze_localization_panel.py --family editing
-    python3 scripts/analyze_localization_panel.py --family editing --json \\
+    python3 data/scripts/analyze_localization_panel.py --family editing
+    python3 data/scripts/analyze_localization_panel.py --family editing --json \\
         > analysis/editing_panel_snapshot.json
 """
 from __future__ import annotations
@@ -51,7 +51,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 RUNS = ROOT / "runs" / "v1"
 
 FAMILIES: dict[str, dict[str, Any]] = {

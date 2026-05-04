@@ -22,8 +22,8 @@ needs to be tightened (add more discriminating checks) or loosened (remove
 spurious checks).
 
 Usage:
-    python3 scripts/audit_skill.py
-    python3 scripts/audit_skill.py --id 401
+    python3 data/scripts/audit_skill.py
+    python3 data/scripts/audit_skill.py --id 401
 """
 from __future__ import annotations
 

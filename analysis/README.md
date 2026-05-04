@@ -1,7 +1,7 @@
 # Panel analysis (localization + editing + mutants + orchestration)
 
 Artifacts produced by
-[`scripts/analyze_localization_panel.py`](../scripts/analyze_localization_panel.py).
+[`data/scripts/analyze_localization_panel.py`](../data/scripts/analyze_localization_panel.py).
 The same script analyses four v1 sample families via `--family`:
 
 - `--family localization` (default) — structured-output samples #21–#50,
@@ -109,27 +109,27 @@ Rule of thumb:
 To regenerate the localization snapshot:
 
 ```bash
-python3 scripts/analyze_localization_panel.py --ids 21-50 \
+python3 data/scripts/analyze_localization_panel.py --ids 21-50 \
   > analysis/panel_snapshot.txt
-python3 scripts/analyze_localization_panel.py --ids 21-50 --json \
+python3 data/scripts/analyze_localization_panel.py --ids 21-50 --json \
   > analysis/panel_snapshot.json
 ```
 
 To regenerate the editing snapshot (after the #51–#60 panel run lands):
 
 ```bash
-python3 scripts/analyze_localization_panel.py --family editing \
+python3 data/scripts/analyze_localization_panel.py --family editing \
   > analysis/editing_panel_snapshot.txt
-python3 scripts/analyze_localization_panel.py --family editing --json \
+python3 data/scripts/analyze_localization_panel.py --family editing --json \
   > analysis/editing_panel_snapshot.json
 ```
 
 To regenerate the mutants snapshot (after `bash c_mutants.sh` lands):
 
 ```bash
-python3 scripts/analyze_localization_panel.py --family mutants \
+python3 data/scripts/analyze_localization_panel.py --family mutants \
   --exclude-incomplete > analysis/mutant_panel_snapshot.txt
-python3 scripts/analyze_localization_panel.py --family mutants \
+python3 data/scripts/analyze_localization_panel.py --family mutants \
   --exclude-incomplete --json > analysis/mutant_panel_snapshot.json
 ```
 
@@ -198,8 +198,8 @@ plain `tool_call_count` before kicking off the pilot.
 To regenerate the orchestration snapshot:
 
 ```bash
-python3 scripts/analyze_localization_panel.py --family orchestration \
+python3 data/scripts/analyze_localization_panel.py --family orchestration \
   --exclude-incomplete > analysis/orchestration_panel_snapshot.txt
-python3 scripts/analyze_localization_panel.py --family orchestration \
+python3 data/scripts/analyze_localization_panel.py --family orchestration \
   --exclude-incomplete --json > analysis/orchestration_panel_snapshot.json
 ```

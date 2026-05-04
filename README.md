@@ -342,6 +342,8 @@ data/
     v1/
       021_locate_cookie_tokens.md
       091_pr_review_iter_slices_yes.md
+  scripts/               # sample-prep pipeline (deriver/audit/regen/oracle scripts
+                         #   used to MAKE the samples; not invoked at eval time)
 run.py                   # runner — executes samples via opencode CLI
 eval.py                  # evaluator — scores traces against checks
 common.py                # shared constants, sample loader, path helpers
@@ -359,8 +361,10 @@ projects/                # canonical per-sample fixtures, read-only at runtime
     skills/              #   per-skill-sample fixtures (SKILL.md + sibling scripts)
     mutants/             #   per-mutant overlay (AGENTS.md / persona / opencode.json)
     orchestration/       #   per-orchestration sample overlay
-scripts/
+scripts/                 # eval-time / runtime / ops scripts (invoked by users)
   extract_schemas.py     # re-extracts data/tool_schemas.json from opencode serve
+  hydrate_v1_repos.py    # hydrates pinned v1 repos into projects/v1/
+  summarize_scores_csv.py # summarizes scores.json across runs
 evaluators/              # check implementations (auto-registered)
   tool/                  # tool name and parameter checks
   content/               # text and file content checks

@@ -50,7 +50,7 @@ Answer shape: 3 entries (all in `src/requests/cookies.py`). Unique structural tr
 
 ## Ground truth (gold answer)
 
-Manually narrowed from the oracle's name-based output: the v1 oracle in [scripts/localization_oracle.py](../../../scripts/localization_oracle.py) resolves callers by attribute name (`Attribute(attr=anchor)`), which is correct for unique anchors but over-counts on generic ones like `update`. Of the oracle's 9 raw entries, only 3 are real callers of `RequestsCookieJar.update`; the other 6 call `dict.update` on `__dict__` / `send_kwargs` / `merged_setting` / `result`, or `CaseInsensitiveDict.update` on `self`. The 3 true entries — the anchor itself plus its only two real call-sites in `cookies.py` — are below in lexicographic order:
+Manually narrowed from the oracle's name-based output: the v1 oracle in [data/scripts/localization_oracle.py](../../scripts/localization_oracle.py) resolves callers by attribute name (`Attribute(attr=anchor)`), which is correct for unique anchors but over-counts on generic ones like `update`. Of the oracle's 9 raw entries, only 3 are real callers of `RequestsCookieJar.update`; the other 6 call `dict.update` on `__dict__` / `send_kwargs` / `merged_setting` / `result`, or `CaseInsensitiveDict.update` on `self`. The 3 true entries — the anchor itself plus its only two real call-sites in `cookies.py` — are below in lexicographic order:
 
 ```text
 src/requests/cookies.py::RequestsCookieJar.copy
@@ -60,14 +60,14 @@ src/requests/cookies.py::merge_cookies
 
 SHA-256 of the gold string (with trailing newline): `d16128edb60b8f2cf067b99784f90f063c8b4afd6a6125095c82963aec90dd4f`.
 
-The 4-file prompt scope is preserved deliberately: the model still has to inspect `models.py`, `sessions.py`, and `structures.py` to *correctly conclude* they contain no real callers — that negation work is what keeps this sample in the hard tier despite the smaller answer set. The deriver script [scripts/derive_045_ground_truth.py](../../../scripts/derive_045_ground_truth.py) is now a non-authoritative reference (its raw output overcounts); the regex in `data/samples_v1.jsonl` is the binding ground truth.
+The 4-file prompt scope is preserved deliberately: the model still has to inspect `models.py`, `sessions.py`, and `structures.py` to *correctly conclude* they contain no real callers — that negation work is what keeps this sample in the hard tier despite the smaller answer set. The deriver script [data/scripts/derive_045_ground_truth.py](../../scripts/derive_045_ground_truth.py) is now a non-authoritative reference (its raw output overcounts); the regex in `data/samples_v1.jsonl` is the binding ground truth.
 
 ## Five-layer verification
 
-1. **AST derivation** via the shared [scripts/localization_oracle.py](../../../scripts/localization_oracle.py) (`T1` template). Every `FunctionDef` / `AsyncFunctionDef` in scope is walked; `ast.Call` nodes whose `func.id` or `func.attr` matches the anchor/target name produce the "direct call" relation.
+1. **AST derivation** via the shared [data/scripts/localization_oracle.py](../../scripts/localization_oracle.py) (`T1` template). Every `FunctionDef` / `AsyncFunctionDef` in scope is walked; `ast.Call` nodes whose `func.id` or `func.attr` matches the anchor/target name produce the "direct call" relation.
 2. **`rg` cross-check**: every AST-discovered call line must appear in `rg -n -w --with-filename <name> <scope_files>` output. Catches dynamic/meta-programming patterns or AST/rg drift.
 3. **Anchor-kind assertion**: the oracle asserts exactly one `update` definition matching the declared `module_level=False` kind in `src/requests/cookies.py`, with no decorators, before emitting gold.
-4. **Evaluator audit** via [scripts/audit_localization_structured.py](../../../scripts/audit_localization_structured.py): Pass 1 (positive + negative `location.txt` variants through the real `file_regex_disk` evaluator) and Pass 2 (end-to-end `eval.evaluate()` with synthesized trace).
+4. **Evaluator audit** via [data/scripts/audit_localization_structured.py](../../scripts/audit_localization_structured.py): Pass 1 (positive + negative `location.txt` variants through the real `file_regex_disk` evaluator) and Pass 2 (end-to-end `eval.evaluate()` with synthesized trace).
 5. **Pilot panel** (post-locking): 5 models × 3 seeds; top-tier model must reach ≥ 2/3; per-tier pass-rate correlation matrix < 0.85 between any two samples in the same tier.
 
 ## Setup

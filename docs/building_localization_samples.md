@@ -24,7 +24,7 @@ templates:
   excluded).
 
 Ground truth is derived *programmatically* from the repo AST by the oracle in
-[scripts/localization_oracle.py](../scripts/localization_oracle.py) and
+[data/scripts/localization_oracle.py](../data/scripts/localization_oracle.py) and
 cross-checked against `rg`. A sample is considered valid only if the oracle
 and `rg` agree and a five-layer verification passes (AST → rg → uniqueness
 sanity → evaluator audit → pilot panel).
@@ -45,7 +45,7 @@ sanity → evaluator audit → pilot panel).
 1. **Propose candidates**
 
    ```bash
-   python3 scripts/propose_localization_candidates.py \
+   python3 data/scripts/propose_localization_candidates.py \
      --repo requests \
      --scope src/requests \
      --tier hard \
@@ -102,7 +102,7 @@ sanity → evaluator audit → pilot panel).
 4. **Score** the candidate end-to-end:
 
    ```bash
-   python3 scripts/score_localization_candidate.py --input /tmp/cand.json
+   python3 data/scripts/score_localization_candidate.py --input /tmp/cand.json
    ```
 
    Must exit 0. The JSON payload includes the derived gold listing, the
@@ -131,7 +131,7 @@ sanity → evaluator audit → pilot panel).
 
    See any of #21-30 for the expected field-by-field shape.
 
-6. **Add a derive script** at `scripts/derive_0NN_ground_truth.py`. It is a
+6. **Add a derive script** at `data/scripts/derive_0NN_ground_truth.py`. It is a
    4-line stub that calls the shared `run_derive_cli` helper:
 
    ```python
@@ -143,13 +143,13 @@ sanity → evaluator audit → pilot panel).
 7. **Regenerate specs + jsonl**:
 
    ```bash
-   python3 scripts/regen_structured_samples.py
+   python3 data/scripts/regen_structured_samples.py
    ```
 
 8. **Audit**:
 
    ```bash
-   python3 scripts/audit_localization_structured.py
+   python3 data/scripts/audit_localization_structured.py
    ```
 
    Must end with `RESULT: PASS`. Both pass-1 (structure + regex round-trip)
@@ -232,9 +232,9 @@ uses the most-recent `--seeds-per-model` trials per `(model, sample)`, and
 emits both the correlation matrix and the per-model tier pass-rate table:
 
 ```bash
-python3 scripts/analyze_localization_panel.py --ids 21-50
+python3 data/scripts/analyze_localization_panel.py --ids 21-50
 # or dump everything as JSON for a downstream tool
-python3 scripts/analyze_localization_panel.py --ids 21-50 --json \
+python3 data/scripts/analyze_localization_panel.py --ids 21-50 --json \
   > analysis/panel_snapshot.json
 ```
 
@@ -265,14 +265,14 @@ The oracle currently assumes the `requests` repo is mounted at
    canonical URL, pinned commit SHA, and submodule path.
 2. Add the submodule at that path and `git submodule update --init`.
 3. Generalize `V1_REQUESTS_ROOT` in
-   [scripts/localization_oracle.py](../scripts/localization_oracle.py) to a
+   [data/scripts/localization_oracle.py](../data/scripts/localization_oracle.py) to a
    parametrizable constant (or switch to a dict indexed by repo name), then
    plumb a `--repo` flag through the proposer and scorer (they both already
    take `--repo`, but currently only `requests` is wired).
 4. Smoke-test:
 
    ```bash
-   python3 scripts/propose_localization_candidates.py \
+   python3 data/scripts/propose_localization_candidates.py \
      --repo <new_repo> --scope <src_dir> --top 5 --validate
    ```
 
@@ -318,7 +318,7 @@ If the proposer returns zero candidates for a tier you need:
 * Relax the proposer knobs: `--top 30`, `--include-decorated`,
   `--template T2`.
 * Mine more seed clusters — extend the `_cluster_seeds()` list in
-  `scripts/propose_localization_candidates.py` with new thematic groups
+  `data/scripts/propose_localization_candidates.py` with new thematic groups
   specific to the repo.
 * As a last resort, add a new `unique_trait` dimension (e.g.
   `test_scope_includes_tests_dir`) and expand the matrix, but only after
@@ -335,11 +335,11 @@ for each new sample:
   3. write a stub to /tmp/cand.json
   4. run the scorer → must exit 0, signature_collisions == []
   5. append manifest entry (id, difficulty, signature, prompt_*)
-  6. create scripts/derive_0NN_ground_truth.py (4 lines)
+  6. create data/scripts/derive_0NN_ground_truth.py (4 lines)
 
 then once:
-  7. python3 scripts/regen_structured_samples.py
-  8. python3 scripts/audit_localization_structured.py  # must PASS
+  7. python3 data/scripts/regen_structured_samples.py
+  8. python3 data/scripts/audit_localization_structured.py  # must PASS
   9. update c.sh to iterate new IDs
   10. kick off the pilot panel
 ```

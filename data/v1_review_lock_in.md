@@ -10,7 +10,7 @@ Pinned to `requests` submodule pin `79f4df84cf77a2fee873809821dfbd786de05b97`.
 
 | Phase | Status | Artifact |
 |---|---|---|
-| Phase 1 — infrastructure rewrite | DONE | [scripts/regen_review.py](../scripts/regen_review.py), [scripts/audit_review.py](../scripts/audit_review.py); deleted obsolete `data/v1_review_voice_corpus.md` |
+| Phase 1 — infrastructure rewrite | DONE | [data/scripts/regen_review.py](scripts/regen_review.py), [data/scripts/audit_review.py](scripts/audit_review.py); deleted obsolete `data/v1_review_voice_corpus.md` |
 | Phase 2 — source picks + 5 mutants | DONE | 5 mutants authored in [data/v1_editing_criteria.json](v1_editing_criteria.json) (#52, #54, #56, #58, #60); 10 manifest entries drafted; all 10 labels verified by Pass-1 oracle |
 | Phase 3 — regen + audit | DONE | 10 specs at `data/specs/v1/{091..100}_pr_review_*.md`; 10 rows in [data/samples_v1.jsonl](samples_v1.jsonl); audit Pass-1 + Pass-2 PASS |
 | Phase 4 — pilot panel | LAUNCHER STAGED ([r.sh](../r.sh)); actual run requires network access from the user's bench environment | log in `runs/v1/<model>/<timestamp>/` after `bash r.sh` |
@@ -82,7 +82,7 @@ Pass 2 - end-to-end through eval.py
 RESULT: PASS (10 samples validated)
 ```
 
-Re-verify any time with `python3 scripts/audit_review.py`.
+Re-verify any time with `python3 data/scripts/audit_review.py`.
 
 ## Layer D (pilot panel) status
 
@@ -196,8 +196,8 @@ The `code_review` category alone now covers structured-judgment + plan-mode adhe
 - Spec files: `data/specs/v1/091_pr_review_*.md` through `data/specs/v1/100_pr_review_*.md`
 - Manifest: [data/v1_review_criteria.json](v1_review_criteria.json)
 - Source manifest (cross-referenced): [data/v1_editing_criteria.json](v1_editing_criteria.json)
-- Authoring pipeline: [scripts/regen_review.py](../scripts/regen_review.py)
-- Audit pipeline: [scripts/audit_review.py](../scripts/audit_review.py)
+- Authoring pipeline: [data/scripts/regen_review.py](scripts/regen_review.py)
+- Audit pipeline: [data/scripts/audit_review.py](scripts/audit_review.py)
 - Pilot launcher: [r.sh](../r.sh)
 - JSONL rows: rows with `id` 91-100 in [data/samples_v1.jsonl](samples_v1.jsonl)
 - Paper: Ma et al., arXiv:2604.05013, Appendix E

@@ -71,8 +71,8 @@ Every entry in `data/v1_editing_criteria.json` carries:
 ### 4.1 Propose a candidate
 
 ```bash
-python3 scripts/propose_editing_candidates.py --top 15
-python3 scripts/propose_editing_candidates.py --tier hard --multi-file
+python3 data/scripts/propose_editing_candidates.py --top 15
+python3 data/scripts/propose_editing_candidates.py --tier hard --multi-file
 ```
 
 The proposer walks `src/requests/`, ranks functions by an editability
@@ -116,7 +116,7 @@ Compose a JSON entry with the schema above. Critical authoring rules:
 ### 4.3 Score the candidate
 
 ```bash
-python3 scripts/score_editing_candidate.py /tmp/my_candidate.json
+python3 data/scripts/score_editing_candidate.py /tmp/my_candidate.json
 ```
 
 The scorer runs five gates:
@@ -138,7 +138,7 @@ Add the entry to `data/v1_editing_criteria.json`, then regenerate
 specs and JSONL rows:
 
 ```bash
-python3 scripts/regen_editing.py
+python3 data/scripts/regen_editing.py
 ```
 
 `regen_editing.py` runs Layer-0 authoring gates (anchor uniqueness,
@@ -151,7 +151,7 @@ exactly what gets graded.
 ### 4.5 Audit
 
 ```bash
-python3 scripts/audit_editing.py
+python3 data/scripts/audit_editing.py
 ```
 
 This runs both passes:
@@ -278,8 +278,8 @@ Run the proposer against the new repo to size up the candidate
 inventory:
 
 ```bash
-python3 scripts/propose_editing_candidates.py --repo <slug> --top 30
-python3 scripts/propose_editing_candidates.py --repo <slug> --tier hard --multi-file --top 15
+python3 data/scripts/propose_editing_candidates.py --repo <slug> --top 30
+python3 data/scripts/propose_editing_candidates.py --repo <slug> --tier hard --multi-file --top 15
 ```
 
 Then write candidates, score them with `score_editing_candidate.py`,

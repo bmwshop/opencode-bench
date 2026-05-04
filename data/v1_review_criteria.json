@@ -1,5 +1,5 @@
 {
-  "_comment": "Paper-faithful code_review manifest for v1 #91-#100 (atomic_skills paper, Ma et al. arXiv:2604.05013 Appendix E). Each sample is a (PR description + PR diff) -> (YES/NO judgment + free-form review summary) plan-mode task. Source material is cross-referenced from data/v1_editing_criteria.json (#51-#60); we do NOT author new bugs here. The sample's `label` is mechanically verified by scripts/audit_review.py: applying the variant patch to the pinned baseline and running exec_assert against the source's truth table must yield outcome that matches `label`.",
+  "_comment": "Paper-faithful code_review manifest for v1 #91-#100 (atomic_skills paper, Ma et al. arXiv:2604.05013 Appendix E). Each sample is a (PR description + PR diff) -> (YES/NO judgment + free-form review summary) plan-mode task. Source material is cross-referenced from data/v1_editing_criteria.json (#51-#60); we do NOT author new bugs here. The sample's `label` is mechanically verified by data/scripts/audit_review.py: applying the variant patch to the pinned baseline and running exec_assert against the source's truth table must yield outcome that matches `label`.",
   "_pin": "79f4df84cf77a2fee873809821dfbd786de05b97",
   "_repo": "requests",
   "_paper_ref": "Ma et al. arXiv:2604.05013 Appendix E",
