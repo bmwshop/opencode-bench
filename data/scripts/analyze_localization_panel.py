@@ -220,7 +220,7 @@ def collect_runs(
                 cutoff = superseded_before.get(sid)
                 if cutoff is not None and ts_dir.name < cutoff:
                     continue
-                out[(model_name, seed_idx, sid)] = bool(s.get("pass"))
+                out[(model_name, seed_idx, sid)] = bool(s.get("strict"))
 
     return out
 

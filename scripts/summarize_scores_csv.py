@@ -426,7 +426,7 @@ def parse_sample(sample: dict[str, Any]) -> SampleResult:
     label = str(sample.get("label", ""))
     return SampleResult(
         sample_id=sample_id(label),
-        passed=bool(sample.get("pass", False)),
+        passed=bool(sample.get("strict", False)),
         completed=sample.get("completed", True) is not False,
         category=str(sample.get("category", "")),
     )

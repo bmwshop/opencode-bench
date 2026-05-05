@@ -182,7 +182,7 @@ def stitch(sample, run_dir, caps, tc_index, scores):
     score_entry = scores.get(sid, {})
     tc = sum(len(m["tool_calls"]) for m in messages if m["role"] == "assistant" and m.get("tool_calls"))
     sp = sample.get("min_calls")
-    passed = score_entry.get("pass", False)
+    passed = score_entry.get("strict", False)
     optimal = passed and sp is not None and tc == sp
 
     return {
@@ -192,8 +192,8 @@ def stitch(sample, run_dir, caps, tc_index, scores):
         "contract": sample.get("contract"),
         "surface": sample.get("surface"),
         "model": first["request"].get("model"),
-        "pass": score_entry.get("pass", None),
-        "score": score_entry.get("score", None),
+        "strict": score_entry.get("strict", None),
+        "partial": score_entry.get("partial", None),
         "tool_calls": tc,
         "min_calls": sp,
         "optimal": optimal,
@@ -266,7 +266,7 @@ def main():
 
         if args.pass_only:
             entry = scores.get(sid, {})
-            if not entry.get("pass", False):
+            if not entry.get("strict", False):
                 skipped += 1
                 continue
 

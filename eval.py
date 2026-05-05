@@ -118,10 +118,12 @@ class Result:
     # `{stem}.context.json` sidecar that run.py writes. Empty dict when the
     # sidecar is missing (e.g. legacy runs from before the snapshot landed).
     context: dict = field(default_factory=dict)
-    # checks_detail mirrors `passed`/`failed` but keeps per-check structure:
-    #   {type, description, params (ground truth), passed: bool, reason: str|None}
-    # The flat `passed`/`failed` lists are retained for back-compat with
-    # cross_model_table.py and other consumers that read them directly.
+    # `passed` / `failed` (above) are internal state that drives `ok`,
+    # `score`, and `_checks`; they are not surfaced in scores.json.
+    # `checks_detail` is the JSON-facing per-check structure surfaced as
+    # `samples[*].checks` and carries everything needed to reconstruct the
+    # flat lists (`description`, `passed: bool`, `reason: str|None`, plus
+    # the `params` ground-truth snapshot).
     checks_detail: list = field(default_factory=list)
 
     @property
@@ -455,18 +457,21 @@ def build(results, meta=None):
             samples.append({
                 "label": r.label,
                 "category": r.category,
-                "pass": r.ok,
-                "score": round(r.score, 4),
+                # `strict` is the all-checks-passed bool; `partial` is the
+                # checks_passed/checks_total ratio. Same vocabulary as the
+                # category- and top-level `strict`/`partial` aggregates,
+                # specialized to a single sample.
+                "strict": r.ok,
+                "partial": round(r.score, 4),
                 "completed": r.completed,
                 "checks_passed": len(r.passed),
                 "checks_total": _checks(r),
-                "passed": r.passed,
-                "failed": r.failed,
                 # Per-check breakdown with declared ground truth (params), the
                 # check's pass/fail outcome, and the failure reason when it
-                # failed. Mirrors `passed`/`failed` but keeps structure so a
-                # reviewer can inspect why a sample passed or failed without
-                # cross-referencing samples_v{0,1}.jsonl.
+                # failed. Carries everything the dropped flat
+                # `passed`/`failed` lists used to: descriptions, outcomes,
+                # and reasons live in `checks[*].description`, `passed`,
+                # and `reason`.
                 "checks": r.checks_detail,
                 # Inputs and outputs verbatim, for reproducibility / failure
                 # triage without having to chase the trace .jsonl on disk.
@@ -614,12 +619,16 @@ def format_text(data):
                 lines.append(f"    by difficulty: {', '.join(parts)}")
         lines.append(f"{'='*60}")
         for s in samples_by_cat.get(cat, []):
-            icon = "PASS" if s["pass"] else "FAIL"
+            icon = "PASS" if s["strict"] else "FAIL"
             diff_tag = f" [{s['difficulty']}]" if s.get("difficulty") else ""
             lines.append(f"  [{icon}] {s['label']}{diff_tag} "
-                         f"({s['checks_passed']}/{s['checks_total']} checks, {s['score']:.0%})")
-            for msg in s["failed"]:
-                lines.append(f"         - {msg}")
+                         f"({s['checks_passed']}/{s['checks_total']} checks, {s['partial']:.0%})")
+            for c in s["checks"]:
+                if c["passed"]:
+                    continue
+                desc = c.get("description") or c.get("type", "")
+                reason = c.get("reason")
+                lines.append(f"         - {desc}: {reason}" if reason and reason != desc else f"         - {desc}")
 
     lines.append(f"\n{'='*60}")
     if data["total"]:
