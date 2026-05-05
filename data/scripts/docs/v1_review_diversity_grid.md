@@ -72,4 +72,4 @@ Unlike the previous `code_review` design (comment-to-fix, mislabeled), this pape
 
 ## Phase-2 checkpoint
 
-This grid was the deliverable for the Phase-2 checkpoint per the plan. The picks shown here were authored end-to-end in Phase 3, the mechanical audit was run in Phase 4, and the lock-in record (with per-sample SHA-256 hashes) lives in [data/v1_review_lock_in.md](v1_review_lock_in.md). Phase 5 (pilot panel) launcher is staged at [r.sh](../r.sh).
+This grid was the deliverable for the Phase-2 checkpoint per the plan. The picks shown here were authored end-to-end in Phase 3, the mechanical audit was run in Phase 4, and the lock-in record (with per-sample SHA-256 hashes) lives in [data/scripts/docs/v1_review_lock_in.md](v1_review_lock_in.md). Phase 5 (pilot panel) launcher is staged at [r.sh](../../../r.sh).

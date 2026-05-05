@@ -17,7 +17,7 @@ functions) so that a hidden truth table of behavioural assertions
 passes. The agent never sees the asserts directly: the prompt encodes
 the contract in prose and concrete I/O examples. Grading is mechanical
 and runs in a single subprocess via
-[evaluators/content/exec_assert.py](../evaluators/content/exec_assert.py).
+[evaluators/content/exec_assert.py](../../../evaluators/content/exec_assert.py).
 
 There are three difficulty tiers:
 
@@ -39,11 +39,11 @@ and (on hard tier) each cross-file half really fails alone.
 * Python 3.11+.
 * `rg` (ripgrep) on `PATH` — the audit uses it for discovery probes.
 * Target repo pinned as a git submodule at `projects/v1/<repo>/` and
-  registered in [data/v1_repos.json](../data/v1_repos.json).
+  registered in [data/v1_repos.json](../../v1_repos.json).
 * Existing manifests at
-  [data/v1_editing_criteria.json](../data/v1_editing_criteria.json)
+  [data/scripts/json/v1_editing_criteria.json](../json/v1_editing_criteria.json)
   (the single source of truth) and
-  [data/samples_v1.jsonl](../data/samples_v1.jsonl) (regenerated).
+  [data/samples_v1.jsonl](../../samples_v1.jsonl) (regenerated).
 
 ## 3. Anatomy of an editing sample
 
@@ -246,7 +246,7 @@ required.
    cd projects/v1/<repo> && git checkout <sha> && cd -
    ```
 
-2. Append a new entry to [data/v1_repos.json](../data/v1_repos.json):
+2. Append a new entry to [data/v1_repos.json](../../v1_repos.json):
 
    ```json
    "<repo>": {

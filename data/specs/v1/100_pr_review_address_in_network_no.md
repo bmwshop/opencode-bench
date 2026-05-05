@@ -169,6 +169,6 @@ If the source manifest changes, re-run `data/scripts/regen_review.py` and `data/
 
 ## Lock-in hash
 
-SHA-256 of `(source_manifest, source_id, variant, label, issue_text)` JSON-serialized with sorted keys. Drift in any of these fields changes the hash. Cross-referenced in [data/v1_review_lock_in.md](../../v1_review_lock_in.md).
+SHA-256 of `(source_manifest, source_id, variant, label, issue_text)` JSON-serialized with sorted keys. Drift in any of these fields changes the hash. Cross-referenced in [data/scripts/docs/v1_review_lock_in.md](../../scripts/docs/v1_review_lock_in.md).
 
 `bd48351bf018b11b2d20ac4c07f12b87c20c85b03dc925ef08e04b8414d2a1b1`

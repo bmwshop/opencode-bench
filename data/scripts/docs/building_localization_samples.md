@@ -24,7 +24,7 @@ templates:
   excluded).
 
 Ground truth is derived *programmatically* from the repo AST by the oracle in
-[data/scripts/localization_oracle.py](../data/scripts/localization_oracle.py) and
+[data/scripts/localization_oracle.py](../localization_oracle.py) and
 cross-checked against `rg`. A sample is considered valid only if the oracle
 and `rg` agree and a five-layer verification passes (AST → rg → uniqueness
 sanity → evaluator audit → pilot panel).
@@ -36,7 +36,7 @@ sanity → evaluator audit → pilot panel).
   textual grep output.
 * The target repo pinned as a git submodule at
   `projects/v1/<repo>/` and registered in
-  [data/v1_repos.json](../data/v1_repos.json) with its exact commit SHA.
+  [data/v1_repos.json](../../v1_repos.json) with its exact commit SHA.
 * Repo name wired up in the oracle (see [Porting to a new repo](#porting-to-a-new-repo)
   for details).
 
@@ -70,7 +70,7 @@ sanity → evaluator audit → pilot panel).
    * 2 ≤ entries ≤ 12 (T1) or 3 ≤ entries ≤ 14 (T2);
    * a unique (template, scope_kind, anchor_kind|target_kind, entries, files)
      tuple against
-     [data/v1_localization_criteria.json](../data/v1_localization_criteria.json);
+     [data/scripts/json/v1_localization_criteria.json](../json/v1_localization_criteria.json);
    * a clear domain story (prefer functions whose name and role are
      self-evident — cookies, auth, redirects, proxies, hooks, etc.).
 
@@ -113,7 +113,7 @@ sanity → evaluator audit → pilot panel).
    the structural signature.
 
 5. **Append the manifest entry** to
-   [data/v1_localization_criteria.json](../data/v1_localization_criteria.json)
+   [data/scripts/json/v1_localization_criteria.json](../json/v1_localization_criteria.json)
    using the shape of the existing entries #21-30 as a template. Required
    keys:
 
@@ -261,11 +261,11 @@ trusting a gradient violation.
 The oracle currently assumes the `requests` repo is mounted at
 `projects/v1/requests`. To target a different repo:
 
-1. Register it in [data/v1_repos.json](../data/v1_repos.json) with its
+1. Register it in [data/v1_repos.json](../../v1_repos.json) with its
    canonical URL, pinned commit SHA, and submodule path.
 2. Add the submodule at that path and `git submodule update --init`.
 3. Generalize `V1_REQUESTS_ROOT` in
-   [data/scripts/localization_oracle.py](../data/scripts/localization_oracle.py) to a
+   [data/scripts/localization_oracle.py](../localization_oracle.py) to a
    parametrizable constant (or switch to a dict indexed by repo name), then
    plumb a `--repo` flag through the proposer and scorer (they both already
    take `--repo`, but currently only `requests` is wired).

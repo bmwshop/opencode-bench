@@ -18,7 +18,7 @@ de-leaked editing sample:
                      boilerplate to be interesting.
 
 For each candidate we predict a difficulty tier (`easy` / `medium` / `hard`)
-using the heuristic in `docs/building_editing_samples.md` and emit a
+using the heuristic in `data/scripts/docs/building_editing_samples.md` and emit a
 machine-readable JSON suitable for piping into
 `data/scripts/score_editing_candidate.py`.
 

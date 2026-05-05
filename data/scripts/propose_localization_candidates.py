@@ -125,7 +125,7 @@ def _trap_count(traits: dict[str, Any]) -> int:
 
 
 def predict_difficulty(n_entries: int, n_files: int, traits: dict[str, Any]) -> str:
-    """Match the heuristic in `docs/building_localization_samples.md`.
+    """Match the heuristic in `data/scripts/docs/building_localization_samples.md`.
 
     Easy    if entries <= 3 AND files <= 2 AND no traps
     Hard    if entries >= 7 OR files >= 4 OR >= 1 traps

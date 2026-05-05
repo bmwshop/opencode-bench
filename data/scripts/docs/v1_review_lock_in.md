@@ -2,7 +2,7 @@
 
 This is the freeze artifact for the **paper-faithful** `code_review` category, rebuilt from scratch per Ma et al. arXiv:2604.05013 Appendix E. The agent acts as a code reviewer (NOT a patch author): given a PR description + PR diff, it explores the repo in plan mode (read-only) and emits a structured `<judgment>YES|NO</judgment>` plus a `<review>` summary.
 
-The single source of truth is [data/v1_review_criteria.json](v1_review_criteria.json), which references [data/v1_editing_criteria.json](v1_editing_criteria.json) entries `#51`-`#60` for the underlying bugs and patches. No new bugs are authored in this category.
+The single source of truth is [data/scripts/json/v1_review_criteria.json](../json/v1_review_criteria.json), which references [data/scripts/json/v1_editing_criteria.json](../json/v1_editing_criteria.json) entries `#51`-`#60` for the underlying bugs and patches. No new bugs are authored in this category.
 
 Pinned to `requests` submodule pin `79f4df84cf77a2fee873809821dfbd786de05b97`.
 
@@ -10,10 +10,10 @@ Pinned to `requests` submodule pin `79f4df84cf77a2fee873809821dfbd786de05b97`.
 
 | Phase | Status | Artifact |
 |---|---|---|
-| Phase 1 — infrastructure rewrite | DONE | [data/scripts/regen_review.py](scripts/regen_review.py), [data/scripts/audit_review.py](scripts/audit_review.py); deleted obsolete `data/v1_review_voice_corpus.md` |
-| Phase 2 — source picks + 5 mutants | DONE | 5 mutants authored in [data/v1_editing_criteria.json](v1_editing_criteria.json) (#52, #54, #56, #58, #60); 10 manifest entries drafted; all 10 labels verified by Pass-1 oracle |
-| Phase 3 — regen + audit | DONE | 10 specs at `data/specs/v1/{091..100}_pr_review_*.md`; 10 rows in [data/samples_v1.jsonl](samples_v1.jsonl); audit Pass-1 + Pass-2 PASS |
-| Phase 4 — pilot panel | LAUNCHER STAGED ([r.sh](../r.sh)); actual run requires network access from the user's bench environment | log in `runs/v1/<model>/<timestamp>/` after `bash r.sh` |
+| Phase 1 — infrastructure rewrite | DONE | [data/scripts/regen_review.py](../regen_review.py), [data/scripts/audit_review.py](../audit_review.py); deleted obsolete `data/v1_review_voice_corpus.md` |
+| Phase 2 — source picks + 5 mutants | DONE | 5 mutants authored in [data/scripts/json/v1_editing_criteria.json](../json/v1_editing_criteria.json) (#52, #54, #56, #58, #60); 10 manifest entries drafted; all 10 labels verified by Pass-1 oracle |
+| Phase 3 — regen + audit | DONE | 10 specs at `data/specs/v1/{091..100}_pr_review_*.md`; 10 rows in [data/samples_v1.jsonl](../../samples_v1.jsonl); audit Pass-1 + Pass-2 PASS |
+| Phase 4 — pilot panel | LAUNCHER STAGED ([r.sh](../../../r.sh)); actual run requires network access from the user's bench environment | log in `runs/v1/<model>/<timestamp>/` after `bash r.sh` |
 | Phase 5 — lock-in (this document) | DONE (offline portions); pilot history pending | this file + manifest hashes below |
 
 ## Per-sample lock-in hashes
@@ -86,7 +86,7 @@ Re-verify any time with `python3 data/scripts/audit_review.py`.
 
 ## Layer D (pilot panel) status
 
-Pending. The launcher script [r.sh](../r.sh) runs 5 models x 3 seeds against the entire category in plan mode (`run.py` auto-injects `--agent plan` from each row's `agent: plan` field). Total: 150 model invocations.
+Pending. The launcher script [r.sh](../../../r.sh) runs 5 models x 3 seeds against the entire category in plan mode (`run.py` auto-injects `--agent plan` from each row's `agent: plan` field). Total: 150 model invocations.
 
 Healthy-pattern criteria:
 
@@ -194,10 +194,10 @@ The `code_review` category alone now covers structured-judgment + plan-mode adhe
 ## Cross-references
 
 - Spec files: `data/specs/v1/091_pr_review_*.md` through `data/specs/v1/100_pr_review_*.md`
-- Manifest: [data/v1_review_criteria.json](v1_review_criteria.json)
-- Source manifest (cross-referenced): [data/v1_editing_criteria.json](v1_editing_criteria.json)
-- Authoring pipeline: [data/scripts/regen_review.py](scripts/regen_review.py)
-- Audit pipeline: [data/scripts/audit_review.py](scripts/audit_review.py)
-- Pilot launcher: [r.sh](../r.sh)
-- JSONL rows: rows with `id` 91-100 in [data/samples_v1.jsonl](samples_v1.jsonl)
+- Manifest: [data/scripts/json/v1_review_criteria.json](../json/v1_review_criteria.json)
+- Source manifest (cross-referenced): [data/scripts/json/v1_editing_criteria.json](../json/v1_editing_criteria.json)
+- Authoring pipeline: [data/scripts/regen_review.py](../regen_review.py)
+- Audit pipeline: [data/scripts/audit_review.py](../audit_review.py)
+- Pilot launcher: [r.sh](../../../r.sh)
+- JSONL rows: rows with `id` 91-100 in [data/samples_v1.jsonl](../../samples_v1.jsonl)
 - Paper: Ma et al., arXiv:2604.05013, Appendix E
