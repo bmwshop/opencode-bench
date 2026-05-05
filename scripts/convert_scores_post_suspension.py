@@ -102,10 +102,11 @@ def _bucket_by_difficulty(samples: list[dict]) -> dict[str, dict]:
         total = len(ss)
         if total == 0:
             return
-        strict = sum(1 for s in ss if s.get("pass"))
+        strict_passed = sum(1 for s in ss if s.get("pass"))
         partial = sum(s.get("score", 0.0) for s in ss) / total
         out[tier] = {
-            "strict": strict,
+            "strict": round(strict_passed / total, 4) if total else 0.0,
+            "strict_passed": strict_passed,
             "total": total,
             "partial": round(partial, 4),
         }
@@ -138,13 +139,14 @@ def _efficiency(samples: list[dict]) -> tuple[float | None, int]:
 
 def _category_aggregates(samples: list[dict]) -> dict:
     total = len(samples)
-    strict = sum(1 for s in samples if s.get("pass"))
+    strict_passed = sum(1 for s in samples if s.get("pass"))
     partial = sum(s.get("score", 0.0) for s in samples) / total if total else 0.0
     checks_passed = sum(s.get("checks_passed", 0) for s in samples)
     checks_total = sum(s.get("checks_total", 0) for s in samples)
     eff, eff_n = _efficiency(samples)
     return {
-        "strict": strict,
+        "strict": round(strict_passed / total, 4) if total else 0.0,
+        "strict_passed": strict_passed,
         "total": total,
         "partial": round(partial, 4),
         "efficiency": round(eff, 4) if eff is not None else None,
@@ -178,21 +180,26 @@ def convert(scores: dict) -> dict:
     )
 
     total = len(flat)
-    strict = sum(1 for s in flat if s.get("pass"))
+    strict_passed = sum(1 for s in flat if s.get("pass"))
     partial_sum = sum(s.get("score", 0.0) for s in flat)
     completed = [s for s in flat if s.get("completed")]
     total_completed = len(completed)
-    strict_completed = sum(1 for s in completed if s.get("pass"))
+    strict_passed_completed = sum(1 for s in completed if s.get("pass"))
     partial_completed_sum = sum(s.get("score", 0.0) for s in completed)
     eff, eff_n = _efficiency(flat)
 
     all_checks = sum(c["checks_total"] for c in new_categories.values())
     all_passed = sum(c["checks_passed"] for c in new_categories.values())
 
-    out["strict"] = strict
+    out["strict"] = round(strict_passed / total, 4) if total else 0.0
+    out["strict_passed"] = strict_passed
     out["total"] = total
     out["partial"] = round(partial_sum / total, 4) if total else 0.0
-    out["strict_completed"] = strict_completed
+    out["strict_completed"] = (
+        round(strict_passed_completed / total_completed, 4)
+        if total_completed else 0.0
+    )
+    out["strict_passed_completed"] = strict_passed_completed
     out["total_completed"] = total_completed
     out["partial_completed"] = (
         round(partial_completed_sum / total_completed, 4)
@@ -217,9 +224,13 @@ def convert(scores: dict) -> dict:
 
 
 def _format_delta(before: dict, after: dict) -> str:
+    # `before` is legacy shape (`strict` is the raw count); `after` is the
+    # new shape (`strict` is a ratio, raw count moved to `strict_passed`).
+    # Compare counts on both sides for a meaningful diff.
+    before_count = before.get("strict_passed", before.get("strict"))
     return (
         f"total {before.get('total')}->{after['total']}  "
-        f"strict {before.get('strict')}->{after['strict']}  "
+        f"strict {before_count}->{after['strict_passed']}  "
         f"partial {before.get('partial')}->{after['partial']}  "
         f"cats {len(before.get('categories', {}))}->{len(after['categories'])}"
     )

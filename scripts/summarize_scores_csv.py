@@ -40,30 +40,37 @@ HEADER = [
     "never_completed",
     "pass@1_avg",
     "pass@1_std",
-    "pass@n",
     "edit_pass@1",
-    "edit_pass@n",
     "loc_pass@1",
-    "loc_pass@n",
     "review_pass@1",
-    "review_pass@n",
     "orch_pass@1",
-    "orch_pass@n",
     "skill_pass@1",
-    "skill_pass@n",
     "restriction_pass@1",
-    "restriction_pass@n",
+    "efficiency_avg",
     "timed_out_avg",
     "context_overflow_avg",
 ]
 
 EXPECTED_HEADER = (
-    "model,run_n,never_completed,pass@1_avg,pass@1_std,pass@n,"
-    "edit_pass@1,edit_pass@n,loc_pass@1,loc_pass@n,"
-    "review_pass@1,review_pass@n,orch_pass@1,orch_pass@n,skill_pass@1,"
-    "skill_pass@n,restriction_pass@1,restriction_pass@n,timed_out_avg,"
-    "context_overflow_avg"
+    "model,run_n,never_completed,pass@1_avg,pass@1_std,"
+    "edit_pass@1,loc_pass@1,review_pass@1,orch_pass@1,"
+    "skill_pass@1,restriction_pass@1,"
+    "efficiency_avg,timed_out_avg,context_overflow_avg"
 )
+
+# Columns toggled back on by --include-pass-n. Each entry is
+# (column_name, anchor_column) — the column is inserted directly after
+# `anchor_column` in the active header so pass@n stays adjacent to its
+# pass@1 sibling, matching the legacy header layout.
+PASS_N_COLUMNS: list[tuple[str, str]] = [
+    ("pass@n", "pass@1_std"),
+    ("edit_pass@n", "edit_pass@1"),
+    ("loc_pass@n", "loc_pass@1"),
+    ("review_pass@n", "review_pass@1"),
+    ("orch_pass@n", "orch_pass@1"),
+    ("skill_pass@n", "skill_pass@1"),
+    ("restriction_pass@n", "restriction_pass@1"),
+]
 
 CATEGORY_COLUMNS = [
     ("code_editing", "edit"),
@@ -95,6 +102,7 @@ class RunResult:
     samples: list[SampleResult]
     categories: dict[str, list[SampleResult]]
     context_overflow_count: int | None
+    efficiency: float | None
 
     @property
     def incomplete_count(self) -> int:
@@ -169,6 +177,15 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--include-pass-n",
+        action="store_true",
+        help=(
+            "Include `pass@n` and per-category `<prefix>_pass@n` columns. "
+            "Off by default — pass@n is a multi-run aggregate that's noisy "
+            "for typical one-off summaries."
+        ),
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         help=(
@@ -231,8 +248,25 @@ def main() -> int:
         return 1
 
     rows = summarize_runs(runs, args.group_by, args.merge_parallel_jobs)
-    emit_csv(render_csv(rows), args)
+    header = with_pass_n(HEADER) if args.include_pass_n else HEADER
+    emit_csv(render_csv(rows, header), args)
     return 0
+
+
+def with_pass_n(header: list[str]) -> list[str]:
+    """Return a copy of `header` with the PASS_N_COLUMNS spliced in.
+
+    Each pass@n column is inserted directly after its anchor (the matching
+    pass@1 column), restoring the legacy adjacency. Anchors that aren't in
+    the header are skipped silently so this remains safe if the default
+    header is ever trimmed further.
+    """
+    extended = list(header)
+    for column, anchor in PASS_N_COLUMNS:
+        if column in extended or anchor not in extended:
+            continue
+        extended.insert(extended.index(anchor) + 1, column)
+    return extended
 
 
 def selected_date_filter(args: argparse.Namespace) -> tuple[str, date | None]:
@@ -310,6 +344,15 @@ def load_runs(paths: Iterable[Path], results_root: Path) -> list[RunResult]:
 
         relative_parent = safe_relative(path.parent, results_root).as_posix()
         samples = parse_samples(payload.get("samples", []))
+        raw_efficiency = payload.get("efficiency")
+        # Legacy scores.json files predate the metric and either omit it or
+        # set it to None. Only accept honest numeric values; anything else
+        # leaves the run as "missing" so the group rolls up to "n/a".
+        efficiency = (
+            float(raw_efficiency)
+            if isinstance(raw_efficiency, (int, float)) and not isinstance(raw_efficiency, bool)
+            else None
+        )
         runs.append(
             RunResult(
                 path=path,
@@ -321,6 +364,7 @@ def load_runs(paths: Iterable[Path], results_root: Path) -> list[RunResult]:
                     samples, payload.get("categories", {})
                 ),
                 context_overflow_count=parse_context_overflow_count(payload),
+                efficiency=efficiency,
             )
         )
     return runs
@@ -390,6 +434,11 @@ def parse_sample(sample: dict[str, Any]) -> SampleResult:
 
 def parse_context_overflow_count(payload: dict[str, Any]) -> int | None:
     aggregate = payload.get("context_overflow")
+    # Modern shape (post the dict-collapse refinement): bare int. Reject bool
+    # explicitly because Python treats True/False as ints.
+    if isinstance(aggregate, int) and not isinstance(aggregate, bool):
+        return aggregate
+    # Legacy shape: {"detection_version": "v1", "samples_flagged": N}.
     if isinstance(aggregate, dict) and "samples_flagged" in aggregate:
         count = numeric_count(aggregate.get("samples_flagged"))
         if count is not None:
@@ -497,6 +546,11 @@ def summarize_group(model: str, runs: list[RunResult]) -> dict[str, str]:
         row[f"{prefix}_pass@1"] = format_percent(mean(category_rates))
         row[f"{prefix}_pass@n"] = format_percent(pass_n(category_samples))
 
+    # Average top-level efficiency only over runs that expose the metric so
+    # legacy-only groups stay honestly "n/a" instead of collapsing to 0%.
+    efficiencies = [run.efficiency for run in runs if run.efficiency is not None]
+    row["efficiency_avg"] = format_percent(mean(efficiencies)) if efficiencies else "n/a"
+
     row["timed_out_avg"] = format_count_avg(mean(run.incomplete_count for run in runs))
     # Mixed old/new selections average only runs that expose the new metadata;
     # all-legacy groups remain explicitly marked as unavailable.
@@ -562,9 +616,14 @@ def no_space_identifier(value: str) -> str:
     return re.sub(r"\s+", "_", value.strip())
 
 
-def render_csv(rows: list[dict[str, str]]) -> str:
+def render_csv(rows: list[dict[str, str]], header: list[str]) -> str:
     buffer = io.StringIO()
-    writer = csv.DictWriter(buffer, fieldnames=HEADER, lineterminator="\n")
+    # `summarize_group` always populates pass@n keys; `extrasaction='ignore'`
+    # silently drops them when the active header omits them, so the writer
+    # adapts to either default or --include-pass-n shape without a branch.
+    writer = csv.DictWriter(
+        buffer, fieldnames=header, lineterminator="\n", extrasaction="ignore"
+    )
     writer.writeheader()
     writer.writerows(rows)
     return buffer.getvalue()

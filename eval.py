@@ -100,17 +100,22 @@ class Result:
     # Reproducibility/inspection fields surfaced into scores.json so a single
     # file lets a reviewer see what was asked, what the model did, why each
     # check passed or failed, and what the ground truth was for each check.
-    # Naming follows the HF-datasets convention: `input` for the prompt,
-    # `prediction` for the model's visible output. Both `prediction` and
-    # `reasoning` are lists of per-turn strings (lossless; .join() if you
-    # want a single string).
+    # `input` is the prompt; `output` is the model's visible-text output
+    # (list of per-turn strings; lossless — .join() if you want a single
+    # string). Note: per-tool `tools[*].output` and per-step `tokens.output`
+    # are unrelated fields at different paths.
     input: str = ""
-    prediction: list = field(default_factory=list)
+    output: list = field(default_factory=list)
     reasoning: list = field(default_factory=list)
-    # Aggregated token counts across all step_finish events, with a per_step
+    # Aggregated token counts across all step_finish events, with a per_turn
     # breakdown. Always populated (the counts are present even when the
     # provider hides plaintext reasoning, e.g. OpenAI o-series/GPT-5.x).
     tokens: dict = field(default_factory=dict)
+    # Per-sample workspace conditioning snapshot (agent flag, AGENTS.md,
+    # custom agent defs, SKILL.md catalog, opencode.json) loaded from the
+    # `{stem}.context.json` sidecar that run.py writes. Empty dict when the
+    # sidecar is missing (e.g. legacy runs from before the snapshot landed).
+    context: dict = field(default_factory=dict)
     # checks_detail mirrors `passed`/`failed` but keeps per-check structure:
     #   {type, description, params (ground truth), passed: bool, reason: str|None}
     # The flat `passed`/`failed` lists are retained for back-compat with
@@ -173,26 +178,28 @@ def detect_context_overflow(stderr_path):
 
 def _empty_tokens():
     """Token-accounting shape used in scores.json. Keys mirror the underlying
-    opencode `step_finish.part.tokens` payload, flattened so `cache.read` and
-    `cache.write` become top-level `cache_read` / `cache_write` for grep-ability.
-    `per_step` preserves per-step counts so reasoning-over-time analysis is
-    possible without re-walking the trace."""
+    opencode `step_finish.part.tokens` payload aggregated across all turns.
+    `per_turn` preserves per-turn counts so reasoning-over-time analysis is
+    possible without re-walking the trace. opencode emits one `step_start` /
+    `step_finish` pair per LLM inference; we surface those as "turns" because
+    that's the standard agent-literature term for one model invocation.
+    Provider prompt-caching tokens (cache.read / cache.write) are intentionally
+    not surfaced — re-derive from `trace.jsonl` if you need cost accounting."""
     return {
         "input": 0, "output": 0, "reasoning": 0,
-        "cache_read": 0, "cache_write": 0,
-        "total": 0, "steps": 0,
-        "per_step": [],
+        "total": 0, "turns": 0,
+        "per_turn": [],
     }
 
 
 def extract(path):
     tools = []
-    prediction = []
+    output = []
     reasoning = []
     tokens = _empty_tokens()
     if not path.exists():
-        return tools, prediction, reasoning, tokens
-    step = 0
+        return tools, output, reasoning, tokens
+    turn = 0
     with open(path) as f:
         for line in f:
             line = line.strip()
@@ -204,18 +211,22 @@ def extract(path):
                 continue
             etype = evt.get("type")
             if etype == "step_start":
-                step += 1
+                turn += 1
             elif etype == "tool_use":
                 part = evt.get("part", {})
                 state = part.get("state", {})
+                # Per-tool `step` is left alone (vs the per-turn token rename)
+                # because evaluators/tool/parallel_dispatch_count.py and
+                # evaluators/orchestration/tools_same_step.py consume it
+                # directly. Renaming would silently break them.
                 tools.append({
                     "name": part.get("tool", ""),
                     "input": state.get("input", {}),
                     "output": state.get("output", ""),
-                    "step": step,
+                    "step": turn,
                 })
             elif etype == "text":
-                prediction.append(evt.get("part", {}).get("text", ""))
+                output.append(evt.get("part", {}).get("text", ""))
             # Reasoning events are emitted only when run.py runs opencode with
             # --thinking (default for capture_reasoning=True). Providers that
             # return plaintext reasoning (Claude extended thinking, DeepSeek-R1,
@@ -228,30 +239,23 @@ def extract(path):
                 # the only reasoning signal that survives for OpenAI o-series
                 # / GPT-5.x where plaintext reasoning is hidden by the API.
                 t = evt.get("part", {}).get("tokens") or {}
-                cache = t.get("cache") or {}
                 t_input = int(t.get("input") or 0)
                 t_output = int(t.get("output") or 0)
                 t_reason = int(t.get("reasoning") or 0)
-                t_c_read = int(cache.get("read") or 0)
-                t_c_write = int(cache.get("write") or 0)
                 t_total = int(t.get("total") or 0)
                 tokens["input"] += t_input
                 tokens["output"] += t_output
                 tokens["reasoning"] += t_reason
-                tokens["cache_read"] += t_c_read
-                tokens["cache_write"] += t_c_write
                 tokens["total"] += t_total
-                tokens["steps"] += 1
-                tokens["per_step"].append({
-                    "step": step,
+                tokens["turns"] += 1
+                tokens["per_turn"].append({
+                    "turn": turn,
                     "input": t_input,
                     "output": t_output,
                     "reasoning": t_reason,
-                    "cache_read": t_c_read,
-                    "cache_write": t_c_write,
                     "total": t_total,
                 })
-    return tools, prediction, reasoning, tokens
+    return tools, output, reasoning, tokens
 
 
 def evaluate(sample, run_dir):
@@ -260,28 +264,41 @@ def evaluate(sample, run_dir):
     label = f"#{sid} {name}"
 
     run_dir = run_dir.resolve()
-    trace = run_dir / f"{trace_name(sample)}.jsonl"
+    stem = trace_name(sample)
+    trace = run_dir / f"{stem}.jsonl"
     stderr_present, context_overflow, context_overflow_signals = detect_context_overflow(
-        run_dir / f"{trace_name(sample)}.err"
+        run_dir / f"{stem}.err"
     )
+    # Best-effort load of the per-sample workspace-conditioning snapshot
+    # written by run.py. Missing on legacy runs (sidecar landed 2026-04);
+    # treat that as "no context recorded" rather than failing the eval.
+    ctx_path = run_dir / f"{stem}.context.json"
+    context = {}
+    if ctx_path.is_file():
+        try:
+            context = json.loads(ctx_path.read_text())
+        except (OSError, json.JSONDecodeError):
+            pass
     if not trace.exists():
         return Result(label, sample["category"], failed=["trace not found"],
                       completed=False, difficulty=sample.get("difficulty"),
                       stderr_present=stderr_present,
                       context_overflow=context_overflow,
-                      context_overflow_signals=context_overflow_signals)
+                      context_overflow_signals=context_overflow_signals,
+                      context=context)
 
-    tools, prediction, reasoning, tokens = extract(trace)
-    if not tools and not prediction:
+    tools, output, reasoning, tokens = extract(trace)
+    if not tools and not output:
         return Result(label, sample["category"], failed=["empty trace"],
                       completed=False, difficulty=sample.get("difficulty"),
                       stderr_present=stderr_present,
                       context_overflow=context_overflow,
                       context_overflow_signals=context_overflow_signals,
                       input=sample.get("prompt", ""),
-                      prediction=prediction,
+                      output=output,
                       reasoning=reasoning,
-                      tokens=tokens)
+                      tokens=tokens,
+                      context=context)
 
     project = run_dir / "projects" / run_project_name(sample)
     if not project.is_dir():
@@ -297,9 +314,10 @@ def evaluate(sample, run_dir):
     result.context_overflow = context_overflow
     result.context_overflow_signals = context_overflow_signals
     result.input = sample.get("prompt", "")
-    result.prediction = prediction
+    result.output = output
     result.reasoning = reasoning
     result.tokens = tokens
+    result.context = context
     for chk in sample.get("checks", []):
         fn = evaluators.get(chk["type"])
         desc = chk.get("description", chk["type"])
@@ -329,9 +347,9 @@ def evaluate(sample, run_dir):
             "tool_call_sequence",
         }
         if chk["type"].endswith("_recursive") or chk["type"] in TRACE_AWARE:
-            ok, reason = fn(tools, prediction, chk, trace_path=trace)
+            ok, reason = fn(tools, output, chk, trace_path=trace)
         else:
-            ok, reason = fn(tools, prediction, chk)
+            ok, reason = fn(tools, output, chk)
         if ok:
             result.passed.append(desc)
         else:
@@ -362,42 +380,41 @@ _DIFFICULTY_ORDER = ["easy", "medium", "hard"]
 
 
 def _bucket_by_difficulty(results):
-    """Return {tier: {strict: int, total: int, partial: float}} over a list of
-    Result objects. Only buckets tiers that have at least one sample. Samples
-    without a `difficulty` attribute are placed under `None` and omitted from
-    the returned mapping (so this is a no-op for legacy categories like
-    `plan_mode`).
+    """Return {tier: {strict: float, strict_passed: int, total: int,
+    partial: float}} over a list of Result objects. `strict` is now the ratio
+    `strict_passed / total` (in [0, 1]); the raw count moved to
+    `strict_passed`. Only buckets tiers that have at least one sample.
+    Samples without a `difficulty` attribute are placed under `None` and
+    omitted from the returned mapping (so this is a no-op for legacy
+    categories like `plan_mode`).
     """
     buckets: dict[str, list] = {}
     for r in results:
         if not r.difficulty:
             continue
         buckets.setdefault(r.difficulty, []).append(r)
+
+    def _emit(rs):
+        total = len(rs)
+        strict_passed = sum(1 for r in rs if r.ok)
+        partial = sum(r.score for r in rs) / total
+        return {
+            "strict": round(strict_passed / total, 4) if total else 0.0,
+            "strict_passed": strict_passed,
+            "total": total,
+            "partial": round(partial, 4),
+        }
+
     out: dict[str, dict] = {}
     for tier in _DIFFICULTY_ORDER:
         rs = buckets.get(tier)
         if not rs:
             continue
-        total = len(rs)
-        strict = sum(1 for r in rs if r.ok)
-        partial = sum(r.score for r in rs) / total
-        out[tier] = {
-            "strict": strict,
-            "total": total,
-            "partial": round(partial, 4),
-        }
+        out[tier] = _emit(rs)
     # Surface any unexpected tier values (future-proofing).
     for tier, rs in buckets.items():
-        if tier in out or tier not in _DIFFICULTY_ORDER:
-            if tier not in out:
-                total = len(rs)
-                strict = sum(1 for r in rs if r.ok)
-                partial = sum(r.score for r in rs) / total
-                out[tier] = {
-                    "strict": strict,
-                    "total": total,
-                    "partial": round(partial, 4),
-                }
+        if tier not in out:
+            out[tier] = _emit(rs)
     return out
 
 
@@ -451,12 +468,13 @@ def build(results, meta=None):
                 "checks": r.checks_detail,
                 # Inputs and outputs verbatim, for reproducibility / failure
                 # triage without having to chase the trace .jsonl on disk.
-                # Naming follows the HF-datasets convention: `input` is the
-                # prompt sent to the model; `prediction` is the model's
-                # visible-text output. Both `prediction` and `reasoning` are
-                # lists of per-turn strings.
+                # `input` is the prompt sent to the model; `output` is the
+                # model's visible-text output (list of per-turn strings).
+                # Note: per-tool `tools[*].output` and per-step
+                # `tokens.output` (int) are unrelated fields at different
+                # paths — the JSON is unambiguous, but be aware when grepping.
                 "input": r.input,
-                "prediction": r.prediction,
+                "output": r.output,
                 # Reasoning text is empty unless run.py was invoked with
                 # --capture-reasoning (default on) AND the provider returned
                 # plaintext reasoning. OpenAI o-series/GPT-5.x leave this empty
@@ -464,10 +482,15 @@ def build(results, meta=None):
                 # `tokens.reasoning` below, which is non-zero for them).
                 "reasoning": r.reasoning,
                 # Aggregated token counts across all step_finish events, with
-                # a `per_step` breakdown. `reasoning` here is non-zero for
+                # a `per_turn` breakdown. `reasoning` here is non-zero for
                 # any provider that bills reasoning tokens, even when the
                 # plaintext is hidden (OpenAI o-series/GPT-5.x).
                 "tokens": r.tokens,
+                # Per-sample workspace conditioning snapshot (agent flag,
+                # AGENTS.md, custom agent defs, SKILL.md catalog,
+                # opencode.json) loaded from the {stem}.context.json sidecar.
+                # Empty for legacy runs from before the sidecar landed.
+                "context": r.context,
                 "min_calls": r.min_calls,
                 "tool_calls_recursive": r.tool_calls_recursive,
                 "difficulty": r.difficulty,
@@ -477,9 +500,13 @@ def build(results, meta=None):
             })
         all_samples.extend(samples)
         cat_eff, cat_eff_n = _efficiency(rs)
+        cat_total = len(rs)
         categories[cat] = {
-            "strict": cat_strict,
-            "total": len(rs),
+            # `strict` is the ratio of strictly-passing samples (`strict_passed
+            # / total`, in [0, 1]); the raw count lives in `strict_passed`.
+            "strict": round(cat_strict / cat_total, 4) if cat_total else 0.0,
+            "strict_passed": cat_strict,
+            "total": cat_total,
             "partial": round(cat_partial, 4),
             "efficiency": round(cat_eff, 4) if cat_eff is not None else None,
             "efficiency_n": cat_eff_n,
@@ -514,19 +541,24 @@ def build(results, meta=None):
     eff, eff_n = _efficiency(results)
 
     data = {
-        "strict": sum_strict,
+        # Top-level `strict` and `strict_completed` are ratios in [0, 1]
+        # (strict_passed / total, strict_passed_completed / total_completed);
+        # the raw counts live in `strict_passed` / `strict_passed_completed`.
+        "strict": round(sum_strict / total, 4) if total else 0.0,
+        "strict_passed": sum_strict,
         "total": total,
         "partial": round(sum_partial / total, 4) if total else 0.0,
-        "strict_completed": strict_completed,
+        "strict_completed": (
+            round(strict_completed / total_completed, 4)
+            if total_completed else 0.0
+        ),
+        "strict_passed_completed": strict_completed,
         "total_completed": total_completed,
         "partial_completed": round(partial_completed, 4),
         "efficiency": round(eff, 4) if eff is not None else None,
         "efficiency_n": eff_n,
         "timed_out": total - total_completed,
-        "context_overflow": {
-            "detection_version": CONTEXT_OVERFLOW_DETECTION_VERSION,
-            "samples_flagged": sum(1 for r in results if r.context_overflow),
-        },
+        "context_overflow": sum(1 for r in results if r.context_overflow),
         "checks_passed": all_passed,
         "checks_total": all_checks,
         "samples": flat,
@@ -563,19 +595,19 @@ def format_text(data):
             f", efficiency {info['efficiency']:.0%} (n={info['efficiency_n']})"
             if info.get("efficiency") is not None else ""
         )
-        lines.append(f"  {cat}  (strict {info['strict']}/{info['total']}, "
+        lines.append(f"  {cat}  (strict {info['strict_passed']}/{info['total']}, "
                       f"partial {info['partial']:.0%}{eff_tok}, "
                       f"checks {info['checks_passed']}/{info['checks_total']})")
         by_diff = info.get("by_difficulty") or {}
         if by_diff:
             parts = [
-                f"{tier} {b['strict']}/{b['total']} ({b['partial']:.0%})"
+                f"{tier} {b['strict_passed']}/{b['total']} ({b['partial']:.0%})"
                 for tier in ("easy", "medium", "hard") if (b := by_diff.get(tier))
             ]
             # Append any non-standard tiers to preserve forward-compat.
             for tier, b in by_diff.items():
                 if tier not in ("easy", "medium", "hard"):
-                    parts.append(f"{tier} {b['strict']}/{b['total']} ({b['partial']:.0%})")
+                    parts.append(f"{tier} {b['strict_passed']}/{b['total']} ({b['partial']:.0%})")
             if parts:
                 lines.append(f"    by difficulty: {', '.join(parts)}")
         lines.append(f"{'='*60}")
@@ -589,8 +621,8 @@ def format_text(data):
 
     lines.append(f"\n{'='*60}")
     if data["total"]:
-        lines.append(f"  Strict score:      {data['strict']}/{data['total']} samples fully passed "
-                      f"({data['strict']/data['total']:.0%})")
+        lines.append(f"  Strict score:      {data['strict_passed']}/{data['total']} samples fully passed "
+                      f"({data['strict']:.0%})")
         lines.append(f"  Partial score:     {data['partial']:.1%} average across all samples")
         if data.get("efficiency") is not None:
             lines.append(
@@ -600,11 +632,11 @@ def format_text(data):
             )
         tc = data.get("total_completed", data["total"])
         if tc and tc != data["total"]:
-            sc = data["strict_completed"]
+            sc = data["strict_passed_completed"]
             pc = data["partial_completed"]
             to = data["timed_out"]
             lines.append(f"  Strict (done):     {sc}/{tc} passed of {tc} completed "
-                          f"({sc/tc:.0%})")
+                          f"({data['strict_completed']:.0%})")
             lines.append(f"  Partial (done):    {pc:.1%} average across completed samples")
             lines.append(f"  Timed out:         {to}")
         lines.append(f"  Checks:            {data['checks_passed']}/{data['checks_total']} total checks passed")

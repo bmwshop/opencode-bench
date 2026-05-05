@@ -423,6 +423,70 @@ def _scan_sidecar_for_task_sids(text):
     return out
 
 
+def _snapshot_context(cwd: Path, sample: dict) -> dict:
+    """Capture per-sample workspace conditioning that shapes the model's
+    system prompt. Called AFTER the overlay merge AND after any opencode.json
+    mutations (vllm/proxy/limits) so the snapshot reflects exactly what the
+    model will see, not the pre-overlay parent fixture.
+
+    Captured fields:
+      - `agent`: the --agent flag value (e.g. "build", "plan"), or None.
+      - `agents_md`: contents of cwd/AGENTS.md, if present.
+      - `custom_agents`: {relpath: contents} for cwd/.opencode/agents/*.md
+        and cwd/.opencode/command/*.md (custom agent / command definitions).
+      - `skills`: {relpath: contents} for any cwd/**/SKILL.md inside the
+        workspace, capped at SKILL_MD_LIMIT entries to keep scores.json sane.
+      - `opencode_json`: parsed cwd/opencode.json, if present.
+
+    Best-effort: any read failure silently omits the field. The reconstructed
+    dict is intentionally enough to almost rebuild the system prompt — the
+    only piece a reviewer can't recover here is opencode's own built-in
+    system prompt template, which is fixed across runs.
+    """
+    SKILL_MD_LIMIT = 32  # Hard cap; current samples ship 1-2 SKILL.md files.
+    out: dict = {"agent": sample.get("agent")}
+
+    agents = cwd / "AGENTS.md"
+    if agents.is_file():
+        try:
+            out["agents_md"] = agents.read_text()
+        except OSError:
+            pass
+
+    custom: dict = {}
+    for sub in (".opencode/agents", ".opencode/command"):
+        sub_dir = cwd / sub
+        if not sub_dir.is_dir():
+            continue
+        for f in sorted(sub_dir.rglob("*.md")):
+            try:
+                custom[str(f.relative_to(cwd))] = f.read_text()
+            except OSError:
+                continue
+    if custom:
+        out["custom_agents"] = custom
+
+    skills: dict = {}
+    for f in sorted(cwd.rglob("SKILL.md")):
+        if len(skills) >= SKILL_MD_LIMIT:
+            break
+        try:
+            skills[str(f.relative_to(cwd))] = f.read_text()
+        except OSError:
+            continue
+    if skills:
+        out["skills"] = skills
+
+    cfg = cwd / "opencode.json"
+    if cfg.is_file():
+        try:
+            out["opencode_json"] = json.loads(cfg.read_text())
+        except (OSError, json.JSONDecodeError):
+            pass
+
+    return out
+
+
 def _capture_subagents(trace_path, cwd, argv):
     """BFS over task tool calls in the parent trace + any emitted sidecars.
     Exports each unseen subagent session via `opencode export` and writes a
@@ -529,6 +593,19 @@ def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
         if proxy:
             _inject_proxy(cwd, provider, proxy)
 
+    # Snapshot the workspace conditioning that shapes the system prompt
+    # (AGENTS.md, .opencode/agents/*, SKILL.md, opencode.json, --agent flag).
+    # Done here — after the overlay merge AND after any opencode.json
+    # mutations above — so the sidecar reflects exactly what opencode will
+    # read at launch. eval.py picks this up and emits it as
+    # samples[*].context in scores.json.
+    stem = trace_name(sample)
+    try:
+        ctx_path = run_dir / f"{stem}.context.json"
+        ctx_path.write_text(json.dumps(_snapshot_context(cwd, sample), indent=2))
+    except OSError as e:
+        print(f"WARN  #{sid:03d} context snapshot failed: {e}", flush=True)
+
     header = f"  RUN  #{sid:03d} {name}"
     argv, _, _ = resolve_opencode_cmd()
     popen_argv = (
@@ -614,8 +691,8 @@ def run(sample, timeout, run_dir, model=None, proxy=None, provider=None,
         print(f"{header}\n  ERROR: {stderr.strip()}", flush=True)
         sys.exit(1)
 
-    stem = trace_name(sample)
-
+    # `stem` was computed earlier (before the opencode invocation) so the
+    # context.json sidecar could be written; reuse the same value here.
     if timed_out:
         # Invariant: no trace on disk unless opencode completed inside the
         # timeout budget. Python loop variables persist after the loop, so
