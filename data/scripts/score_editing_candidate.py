@@ -3,7 +3,7 @@
 Score an editing-sample candidate stub end-to-end.
 
 Given a JSON file shaped like a manifest entry from
-`data/v1_editing_criteria.json` (with optional extras like `mutants[]`,
+`data/scripts/json/v1_editing_criteria.json` (with optional extras like `mutants[]`,
 `leak_function_name`, and a multi-file `targets` shape), run every cheap
 correctness gate and report.
 

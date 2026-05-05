@@ -44,7 +44,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-MANIFEST_PATH = ROOT / "data" / "v1_editing_criteria.json"
+MANIFEST_PATH = ROOT / "data" / "scripts" / "json" / "v1_editing_criteria.json"
 V1_REPOS_PATH = ROOT / "data" / "v1_repos.json"
 DEFAULT_REPO = "requests"
 

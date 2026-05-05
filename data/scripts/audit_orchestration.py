@@ -47,7 +47,7 @@ sys.path.insert(0, str(ROOT))
 from common import PROJECTS  # noqa: E402
 from eval import load_evaluators  # noqa: E402
 
-MANIFEST_PATH = ROOT / "data" / "v1_orchestration_criteria.json"
+MANIFEST_PATH = ROOT / "data" / "scripts" / "json" / "v1_orchestration_criteria.json"
 SAMPLES_JSONL = ROOT / "data" / "samples_v1.jsonl"
 SPEC_DIR = ROOT / "data" / "specs" / "v1"
 OVERLAY_ROOT = PROJECTS / "v1" / "orchestration"

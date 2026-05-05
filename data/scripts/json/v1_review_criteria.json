@@ -7,7 +7,7 @@
     {
       "id": 91,
       "name": "pr_review_iter_slices_yes",
-      "source_manifest": "data/v1_editing_criteria.json",
+      "source_manifest": "data/scripts/json/v1_editing_criteria.json",
       "source_id": 51,
       "variant": "reference_edit",
       "label": "YES",
@@ -18,7 +18,7 @@
     {
       "id": 92,
       "name": "pr_review_unicode_is_ascii_no",
-      "source_manifest": "data/v1_editing_criteria.json",
+      "source_manifest": "data/scripts/json/v1_editing_criteria.json",
       "source_id": 52,
       "variant": "mutants[0]",
       "label": "NO",
@@ -29,7 +29,7 @@
     {
       "id": 93,
       "name": "pr_review_to_native_string_yes",
-      "source_manifest": "data/v1_editing_criteria.json",
+      "source_manifest": "data/scripts/json/v1_editing_criteria.json",
       "source_id": 53,
       "variant": "reference_edit",
       "label": "YES",
@@ -40,7 +40,7 @@
     {
       "id": 94,
       "name": "pr_review_unquote_header_value_no",
-      "source_manifest": "data/v1_editing_criteria.json",
+      "source_manifest": "data/scripts/json/v1_editing_criteria.json",
       "source_id": 54,
       "variant": "mutants[0]",
       "label": "NO",
@@ -51,7 +51,7 @@
     {
       "id": 95,
       "name": "pr_review_parse_header_links_yes",
-      "source_manifest": "data/v1_editing_criteria.json",
+      "source_manifest": "data/scripts/json/v1_editing_criteria.json",
       "source_id": 55,
       "variant": "reference_edit",
       "label": "YES",
@@ -62,7 +62,7 @@
     {
       "id": 96,
       "name": "pr_review_is_ipv4_address_no",
-      "source_manifest": "data/v1_editing_criteria.json",
+      "source_manifest": "data/scripts/json/v1_editing_criteria.json",
       "source_id": 56,
       "variant": "mutants[0]",
       "label": "NO",
@@ -73,7 +73,7 @@
     {
       "id": 97,
       "name": "pr_review_is_valid_cidr_yes",
-      "source_manifest": "data/v1_editing_criteria.json",
+      "source_manifest": "data/scripts/json/v1_editing_criteria.json",
       "source_id": 57,
       "variant": "reference_edit",
       "label": "YES",
@@ -84,7 +84,7 @@
     {
       "id": 98,
       "name": "pr_review_default_hooks_no",
-      "source_manifest": "data/v1_editing_criteria.json",
+      "source_manifest": "data/scripts/json/v1_editing_criteria.json",
       "source_id": 58,
       "variant": "mutants[0]",
       "label": "NO",
@@ -95,7 +95,7 @@
     {
       "id": 99,
       "name": "pr_review_dispatch_hook_yes",
-      "source_manifest": "data/v1_editing_criteria.json",
+      "source_manifest": "data/scripts/json/v1_editing_criteria.json",
       "source_id": 59,
       "variant": "reference_edit",
       "label": "YES",
@@ -106,7 +106,7 @@
     {
       "id": 100,
       "name": "pr_review_address_in_network_no",
-      "source_manifest": "data/v1_editing_criteria.json",
+      "source_manifest": "data/scripts/json/v1_editing_criteria.json",
       "source_id": 60,
       "variant": "mutants[0]",
       "label": "NO",

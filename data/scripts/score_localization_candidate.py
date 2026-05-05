@@ -58,7 +58,7 @@ from data.scripts.localization_oracle import (  # noqa: E402
     cross_check_rg_calls_t2,
 )
 
-MANIFEST_PATH = ROOT / "data" / "v1_localization_criteria.json"
+MANIFEST_PATH = ROOT / "data" / "scripts" / "json" / "v1_localization_criteria.json"
 
 
 # Keep these in sync with the proposer.

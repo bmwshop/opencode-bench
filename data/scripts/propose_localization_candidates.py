@@ -61,7 +61,7 @@ from data.scripts.localization_oracle import (  # noqa: E402
     callers_of_set,
 )
 
-MANIFEST_PATH = ROOT / "data" / "v1_localization_criteria.json"
+MANIFEST_PATH = ROOT / "data" / "scripts" / "json" / "v1_localization_criteria.json"
 
 # Minimum / maximum answer size for a viable T1 anchor.
 T1_MIN_CALLERS = 1   # anchor itself is entry 1, so 1 direct caller => 2 entries

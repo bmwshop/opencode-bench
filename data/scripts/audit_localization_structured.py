@@ -57,7 +57,7 @@ from data.scripts.localization_oracle import (  # noqa: E402
 )
 
 V1_REQUESTS_ROOT = PROJECTS / "v1" / "requests"
-MANIFEST_PATH = ROOT / "data" / "v1_localization_criteria.json"
+MANIFEST_PATH = ROOT / "data" / "scripts" / "json" / "v1_localization_criteria.json"
 SPEC_DIR = ROOT / "data" / "specs" / "v1"
 
 

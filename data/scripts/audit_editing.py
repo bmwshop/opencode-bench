@@ -2,7 +2,7 @@
 """
 Audit harness for v1 code-editing samples (#51 - #60).
 
-Ground truth is the manifest at `data/v1_editing_criteria.json`, consumed
+Ground truth is the manifest at `data/scripts/json/v1_editing_criteria.json`, consumed
 by `data/scripts/regen_editing.py`. The audit does NOT hand-code assert lists;
 it derives them from the same manifest and checks that the jsonl row,
 the spec markdown, and the on-disk evaluator behavior are all mutually

@@ -53,7 +53,7 @@ from data.scripts.localization_oracle import (  # noqa: E402
     submodule_head_sha,
 )
 
-MANIFEST_PATH = ROOT / "data" / "v1_localization_criteria.json"
+MANIFEST_PATH = ROOT / "data" / "scripts" / "json" / "v1_localization_criteria.json"
 SPEC_DIR = ROOT / "data" / "specs" / "v1"
 SAMPLES_JSONL = ROOT / "data" / "samples_v1.jsonl"
 

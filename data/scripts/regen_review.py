@@ -12,7 +12,7 @@ Schema (per sample)
     {
       "id": 91,
       "name": "pr_review_iter_slices_yes",
-      "source_manifest": "data/v1_editing_criteria.json",
+      "source_manifest": "data/scripts/json/v1_editing_criteria.json",
       "source_id": 51,
       "variant": "reference_edit" | "mutants[N]",
       "label": "YES" | "NO",
@@ -68,7 +68,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from common import PROJECTS  # noqa: E402
 
-MANIFEST_PATH = ROOT / "data" / "v1_review_criteria.json"
+MANIFEST_PATH = ROOT / "data" / "scripts" / "json" / "v1_review_criteria.json"
 V1_REQUESTS_ROOT = PROJECTS / "v1" / "requests"
 SPEC_DIR = ROOT / "data" / "specs" / "v1"
 SAMPLES_JSONL = ROOT / "data" / "samples_v1.jsonl"

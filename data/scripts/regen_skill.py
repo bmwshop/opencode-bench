@@ -40,11 +40,11 @@ import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from common import PROJECTS  # noqa: E402
 
-MANIFEST = ROOT / "data" / "v1_skill_criteria.json"
+MANIFEST = ROOT / "data" / "scripts" / "json" / "v1_skill_criteria.json"
 SAMPLES_JSONL = ROOT / "data" / "samples_v1.jsonl"
 SPEC_DIR = ROOT / "data" / "specs" / "v1"
 SKILLS_DIR = PROJECTS / "v1" / "skills"

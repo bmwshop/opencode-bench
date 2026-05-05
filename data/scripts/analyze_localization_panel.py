@@ -56,21 +56,21 @@ RUNS = ROOT / "runs" / "v1"
 
 FAMILIES: dict[str, dict[str, Any]] = {
     "localization": {
-        "manifest": ROOT / "data" / "v1_localization_criteria.json",
+        "manifest": ROOT / "data" / "scripts" / "json" / "v1_localization_criteria.json",
         "default_ids": "21-50",
         "category": "code_localization",
         "tier_field": "difficulty",
         "tier_order": ["easy", "medium", "hard"],
     },
     "editing": {
-        "manifest": ROOT / "data" / "v1_editing_criteria.json",
+        "manifest": ROOT / "data" / "scripts" / "json" / "v1_editing_criteria.json",
         "default_ids": "51-80",
         "category": "code_editing",
         "tier_field": "difficulty",
         "tier_order": ["easy", "medium", "hard"],
     },
     "mutants": {
-        "manifest": ROOT / "data" / "v1_mutant_criteria.json",
+        "manifest": ROOT / "data" / "scripts" / "json" / "v1_mutant_criteria.json",
         "default_ids": "201-230",
         "category": "tool_restriction",
         # Tool-restriction samples now use explicit easy/medium/hard tiers.
@@ -78,7 +78,7 @@ FAMILIES: dict[str, dict[str, Any]] = {
         "tier_order": ["easy", "medium", "hard"],
     },
     "orchestration": {
-        "manifest": ROOT / "data" / "v1_orchestration_criteria.json",
+        "manifest": ROOT / "data" / "scripts" / "json" / "v1_orchestration_criteria.json",
         "default_ids": "301-330",
         "category": "orchestration",
         # Orchestration samples are grouped by explicit easy/medium/hard tiers.
@@ -86,7 +86,7 @@ FAMILIES: dict[str, dict[str, Any]] = {
         "tier_order": ["easy", "medium", "hard"],
     },
     "skill": {
-        "manifest": ROOT / "data" / "v1_skill_criteria.json",
+        "manifest": ROOT / "data" / "scripts" / "json" / "v1_skill_criteria.json",
         "default_ids": "401-430",
         "category": "skill",
         # Skill samples now use explicit easy/medium/hard tiers.
