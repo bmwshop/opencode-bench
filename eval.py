@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
 Evaluate opencode benchmark traces against the checks defined in
-data/samples_v0.jsonl and data/samples_v1.jsonl. The run's version is
-auto-detected from its meta.json; override with --version.
+data/samples_v1.jsonl. The run's version is auto-detected from its
+meta.json; override with --version. Today only the "v1" tier is shipped;
+future tiers (v1.5, v2, ...) plug in via common.SAMPLES_FILES + the
+--version argparse choices.
 
 Usage:
     python eval.py                        # evaluate latest run (auto-detects version)
@@ -30,7 +32,7 @@ from dataclasses import dataclass, field
 import evaluators
 from evaluators._recursive import _collect_recursive_tools, _real_tools
 from common import (
-    PROJECTS, RUNS, SCHEMAS_PATH,
+    PROJECTS, RUNS, SCHEMAS_PATH, SUPPORTED_VERSIONS,
     load, resolve_run, list_runs, model_slug, version_of,
     opencode_rev_label, schema_meta, compare_opencode,
     project_dir, run_project_name, trace_name,
@@ -681,10 +683,12 @@ def main():
     parser.add_argument("--category", action="append", help="Evaluate all samples in a category")
     parser.add_argument(
         "--version",
-        choices=["v0", "v1"],
+        # Today only "v1" is supported; extend by appending future tiers
+        # (v1.5, v2, ...) here AND in common.SAMPLES_FILES.
+        choices=list(SUPPORTED_VERSIONS),
         default=None,
         help="Benchmark version to evaluate. Defaults to the run's version "
-             "from meta.json (a run targets exactly one version).",
+             "from meta.json (a run targets exactly one tier version).",
     )
     parser.add_argument("--model", "-m", help="Model in provider/model format (selects latest run for model)")
     parser.add_argument("--run", help="Timestamp of a specific run (requires --model)")

@@ -20,14 +20,11 @@ A benchmark suite for evaluating LLM compatibility with the [opencode](https://g
 ## Quick Start
 
 ```bash
-# Run all v1 samples against real pinned repos (the default)
+# Run all v1 samples against real pinned repos
 python run.py
 
 # Run a single category (e.g. code_review) for a smoke test
 python run.py --category code_review
-
-# Run the legacy v0 tier (curated toy projects)
-python run.py --version v0
 
 # Evaluate results (auto-detects the latest run)
 python eval.py
@@ -39,18 +36,17 @@ To run the benchmark on a Slurm cluster with a GPU-hosted vLLM server, see [CLUS
 
 ## Benchmark Versions
 
-The bench is split into two tiers:
+The bench currently ships a single tier:
 
-- **v0** — 33 curated tiny projects under [projects/v0/](projects/v0/). Fast to run, exercises opencode's tool discipline (routing, efficiency, plan-mode adherence, subagents, skills, etc.). Run with `--version v0`.
-- **v1** — 160 tasks against real pinned open-source repos, vendored as git submodules under [projects/v1/](projects/v1/). This is the default when no `--version` flag is passed; `python run.py` runs every v1 sample across every category. Each repo is declared once in [data/v1_repos.json](data/v1_repos.json) with its upstream URL and exact pinned SHA. Current repos:
+- **v1** — 160 tasks against real pinned open-source repos, vendored as git submodules under [projects/v1/](projects/v1/). `python run.py` runs every v1 sample across every category. Each repo is declared once in [data/v1_repos.json](data/v1_repos.json) with its upstream URL and exact pinned SHA. Current repos:
   - `requests` — [psf/requests](https://github.com/psf/requests)
   - `httpx` — [encode/httpx](https://github.com/encode/httpx)
   - `click` — [pallets/click](https://github.com/pallets/click)
   - `autoresearch` — [karpathy/autoresearch](https://github.com/karpathy/autoresearch)
 
-A single run targets exactly one version (`run.py --version v0` or `--version v1`). Run the two tiers as separate invocations.
+A single run targets exactly one tier version. The `--version` argparse flag is preserved (today only `v1`); future tiers (`v1.5`, `v2`, ...) plug in by appending to `common.SAMPLES_FILES` plus the `choices=[...]` lists in `run.py`/`eval.py`/`stitch.py`.
 
-Samples live in tier-specific files: [data/samples_v0.jsonl](data/samples_v0.jsonl) and [data/samples_v1.jsonl](data/samples_v1.jsonl). Specs live under [data/specs/v0/](data/specs/v0/) and [data/specs/v1/](data/specs/v1/).
+Samples live in [data/samples_v1.jsonl](data/samples_v1.jsonl); specs live under [data/specs/v1/](data/specs/v1/).
 
 ### Adding a v1 repo
 
@@ -75,7 +71,7 @@ Before running any v1 sample, `run.py` verifies the submodule HEAD matches the d
 
 ## Running Samples
 
-`run.py` sends prompts from [data/samples_v0.jsonl](data/samples_v0.jsonl) (or [data/samples_v1.jsonl](data/samples_v1.jsonl) when `--version v1` is selected) to `opencode run --format json` and saves everything for that invocation under `runs/v{version}/{model_slug}/{timestamp}/`.
+`run.py` sends prompts from [data/samples_v1.jsonl](data/samples_v1.jsonl) to `opencode run --format json` and saves everything for that invocation under `runs/v{version}/{model_slug}/{timestamp}/`.
 
 Each run creates an isolated directory with:
 
@@ -94,7 +90,6 @@ python run.py --workspace .                                # legacy layout: use 
 python run.py --workspace /scratch/oc-shared               # reuse a hydrated workspace across multiple model evals
 python run.py --clean-workspace                            # rm -rf the auto-allocated workspace at exit
 python run.py --workspace-root /scratch                    # auto-allocate under /scratch instead of $TMPDIR (container-friendly)
-python run.py --version v0                                 # run v0 samples (legacy curated tier)
 python run.py --id 1                                       # run a single sample (within selected version)
 python run.py --id 1 --id 2                                # run multiple samples
 python run.py --category tool_schema                       # run one category
@@ -323,7 +318,6 @@ python run.py --proxy http://localhost:4000/v1 --capture-dir /tmp/switchyard-out
 
 ```
 data/
-  samples_v0.jsonl       # v0 test definitions (prompts + checks)
   samples_v1.jsonl       # v1 test definitions (real-repo tasks)
   v1_repos.json          # v1 repo declarations (slug -> url, pin, submodule_path)
   v1_editing_criteria.json    # source-of-truth manifest for v1 code_editing samples
@@ -335,10 +329,6 @@ data/
   tool_schemas.json      # opencode tool schemas (for call_schema_valid)
   archetypes/v1/         # 15 training-data archetype specs (one .md per category)
   specs/                 # per-sample documentation (capability, pass/fail criteria)
-    v0/
-      001_camel_case.md
-      ...
-      033_write.md
     v1/
       021_locate_cookie_tokens.md
       091_pr_review_iter_slices_yes.md
@@ -348,11 +338,6 @@ run.py                   # runner — executes samples via opencode CLI
 eval.py                  # evaluator — scores traces against checks
 common.py                # shared constants, sample loader, path helpers
 projects/                # canonical per-sample fixtures, read-only at runtime
-  v0/
-    001/                 #   fixture for v0 sample #1
-    002/
-    ...
-    033/
   v1/
     requests/            #   git submodule pinned via data/v1_repos.json
     httpx/               #   git submodule pinned via data/v1_repos.json
@@ -370,17 +355,17 @@ evaluators/              # check implementations (auto-registered)
   content/               # text and file content checks
   orchestration/         # tool ordering and parallelism checks
 runs/                    # everything produced by a run, organized by version / model / timestamp (git-ignored)
-  v{version}/            #   v0/ or v1/ — a run targets exactly one
+  v{version}/            #   today only v1/; future tiers (v1.5, v2, ...) plug in here
     {model_slug}/        #     e.g. nvidia_nemotron/
       {timestamp}/       #       e.g. 2026-04-12T18-30-00/
         meta.json        #         run metadata (model, date, version, v1_repo_pins, args, etc.)
         scores.json      #         machine-readable scores (produced by eval.py)
-        001_camel_case.jsonl       # per-sample opencode trace
-        002_custom_main_agent.jsonl
+        021_locate_cookie_tokens.jsonl  # per-sample opencode trace
+        091_pr_review_iter_slices_yes.jsonl
         ...
         projects/        #         per-sample workspace copies (post-run state)
-          001/
-          002/
+          021/
+          091/
           ...
         captures/        #         proxy payloads (when --proxy is used)
         stitched/        #         stitched multi-turn traces (produced by stitch.py)
@@ -402,79 +387,15 @@ captures/                # staging dir for switchyard output (git-ignored)
 
 For per-archetype training-data templates that match these categories, see [data/archetypes/v1/](data/archetypes/v1/).
 
-### v0 (33 samples — legacy curated tier)
-
-| Category | Samples | What it tests |
-|---|---|---|
-| `agents_md` | #1-2 | Adherence to project-level `AGENTS.md` instructions and custom primary agent prompts |
-| `distractor` | #3-5 | Precision under noise — file listing, verbose context, and misleading causal narratives |
-| `efficiency` | #6-8 | Minimal tool usage — batch replacements, direct file creation, and single-step text replacement |
-| `plan_mode` | #9-11 | Plan mode read-only enforcement, custom plan agent prompts, and refusal to edit when asked in plan mode |
-| `prompt_tool_restriction` | #12-14 | Obeying prompt-based instructions to use only `bash` when all tools are visible |
-| `skill` | #15-17 | Discovering and invoking skills: knowledge-based conventions, multi-step workflows, and code-backed scripts |
-| `subagent` | #18-21 | Delegation to built-in subagents (`explore`, `general`), parallel subagent spawning, and custom subagent invocation |
-| `system_tool_restriction` | #22 | Adapting to a reduced toolset when tools are hidden via permission config |
-| `tool_orchestration` | #23-24 | Sequential tool chaining (read then edit) and parallel tool execution (two reads in one step) |
-| `tool_schema` | #25-33 | Correct tool names and parameter shapes, and irrelevance detection (e.g., `filePath` not `path`, `oldString` not `old_string`) |
-
-## Contract / Surface Types (v0 only)
-
-The `contract` and `surface` fields below are bookkeeping for the legacy v0 tier (33 samples) and are not used by v1. v1 samples instead carry a `difficulty` tier (`easy` / `medium` / `hard`) on most categories — see the v1 categories table above.
-
-Each v0 sample has a `contract` field that declares what the checks verify:
-
-| Contract | Count (v0) | Meaning |
-|---|---|---|
-| `completion` | 26 | Checks verify the actual task outcome — file content on disk, extracted values in response, correct tool arguments, or correct command execution |
-| `routing` | 7 | Checks verify only the delegation or prompt-adherence choice — correct tool/subagent selected, correct prefix in response — without validating the outcome of the delegated work |
-
-Routing samples (v0): #2, #9, #10, #18, #19, #20, #21. All other v0 samples are completion.
-
-Each v0 sample also has a `surface` field identifying the opencode capability tested:
-
-| Surface | Count (v0) | What it covers |
-|---|---|---|
-| `tools` | 17 | Core tool usage — correct tool selection, parameter schemas, parallel/sequential orchestration, distractor resistance, efficiency, and irrelevance detection |
-| `agents` | 2 | Project-level `AGENTS.md` instruction following and custom primary agent prompts |
-| `modes` | 3 | Plan mode constraints — read-only enforcement, custom plan agent prompts, refusal to edit |
-| `permissions` | 4 | Tool restriction adherence — prompt-based (`bash_only`) and system-level (permission config) |
-| `skills` | 3 | Skill discovery and invocation — knowledge-based conventions, multi-step workflows, code-backed scripts |
-| `subagents` | 4 | Delegation to subagents — built-in (`explore`, `general`), custom, and parallel spawning |
-
 ## Per-Sample Documentation
 
-Each sample has a detailed spec in `data/specs/` describing the capability under test, project setup, exact prompt, pass criteria, and common failure modes. Specs are namespaced by version — see any spec for the full format, e.g., `data/specs/v0/001_camel_case.md` or `data/specs/v1/021_locate_cookie_tokens.md`.
+Each sample has a detailed spec in `data/specs/v1/` describing the capability under test, project setup, exact prompt, pass criteria, and common failure modes. See any spec for the full format, e.g., `data/specs/v1/021_locate_cookie_tokens.md`.
 
-## Adding a v0 Sample
+## Adding a Sample
 
-v0 samples ship a per-sample fixture under `projects/v0/`. For a new v1 sample
-against a real repo, see [Adding a v1 repo](#adding-a-v1-repo) first, then
-follow step 1 below but write to `data/samples_v1.jsonl` (with `"version": "v1"`
-and `"repo": "<slug>"`) and the spec to `data/specs/v1/`.
+To add a new v1 sample against an existing repo, append a JSON line to `data/samples_v1.jsonl` with `"version": "v1"` and `"repo": "<slug>"`, then create a matching spec at `data/specs/v1/<NNN>_<name>.md`. To target a brand-new repo first, see [Adding a v1 repo](#adding-a-v1-repo).
 
-1. Append a JSON line to `data/samples_v0.jsonl`:
-
-```json
-{
-  "id": 34,
-  "version": "v0",
-  "name": "my_test",
-  "category": "tool_schema",
-  "contract": "completion",
-  "surface": "tools",
-  "min_calls": 1,
-  "prompt": "Read src/index.ts",
-  "checks": [
-    {"type": "any_tool_name", "equals": "read"}
-  ]
-}
-```
-
-The `min_calls` field is the minimum number of tool calls needed to pass all checks, respecting opencode's tool guidance (e.g. read-before-edit, prefer `edit` over `bash sed`). It is used by `stitch.py` to compute optimality of traced runs.
-
-2. Create a matching spec at `data/specs/v0/034_my_test.md`.
-
-3. Create the sample's project fixture at `projects/v0/034/` with an `opencode.json` (at minimum `{"permission": {"*": "allow"}}` to auto-approve tool use). Each sample gets its own directory; if two samples need similar fixtures, duplicate them — per-sample isolation is intentional and also lets each fixture carry its own fresh UUIDs. This directory is read-only at runtime: `run.py` copies it into `runs/v0/{slug}/{timestamp}/projects/034/` before executing opencode.
+The `min_calls` field is the minimum number of tool calls needed to pass all checks, respecting opencode's tool guidance (e.g. read-before-edit, prefer `edit` over `bash sed`). It is used by `eval.py` to compute the run-level efficiency metric.
 
 ### Scoring
 

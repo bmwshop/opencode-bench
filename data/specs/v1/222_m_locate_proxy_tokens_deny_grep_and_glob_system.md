@@ -11,10 +11,9 @@ This is a tool-restriction MUTANT of v1 #23 `locate_proxy_tokens` (`code_localiz
 ## Mutation
 
 - **kind**: `deny_grep_and_glob_system`
-- **source pattern**: borrowed from v0 #22 (`system_tool_restriction`)
 - **mechanism**: `opencode.json `permission``
 
-Delivered through opencode's runtime permission layer (`opencode.json` `permission` block, modeled on v0 #22 `bash_strict`). Denied tools are hard-blocked: the model cannot call them at all -- attempts will be rejected by opencode before reaching the tool dispatcher.
+Delivered through opencode's runtime permission layer (`opencode.json` `permission` block). Denied tools are hard-blocked: the model cannot call them at all -- attempts will be rejected by opencode before reaching the tool dispatcher.
 
 ## Workspace overlay
 
@@ -64,4 +63,3 @@ The parent (`#23` `locate_proxy_tokens`) runs without any restriction. At panel 
 ## Notes
 
 - Restriction-honored verifier (e.g. `no_tool_name_recursive`) is the marker that the denied tool was actually absent from the trace. If opencode silently allows a denied tool, that verifier fires and the mutant fails -- which is itself a useful signal about opencode's enforcement layer.
-- This sample is part of the v1 parents x v0 mutations batch; see `/Users/drekesh/.cursor/plans/v1_parents_x_v0_mutations.plan.md` for the full design and the 20-mutant table.

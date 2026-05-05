@@ -85,4 +85,4 @@ invocations at the parent agent layer.
 
 ## Authoring notes
 
-Code-backed tier-A on autoresearch. Skill ships a sibling Python script that prints a UUID. Tests path-resolution + bash execution + report-output integration. Direct port + tightening of v0 #15.
+Code-backed tier-A on autoresearch. Skill ships a sibling Python script that prints a UUID. Tests path-resolution + bash execution + report-output integration.

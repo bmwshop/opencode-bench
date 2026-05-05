@@ -73,4 +73,4 @@ invocations at the parent agent layer.
 
 ## Authoring notes
 
-Style tier-A on requests. Direct port + tightening of v0 #16. Skill prescribes API-handler conventions; user creates a new handler. Triple distinct from #404 by template.
+Style tier-A on requests. Skill prescribes API-handler conventions; user creates a new handler. Triple distinct from #404 by template.

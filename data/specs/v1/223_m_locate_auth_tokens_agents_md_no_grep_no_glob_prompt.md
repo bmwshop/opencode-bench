@@ -11,10 +11,9 @@ This is a tool-restriction MUTANT of v1 #25 `locate_auth_tokens` (`code_localiza
 ## Mutation
 
 - **kind**: `agents_md_no_grep_no_glob`
-- **source pattern**: borrowed from v0 #12 (`prompt_tool_restriction`)
 - **mechanism**: `AGENTS.md`
 
-Delivered through the workspace's `AGENTS.md` instruction file (modeled on v0 #12-#14 / #19). The denied tools remain *visible* in the model's tool list -- the restriction is instruction-based, so the verifier `no_tool_name_recursive` tests adherence rather than runtime blocking.
+Delivered through the workspace's `AGENTS.md` instruction file. The denied tools remain *visible* in the model's tool list -- the restriction is instruction-based, so the verifier `no_tool_name_recursive` tests adherence rather than runtime blocking.
 
 ## Workspace overlay
 
@@ -60,4 +59,3 @@ The parent (`#25` `locate_auth_tokens`) runs without any restriction. At panel t
 ## Notes
 
 - Restriction-honored verifier (e.g. `no_tool_name_recursive`) is the marker that the denied tool was actually absent from the trace. If opencode silently allows a denied tool, that verifier fires and the mutant fails -- which is itself a useful signal about opencode's enforcement layer.
-- This sample is part of the v1 parents x v0 mutations batch; see `/Users/drekesh/.cursor/plans/v1_parents_x_v0_mutations.plan.md` for the full design and the 20-mutant table.

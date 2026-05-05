@@ -7,7 +7,6 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).parent
-SAMPLES_V0 = ROOT / "data" / "samples_v0.jsonl"
 SAMPLES_V1 = ROOT / "data" / "samples_v1.jsonl"
 # Mutable-state roots, captured at module import. Each can be overridden via
 # env var. run.py sets all three before importing common.py so its
@@ -21,10 +20,11 @@ RUNS = Path(os.environ["OPENCODE_BENCH_RUNS"]) if "OPENCODE_BENCH_RUNS" in os.en
 CAPTURE_STAGING = Path(os.environ["OPENCODE_BENCH_CAPTURES"]) if "OPENCODE_BENCH_CAPTURES" in os.environ else ROOT / "captures"
 V1_REPOS_PATH = ROOT / "data" / "v1_repos.json"
 
-SAMPLES_FILES = [("v0", SAMPLES_V0), ("v1", SAMPLES_V1)]
-
-# Back-compat alias for any external caller still importing SAMPLES.
-SAMPLES = SAMPLES_V0
+# List (not single tuple) so future tiers (v1.5, v2, ...) append cleanly.
+# Adding a new tier means: append (version, path) here AND extend the
+# `--version` argparse choices in run.py / eval.py / stitch.py.
+SAMPLES_FILES = [("v1", SAMPLES_V1)]
+SUPPORTED_VERSIONS = tuple(v for v, _ in SAMPLES_FILES)
 
 
 _v1_repos_cache = None
@@ -51,13 +51,12 @@ def v1_repo_pin(repo):
 def project_dir(sample):
     """Canonical source fixture path for a sample.
 
-    v0: projects/v0/NNN/
     v1: projects/v1/<repo>/  (submodule path from v1_repos.json)
+
+    Future tiers (v1.5, v2, ...) get their own branch here.
     """
-    version = sample.get("version", "v0")
+    version = sample.get("version", "v1")
     sid = sample["id"]
-    if version == "v0":
-        return PROJECTS / "v0" / f"{sid:03d}"
     if version == "v1":
         repo = sample.get("repo")
         if not repo:
@@ -71,7 +70,10 @@ def project_dir(sample):
             f"repo {repo!r} submodule_path={declared!r} does not match expected {expected!r}"
         )
         return PROJECTS / "v1" / repo
-    raise ValueError(f"unknown sample version: {version!r}")
+    raise ValueError(
+        f"unknown sample version: {version!r} "
+        f"(supported: {SUPPORTED_VERSIONS})"
+    )
 
 
 def run_project_name(sample):
@@ -225,14 +227,18 @@ def model_slug(model):
 
 
 def _version_roots(version=None):
-    """Yield (version, dir) for each runs/{version}/ root to consider."""
+    """Yield (version, dir) for each runs/{version}/ root to consider.
+
+    Filter is `SUPPORTED_VERSIONS`; extend that tuple (via SAMPLES_FILES)
+    to add v1.5/v2 support.
+    """
     if version:
         yield version, RUNS / version
         return
     if not RUNS.is_dir():
         return
     for d in sorted(RUNS.iterdir()):
-        if d.is_dir() and d.name in ("v0", "v1"):
+        if d.is_dir() and d.name in SUPPORTED_VERSIONS:
             yield d.name, d
 
 
@@ -252,7 +258,8 @@ def resolve_run(model=None, run=None, version=None):
         model only             -> latest timestamp under runs/{version or search}/{slug}/
         neither                -> latest timestamp across the whole runs/ tree
 
-    When `version` is None, searches v0 then v1 and returns the latest match.
+    When `version` is None, searches every supported version and returns
+    the latest match.
     """
     slug = model_slug(model) if model else None
     best = None
@@ -278,12 +285,16 @@ def resolve_run(model=None, run=None, version=None):
 
 
 def version_of(run_dir):
-    """Extract version ('v0'/'v1') from a runs/{version}/{slug}/{ts}/ path."""
+    """Extract the tier version from a runs/{version}/{slug}/{ts}/ path.
+
+    Returns the version string (e.g. "v1") if it is in `SUPPORTED_VERSIONS`,
+    else None. Extend SUPPORTED_VERSIONS (via SAMPLES_FILES) for v1.5/v2.
+    """
     try:
         v = run_dir.parent.parent.name
     except AttributeError:
         return None
-    return v if v in ("v0", "v1") else None
+    return v if v in SUPPORTED_VERSIONS else None
 
 
 def list_runs(version=None):
@@ -310,12 +321,15 @@ def list_runs(version=None):
 def load(args):
     """Yield samples from a single version's samples file, applying filters.
 
-    A run targets exactly one version (v0 or v1). Callers pass `args.version`
+    A run targets exactly one tier version (today only "v1"; future tiers
+    like "v1.5"/"v2" plug in via SAMPLES_FILES). Callers pass `args.version`
     as a single string; if omitted, samples from all configured files are
-    yielded (used by tooling that scans across runs).
+    yielded (used by tooling that scans across runs). The per-sample
+    `version` field is preserved so future tiers can opt in without code
+    changes here.
 
     Filters:
-        args.version  - string, e.g. "v0" or "v1", or None for no filter.
+        args.version  - string in `SUPPORTED_VERSIONS`, or None for no filter.
         args.id       - list of sample ids (as strings).
         args.category - list of category strings.
     """

@@ -81,7 +81,6 @@ python eval.py --version v1
 
 Notes:
 - The script is standalone; `run_cluster.py` does not invoke it automatically.
-- It is optional for v0-only runs because v0 does not use `projects/v1/*`.
 - It needs network access from the container so `git clone` can fetch the
   upstream repos declared in `data/v1_repos.json`.
 

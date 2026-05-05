@@ -21,7 +21,7 @@ import json
 import sys
 import argparse
 from datetime import datetime
-from common import load, resolve_run, version_of, trace_name
+from common import SUPPORTED_VERSIONS, load, resolve_run, version_of, trace_name
 
 
 _TITLE_SYSTEM = "You are a title generator"
@@ -212,7 +212,9 @@ def main():
     parser.add_argument("--run", help="Specific run timestamp (default: latest)")
     parser.add_argument(
         "--version",
-        choices=["v0", "v1"],
+        # Today only "v1" is supported; extend by appending future tiers
+        # (v1.5, v2, ...) here AND in common.SAMPLES_FILES.
+        choices=list(SUPPORTED_VERSIONS),
         default=None,
         help="Benchmark version to stitch. Defaults to the run's version from meta.json.",
     )

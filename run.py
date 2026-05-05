@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-Submit samples from data/samples_v0.jsonl (or data/samples_v1.jsonl when
-`--version v1`) to the opencode CLI and save traces to runs/. A single
-invocation targets exactly one version.
+Submit samples from data/samples_v1.jsonl to the opencode CLI and save
+traces to runs/. A single invocation targets exactly one tier version
+(today only "v1"; future tiers like "v1.5"/"v2" plug in via
+common.SAMPLES_FILES + the --version argparse choices).
 
 Each invocation writes to {WORKSPACE}/runs/{version}/{model_slug}/{timestamp}/ with:
     meta.json
@@ -36,7 +37,6 @@ Usage:
     python run.py --workspace .      # legacy: repo-local ./projects + ./runs + ./captures
     python run.py --workspace /scratch/my-run    # reuse a hydrated dir
     python run.py --clean-workspace             # auto-rm the /tmp workspace at exit
-    python run.py --version v0       # all v0 samples (every category)
     python run.py --category code_review  # narrow to one category
     python run.py --id 21            # one sample
     python run.py --id 21 --id 22    # multiple samples
@@ -154,6 +154,7 @@ else:
 
 from common import (
     ROOT, PROJECTS, RUNS, CAPTURE_STAGING,
+    SUPPORTED_VERSIONS,
     model_slug, load,
     opencode_meta, opencode_rev_label, resolve_opencode_cmd,
     schema_meta, compare_opencode,
@@ -186,7 +187,8 @@ def _assert_fixture_clean(src: Path, auto_repair: bool = True) -> None:
       eval (not just the current sample) — we want loud failure, not partial
       runs against a contaminated fixture.
 
-    No-op if ``src`` is not a git repo (e.g., v0 fixtures at projects/v0/NNN/).
+    No-op if ``src`` is not a git repo (e.g., a future static-fixture tier
+    that doesn't ship as a submodule).
     """
     if not (src / ".git").exists():
         return
@@ -803,10 +805,12 @@ def main():
     )
     parser.add_argument(
         "--version",
-        choices=["v0", "v1"],
+        # Today only "v1" is supported; extend by appending future tiers
+        # (v1.5, v2, ...) here AND in common.SAMPLES_FILES.
+        choices=list(SUPPORTED_VERSIONS),
         default="v1",
         help="Benchmark version to run. A single run targets exactly one "
-             "version (default: v1). Run v0 separately with --version v0.",
+             "tier version (default: v1).",
     )
     parser.add_argument("--clean", action="store_true", help="Wipe runs/ first")
     parser.add_argument(

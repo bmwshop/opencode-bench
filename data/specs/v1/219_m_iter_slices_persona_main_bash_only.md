@@ -11,10 +11,9 @@ This is a tool-restriction MUTANT of v1 #51 `edit_iter_slices_require_positive` 
 ## Mutation
 
 - **kind**: `persona_main_bash_only`
-- **source pattern**: borrowed from v0 #2 (`agents_md`)
 - **mechanism**: `.opencode/agents/main.md`
 
-Delivered through opencode's custom main agent persona file (`.opencode/agents/main.md`, modeled on v0 #2 `custom_main_agent`). The persona's prompt instructs the model on tool-use policy. This is the *third* delivery mechanism for instruction-based restrictions -- a useful comparison point against the AGENTS.md-based variant of the same restriction on the same parent.
+Delivered through opencode's custom main agent persona file (`.opencode/agents/main.md`). The persona's prompt instructs the model on tool-use policy. This is the *third* delivery mechanism for instruction-based restrictions -- a useful comparison point against the AGENTS.md-based variant of the same restriction on the same parent.
 
 ## Workspace overlay
 
@@ -81,4 +80,3 @@ The parent (`#51` `edit_iter_slices_require_positive`) runs without any restrict
 ## Notes
 
 - Restriction-honored verifier (e.g. `no_tool_name_recursive`) is the marker that the denied tool was actually absent from the trace. If opencode silently allows a denied tool, that verifier fires and the mutant fails -- which is itself a useful signal about opencode's enforcement layer.
-- This sample is part of the v1 parents x v0 mutations batch; see `/Users/drekesh/.cursor/plans/v1_parents_x_v0_mutations.plan.md` for the full design and the 20-mutant table.

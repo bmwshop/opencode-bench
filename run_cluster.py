@@ -271,8 +271,8 @@ def build_static_fixture_seed_cmd():
     """Copy static project fixtures into the isolated /runs/projects tree.
 
     The real v1 repos are hydrated under OPENCODE_BENCH_PROJECTS by run.py,
-    but static fixture trees from the staged code (v0 fixtures and v1 overlays)
-    are not git-hydrated and must be seeded explicitly.
+    but static overlay trees (skills/, mutants/, orchestration/) are not
+    git-hydrated and must be seeded explicitly.
     """
     code = r"""
 import shutil
@@ -281,7 +281,6 @@ from pathlib import Path
 src_root = Path("/nemo_run/code/projects")
 dst_root = Path("/runs/projects")
 copies = [
-    (src_root / "v0", dst_root / "v0"),
     (src_root / "v1" / "skills", dst_root / "v1" / "skills"),
     (src_root / "v1" / "mutants", dst_root / "v1" / "mutants"),
     (src_root / "v1" / "orchestration", dst_root / "v1" / "orchestration"),
