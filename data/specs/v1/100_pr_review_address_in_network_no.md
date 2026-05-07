@@ -4,14 +4,6 @@
 
 review_judgment
 
-## Contract
-
-routing
-
-## Surface
-
-modes (`--agent plan`)
-
 ## Repo
 
 `requests` - psf/requests, pinned via `data/v1_repos.json`. The agent operates in a per-run copy of the submodule checkout at `projects/v1/requests/`.
