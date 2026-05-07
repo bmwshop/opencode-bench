@@ -12,21 +12,6 @@ routing
 
 modes (`--agent plan`)
 
-## Paper reference
-
-Ma et al., arXiv:2604.05013, Appendix E. The agent acts as a code reviewer:
-given a PR description + PR diff, it explores the repo read-only and emits a
-structured `<judgment>YES|NO</judgment>` plus a `<review>` summary.
-
-## Source cross-reference
-
-This sample reuses material from the `code_editing` source manifest (no new bugs authored):
-
-- source_manifest: v1 editing criteria manifest
-- source_id: **#54** (edit_unquote_header_value_none_returns_empty)
-- variant: **mutants[0]**
-- gold label: **NO**
-
 ## Repo
 
 `requests` - psf/requests, pinned via `data/v1_repos.json`. The agent operates in a per-run copy of the submodule checkout at `projects/v1/requests/`.
@@ -46,7 +31,7 @@ The bug-tracker-voice issue the reviewer is asked to consider:
 
 ## PR under review (in prompt as `<pr_code>`)
 
-Unified diff constructed from the source manifest's `mutants[0]` for source #54, against pin `79f4df84cf77`:
+Unified diff under review (against pin `79f4df84cf77`):
 
 ```diff
 --- a/src/requests/utils.py
@@ -112,15 +97,6 @@ Use "YES" if the pr_code correctly fixes the issue. Use "NO" if it does not.
 3. `text_contains` `<review>[\s\S]*?</review>` — non-empty `<review>` block (structured-output discipline)
 4. `call_schema_valid` — every read/grep/glob call matches opencode's canonical JSON schemas
 
-## Label oracle (graders only)
-
-Mechanical proof that label = `NO` is correct: apply the mutants[0] patch from source #54 on top of the pinned baseline, then run `exec_assert` against the source's truth table. The label must match the outcome:
-
-- `label=YES` -> exec_assert PASSES (all asserts in source.asserts evaluate True)
-- `label=NO` -> exec_assert FAILS at least one assert
-
-Verified mechanically by the review audit procedure (Pass 1).
-
 ## Shortest path
 
 **1-3 tool calls**: read the affected file(s) under `src/requests/` (typically 1 read for single-file diffs, 2 for multi-file), then synthesize the judgment in the response. The diff is already in the prompt; the agent's job is to verify it actually addresses the issue.
@@ -138,15 +114,3 @@ Verified mechanically by the review audit procedure (Pass 1).
 - Free-form text in `<review>` -- the review summary is required by the prompt (per the paper) but its content is not graded.
 - Whether the agent uses `read`, `grep`, or `glob` -- any read-only tool mix is acceptable.
 - Number of tool calls -- plan mode samples have `min_calls: 0` (a confident reader can skip exploration).
-
-## Note on methodology
-
-This sample is the paper-faithful `review_judgment` atomic skill (Ma et al. arXiv:2604.05013), implemented via cross-reference to the `code_editing` source manifest. The PR diff is constructed mechanically; the gold label is mechanically derived from `exec_assert` against the source's truth table. The agent's role is to JUDGE, not to PATCH.
-
-If the source manifest changes, re-run the review regeneration and audit procedure.
-
-## Lock-in hash
-
-SHA-256 of `(source_manifest, source_id, variant, label, issue_text)` JSON-serialized with sorted keys. Drift in any of these fields changes the hash. Cross-referenced in the v1 review lock-in record.
-
-`4120664a2d40093ad1f93bcef60bdc5ed547bd75a0bab543fc9d4fcc0ea899e8`

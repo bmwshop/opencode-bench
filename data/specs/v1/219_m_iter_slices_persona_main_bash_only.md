@@ -8,13 +8,6 @@ tool_restriction
 
 This is a tool-restriction MUTANT of v1 #51 `edit_iter_slices_require_positive` (`code_editing`). The mutant inherits the parent's prompt and underlying task verifier; only the workspace overlay (and a few extra opencode-side compliance checks) differ.
 
-## Mutation
-
-- **kind**: `persona_main_bash_only`
-- **mechanism**: `.opencode/agents/main.md`
-
-Delivered through opencode's custom main agent persona file (`.opencode/agents/main.md`). The persona's prompt instructs the model on tool-use policy. This is the *third* delivery mechanism for instruction-based restrictions -- a useful comparison point against the AGENTS.md-based variant of the same restriction on the same parent.
-
 ## Workspace overlay
 
 The agent's per-run workspace is the parent's pinned repo copy with the following additional file(s) layered on top:
@@ -68,15 +61,3 @@ The prompt is the parent's prompt verbatim (no addendum). The mutation is delive
 | 2 | `call_schema_valid` | all tool calls match opencode schemas |
 | 3 | `no_tool_name_recursive` | custom_main_agent persona forbids non-bash tools; same restriction as #212 via different mechanism |
 | 4 | `any_tool_name_recursive` | agent must use bash to apply the edit |
-
-## Why this mutant
-
-Same restriction as the AGENTS.md-based bash-only mutant on the same parent, delivered through the custom main agent persona file. Comparison point for opencode's two instruction-delivery layers: does the persona-file path plumb the directive equally well as AGENTS.md?
-
-## Comparison points (panel-time)
-
-The parent (`#51` `edit_iter_slices_require_positive`) runs without any restriction. At panel time, the **delta** `parent_pass_rate - mutant_pass_rate` per model is the opencode-attributable signal: it isolates how much the *restriction itself* (and how opencode plumbs it) affected the same task on the same parent.
-
-## Notes
-
-- Restriction-honored verifier (e.g. `no_tool_name_recursive`) is the marker that the denied tool was actually absent from the trace. If opencode silently allows a denied tool, that verifier fires and the mutant fails -- which is itself a useful signal about opencode's enforcement layer.

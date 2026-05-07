@@ -4,13 +4,6 @@
 
 skill (delivery: `.opencode/skills/<name>/SKILL.md`)
 
-## Structural signature
-
-- template: **selectivity-no-match-plausible**
-- scope_kind: **multi-skill-workspace**
-- answer_shape: **tool-presence-or-absence**
-- unique_trait: 3 plausibly-relevant skills (vocabulary overlap); none actually fit; model should solve manually
-
 ## Repo
 
 `requests` (pinned via `data/v1_repos.json`).
@@ -78,17 +71,3 @@ plain-English summary or general overview of the file.
 | 3 | `any_tool_name` | model produced the purpose.md artifact |
 | 4 | `file_regex` | purpose.md is non-empty |
 | 5 | `call_schema_valid` | all tool calls match opencode schemas |
-
-## Note on methodology
-
-This sample is part of v1's SKILL family (#401-#430). The SKILL.md content is a
-workspace overlay applied at session start by `run.py`; opencode auto-injects the
-skill catalog (name + description + filesystem location) into the system prompt
-each turn (see `session/system.ts:65-77` and `skill/index.ts:262-278`). The
-catalog is **not** injected into subagents whose permission set has `skill` in
-the deny list (notably `explore`), so the family expects all `skill name=X`
-invocations at the parent agent layer.
-
-## Authoring notes
-
-Refinement of #414. Distractors share vocabulary with the user task ('validation' / 'check' / 'analyze') but none does file summarization. Pilot data showed #414's distractors were too obviously off-topic (every model passed); these distractors should produce non-trivial discrimination.

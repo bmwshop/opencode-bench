@@ -8,13 +8,6 @@ tool_restriction
 
 This is a tool-restriction MUTANT of v1 #54 `edit_unquote_header_value_none_returns_empty` (`code_editing`). The mutant inherits the parent's prompt and underlying task verifier; only the workspace overlay (and a few extra opencode-side compliance checks) differ.
 
-## Mutation
-
-- **kind**: `persona_main_subagent_required`
-- **mechanism**: `.opencode/agents/main.md`
-
-Delivered through opencode's custom main agent persona file (`.opencode/agents/main.md`). The persona's prompt instructs the model on tool-use policy. This is the *third* delivery mechanism for instruction-based restrictions -- a useful comparison point against the AGENTS.md-based variant of the same restriction on the same parent.
-
 ## Workspace overlay
 
 The agent's per-run workspace is the parent's pinned repo copy with the following additional file(s) layered on top:
@@ -69,15 +62,3 @@ The prompt is the parent's prompt verbatim (no addendum). The mutation is delive
 | 3 | `no_tool_name` | persona file forbids parent reading; same restriction as #216 via different mechanism |
 | 4 | `any_tool_name_recursive` | a subagent must actually read at least one file |
 | 5 | `any_tool_name` | parent must dispatch at least one task subagent |
-
-## Why this mutant
-
-Same restriction as the AGENTS.md-based subagent-required mutant on the same parent, delivered through the persona file. Comparison point for opencode's two instruction-delivery layers.
-
-## Comparison points (panel-time)
-
-The parent (`#54` `edit_unquote_header_value_none_returns_empty`) runs without any restriction. At panel time, the **delta** `parent_pass_rate - mutant_pass_rate` per model is the opencode-attributable signal: it isolates how much the *restriction itself* (and how opencode plumbs it) affected the same task on the same parent.
-
-## Notes
-
-- Restriction-honored verifier (e.g. `no_tool_name_recursive`) is the marker that the denied tool was actually absent from the trace. If opencode silently allows a denied tool, that verifier fires and the mutant fails -- which is itself a useful signal about opencode's enforcement layer.

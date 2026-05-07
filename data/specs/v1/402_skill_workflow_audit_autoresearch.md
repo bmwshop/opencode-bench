@@ -4,13 +4,6 @@
 
 skill (delivery: `.opencode/skills/<name>/SKILL.md`)
 
-## Structural signature
-
-- template: **workflow-audit**
-- scope_kind: **single-skill**
-- answer_shape: **artifact-format-match**
-- unique_trait: audit-flow procedural workflow on autoresearch
-
 ## Repo
 
 `autoresearch` (pinned via `data/v1_repos.json`).
@@ -75,17 +68,3 @@ the hidden grader checks for them. Values must be transcribed from the actual fi
 | 6 | `file_regex` | audit.md has the Optimizer section |
 | 7 | `file_regex` | audit reports the correct EMBEDDING_LR value |
 | 8 | `call_schema_valid` | all tool calls match opencode schemas |
-
-## Note on methodology
-
-This sample is part of v1's SKILL family (#401-#430). The SKILL.md content is a
-workspace overlay applied at session start by `run.py`; opencode auto-injects the
-skill catalog (name + description + filesystem location) into the system prompt
-each turn (see `session/system.ts:65-77` and `skill/index.ts:262-278`). The
-catalog is **not** injected into subagents whose permission set has `skill` in
-the deny list (notably `explore`), so the family expects all `skill name=X`
-invocations at the parent agent layer.
-
-## Authoring notes
-
-Workflow tier-A on autoresearch. Skill prescribes reading train.py + writing audit.md with two sections (Optimizer, Tokenizer). Distinct from #401 by template (workflow-audit) and target repo. Constants are read from the actual fixture at audit time so the synthesizer can ground-truth the values.

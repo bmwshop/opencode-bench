@@ -4,13 +4,6 @@
 
 skill (delivery: `.opencode/skills/<name>/SKILL.md`)
 
-## Structural signature
-
-- template: **code-backed-checksum**
-- scope_kind: **single-skill**
-- answer_shape: **stdout-needles**
-- unique_trait: compute-checksum code-backed skill on requests
-
 ## Repo
 
 `requests` (pinned via `data/v1_repos.json`).
@@ -90,17 +83,3 @@ if __name__ == "__main__":
 | 4 | `any_tool_param_regex` | bash command runs checksum.py |
 | 5 | `text_contains` | response includes the first 6 chars of the sha256 checksum (verified against the pinned requests commit) |
 | 6 | `call_schema_valid` | all tool calls match opencode schemas |
-
-## Note on methodology
-
-This sample is part of v1's SKILL family (#401-#430). The SKILL.md content is a
-workspace overlay applied at session start by `run.py`; opencode auto-injects the
-skill catalog (name + description + filesystem location) into the system prompt
-each turn (see `session/system.ts:65-77` and `skill/index.ts:262-278`). The
-catalog is **not** injected into subagents whose permission set has `skill` in
-the deny list (notably `explore`), so the family expects all `skill name=X`
-invocations at the parent agent layer.
-
-## Authoring notes
-
-Code-backed tier-A on requests. The script prints sha256 of a file, with deterministic output for the pinned commit (we hard-code the expected first-6-chars in the manifest; the synthesizer's bash output mocks the script returning that prefix). Tests reproducibility + skill-mediated tool composition.

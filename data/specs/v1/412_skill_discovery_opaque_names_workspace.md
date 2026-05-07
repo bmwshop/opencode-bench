@@ -4,13 +4,6 @@
 
 skill (delivery: `.opencode/skills/<name>/SKILL.md`)
 
-## Structural signature
-
-- template: **discovery-5-skills-opaque**
-- scope_kind: **multi-skill-workspace**
-- answer_shape: **tool-presence-or-absence**
-- unique_trait: five skills with non-descriptive names; correct match must come from description alone
-
 ## Repo
 
 `requests` (pinned via `data/v1_repos.json`).
@@ -118,17 +111,3 @@ Any new top-level helper function must:
 | 3 | `any_tool_name` | model produced the review artifact |
 | 4 | `file_regex` | review.md has the skill-prescribed heading |
 | 5 | `call_schema_valid` | all tool calls match opencode schemas |
-
-## Note on methodology
-
-This sample is part of v1's SKILL family (#401-#430). The SKILL.md content is a
-workspace overlay applied at session start by `run.py`; opencode auto-injects the
-skill catalog (name + description + filesystem location) into the system prompt
-each turn (see `session/system.ts:65-77` and `skill/index.ts:262-278`). The
-catalog is **not** injected into subagents whose permission set has `skill` in
-the deny list (notably `explore`), so the family expects all `skill name=X`
-invocations at the parent agent layer.
-
-## Authoring notes
-
-5-skill discovery with opaque names. Models that attend to skill names (rather than descriptions) when picking will fail. Tests pure description-driven discovery -- the auto-injected catalog includes the description, so a model that reads the catalog carefully will match xyz-001 to the user task by description alone.

@@ -4,10 +4,6 @@
 
 orchestration
 
-## Pattern
-
-`chain` (prescriptive)
-
 ## Repo
 
 `autoresearch` (pinned via `data/v1_repos.json`).
@@ -39,12 +35,3 @@ orchestration
 | 6 | `file_regex` | VOCAB_SIZE = 8192 |
 | 7 | `file_regex` | first README section is 'How it works' |
 | 8 | `call_schema_valid` | all tool calls match opencode schemas |
-
-## Why this sample
-
-Tests whether the model emits a strictly ordered multi-step plan, with each step's output (or implicit context) flowing to the next. The `tool_call_sequence` and `tool_call_count` verifiers pin both the order and the cardinality.
-
-## Notes
-
-- Part of the v1 prescriptive orchestration batch (#301-#310). See `/Users/drekesh/.cursor/plans/v1_prescriptive_orchestration.plan.md` for the design.
-- The graph shape and the artifact content are both verified. A model that produces a correct artifact via a non-prescribed shape (e.g., 2 task calls instead of 3) fails the prescribed-shape verifier.

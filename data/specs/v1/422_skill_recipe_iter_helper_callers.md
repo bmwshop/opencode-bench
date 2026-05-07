@@ -4,13 +4,6 @@
 
 skill (delivery: `.opencode/skills/<name>/SKILL.md`)
 
-## Structural signature
-
-- template: **recipe-iter-grep-foreach**
-- scope_kind: **single-skill**
-- answer_shape: **graph-shape-and-artifact**
-- unique_trait: for-each-helper grep via SKILL.md (sister of #308)
-
 ## Repo
 
 `requests` (pinned via `data/v1_repos.json`).
@@ -63,21 +56,3 @@ Use the `grep` tool — exactly N times. No `bash`, no `read`, no `glob`.
 | 6 | `file_regex` | to_key_val_list count = 3 |
 | 7 | `file_regex` | iter_slices count = 0 |
 | 8 | `call_schema_valid` | all tool calls match opencode schemas |
-
-## Comparison
-
-This sample's parent is **#308** in the prescriptive orchestration family. Per-model delta `pass_rate(parent) - pass_rate(this)` isolates the SKILL-mediation efficacy signal: same recipe, two delivery channels.
-
-## Note on methodology
-
-This sample is part of v1's SKILL family (#401-#430). The SKILL.md content is a
-workspace overlay applied at session start by `run.py`; opencode auto-injects the
-skill catalog (name + description + filesystem location) into the system prompt
-each turn (see `session/system.ts:65-77` and `skill/index.ts:262-278`). The
-catalog is **not** injected into subagents whose permission set has `skill` in
-the deny list (notably `explore`), so the family expects all `skill name=X`
-invocations at the parent agent layer.
-
-## Authoring notes
-
-Tier C sister of #308. Three helpers, one grep each. Skill prescribes the exact iteration shape.

@@ -8,13 +8,6 @@ tool_restriction
 
 This is a tool-restriction MUTANT of v1 #25 `locate_auth_tokens` (`code_localization`). The mutant inherits the parent's prompt and underlying task verifier; only the workspace overlay (and a few extra opencode-side compliance checks) differ.
 
-## Mutation
-
-- **kind**: `agents_md_no_grep_no_glob`
-- **mechanism**: `AGENTS.md`
-
-Delivered through the workspace's `AGENTS.md` instruction file. The denied tools remain *visible* in the model's tool list -- the restriction is instruction-based, so the verifier `no_tool_name_recursive` tests adherence rather than runtime blocking.
-
 ## Workspace overlay
 
 The agent's per-run workspace is the parent's pinned repo copy with the following additional file(s) layered on top:
@@ -47,15 +40,3 @@ The prompt is the parent's prompt verbatim (no addendum). The mutation is delive
 | 1 | `file_regex_disk` | location.txt must list exactly the 3 gold `file::QualifiedName` entries, in lexicographic order, one per line |
 | 2 | `call_schema_valid` | _(no description)_ |
 | 3 | `no_tool_name_recursive` | AGENTS.md forbids grep and glob; agent must pivot to bash search or pure read |
-
-## Why this mutant
-
-AGENTS.md forbids the native search tools but leaves bash + read available. Tests instruction adherence on a narrow two-tool prohibition.
-
-## Comparison points (panel-time)
-
-The parent (`#25` `locate_auth_tokens`) runs without any restriction. At panel time, the **delta** `parent_pass_rate - mutant_pass_rate` per model is the opencode-attributable signal: it isolates how much the *restriction itself* (and how opencode plumbs it) affected the same task on the same parent.
-
-## Notes
-
-- Restriction-honored verifier (e.g. `no_tool_name_recursive`) is the marker that the denied tool was actually absent from the trace. If opencode silently allows a denied tool, that verifier fires and the mutant fails -- which is itself a useful signal about opencode's enforcement layer.

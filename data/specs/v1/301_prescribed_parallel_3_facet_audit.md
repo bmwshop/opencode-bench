@@ -4,10 +4,6 @@
 
 orchestration
 
-## Pattern
-
-`parallel_dispatch` (prescriptive)
-
 ## Repo
 
 `autoresearch` (pinned via `data/v1_repos.json`).
@@ -40,12 +36,3 @@ orchestration
 | 10 | `file_regex` | VOCAB_SIZE value 8192 reported |
 | 11 | `file_regex` | GPT class listed |
 | 12 | `call_schema_valid` | all tool calls match opencode schemas |
-
-## Why this sample
-
-Tests whether the model dispatches multiple tool/subagent calls in a single assistant turn (parallel-dispatch behavior). The `parallel_dispatch_count` verifier requires the prescribed N calls to share one step_start/step_finish boundary.
-
-## Notes
-
-- Part of the v1 prescriptive orchestration batch (#301-#310). See `/Users/drekesh/.cursor/plans/v1_prescriptive_orchestration.plan.md` for the design.
-- The graph shape and the artifact content are both verified. A model that produces a correct artifact via a non-prescribed shape (e.g., 2 task calls instead of 3) fails the prescribed-shape verifier.

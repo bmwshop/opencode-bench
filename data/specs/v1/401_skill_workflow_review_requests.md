@@ -4,13 +4,6 @@
 
 skill (delivery: `.opencode/skills/<name>/SKILL.md`)
 
-## Structural signature
-
-- template: **workflow**
-- scope_kind: **single-skill**
-- answer_shape: **artifact-format-match**
-- unique_trait: review-flow procedural workflow on requests repo
-
 ## Repo
 
 `requests` (pinned via `data/v1_repos.json`).
@@ -64,17 +57,3 @@ prefix (e.g. `utils.py`, not `src/requests/utils.py`).
 | 6 | `file_regex` | review.md has the skill-prescribed TODO count subheading |
 | 7 | `file_regex` | review.md mentions the target filename |
 | 8 | `call_schema_valid` | all tool calls match opencode schemas |
-
-## Note on methodology
-
-This sample is part of v1's SKILL family (#401-#430). The SKILL.md content is a
-workspace overlay applied at session start by `run.py`; opencode auto-injects the
-skill catalog (name + description + filesystem location) into the system prompt
-each turn (see `session/system.ts:65-77` and `skill/index.ts:262-278`). The
-catalog is **not** injected into subagents whose permission set has `skill` in
-the deny list (notably `explore`), so the family expects all `skill name=X`
-invocations at the parent agent layer.
-
-## Authoring notes
-
-Hello-world for the SKILL family. Workflow-style skill (procedural prose) on requests. Prompt mentions 'a procedural skill' to nudge discovery; passing requires the model to actually invoke the `skill` tool with name=review-flow. Tier-A baseline; no structural-triple collisions yet.

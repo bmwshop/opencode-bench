@@ -4,13 +4,6 @@
 
 skill (delivery: `.opencode/skills/<name>/SKILL.md`)
 
-## Structural signature
-
-- template: **selectivity-vocab-pollution**
-- scope_kind: **multi-skill-workspace**
-- answer_shape: **tool-presence-or-absence**
-- unique_trait: correct skill + 2 distractors that share the keyword 'code'
-
 ## Repo
 
 `requests` (pinned via `data/v1_repos.json`).
@@ -91,17 +84,3 @@ it does NOT review code for issues, TODOs, or structural problems.
 | 5 | `any_tool_name` | model produced the review artifact |
 | 6 | `file_regex` | review.md has the prescribed heading |
 | 7 | `call_schema_valid` | all tool calls match opencode schemas |
-
-## Note on methodology
-
-This sample is part of v1's SKILL family (#401-#430). The SKILL.md content is a
-workspace overlay applied at session start by `run.py`; opencode auto-injects the
-skill catalog (name + description + filesystem location) into the system prompt
-each turn (see `session/system.ts:65-77` and `skill/index.ts:262-278`). The
-catalog is **not** injected into subagents whose permission set has `skill` in
-the deny list (notably `explore`), so the family expects all `skill name=X`
-invocations at the parent agent layer.
-
-## Authoring notes
-
-Vocabulary-pollution selectivity. All 3 skills start with 'code-'; descriptions disambiguate. Tests whether a model is anchored on shared vocabulary vs reading descriptions carefully.

@@ -16,64 +16,6 @@ tools
 
 `requests` — psf/requests, pinned via `data/v1_repos.json`. The agent operates in a per-run copy of the submodule checkout at `projects/v1/requests/`.
 
-## Difficulty tier
-
-**hard**. See the v1 localization tier-diversity matrix for the full tier coverage across all 10 v3c structured samples.
-
-## Structural signature
-
-```
-{
-  "template": "T1",
-  "scope_kind": "single_file_after_receiver_filter",
-  "anchor_kind": "instance_method",
-  "answer_entries": 3,
-  "answer_files": 1,
-  "unique_trait": "cookiejar_update_three_entry_after_receiver_filter"
-}
-```
-
-No other v3c sample in this tier shares this exact signature. See the `convert_22-30_v3c_tiered` plan for the diversity argument.
-
-## Design
-
-Template **T1** (anchor + direct callers). The agent must identify
-
-1. the anchor function (semantic description), and
-2. every function under the given scope whose body contains a direct call resolving by name to the anchor.
-
-Anchor: `src/requests/cookies.py::update` (`method`).
-
-Scope: `['src/requests/cookies.py', 'src/requests/models.py', 'src/requests/sessions.py', 'src/requests/structures.py']`.
-
-Answer shape: 3 entries (all in `src/requests/cookies.py`). Unique structural trait: `cookiejar_update_three_entry_after_receiver_filter`.
-
-## Ground truth (gold answer)
-
-Manually narrowed from the oracle's name-based output: the v1 localization-oracle procedure resolves callers by attribute name (`Attribute(attr=anchor)`), which is correct for unique anchors but over-counts on generic ones like `update`. Of the oracle's 9 raw entries, only 3 are real callers of `RequestsCookieJar.update`; the other 6 call `dict.update` on `__dict__` / `send_kwargs` / `merged_setting` / `result`, or `CaseInsensitiveDict.update` on `self`. The 3 true entries — the anchor itself plus its only two real call-sites in `cookies.py` — are below in lexicographic order:
-
-```text
-src/requests/cookies.py::RequestsCookieJar.copy
-src/requests/cookies.py::RequestsCookieJar.update
-src/requests/cookies.py::merge_cookies
-```
-
-SHA-256 of the gold string (with trailing newline): `d16128edb60b8f2cf067b99784f90f063c8b4afd6a6125095c82963aec90dd4f`.
-
-The 4-file prompt scope is preserved deliberately: the model still has to inspect `models.py`, `sessions.py`, and `structures.py` to *correctly conclude* they contain no real callers — that negation work is what keeps this sample in the hard tier despite the smaller answer set. The prior derivation workflow is now a non-authoritative reference (its raw output overcounts); the regex in `data/samples_v1.jsonl` is the binding ground truth.
-
-## Five-layer verification
-
-1. **AST derivation** via the shared localization-oracle procedure (`T1` template). Every `FunctionDef` / `AsyncFunctionDef` in scope is walked; `ast.Call` nodes whose `func.id` or `func.attr` matches the anchor/target name produce the "direct call" relation.
-2. **`rg` cross-check**: every AST-discovered call line must appear in `rg -n -w --with-filename <name> <scope_files>` output. Catches dynamic/meta-programming patterns or AST/rg drift.
-3. **Anchor-kind assertion**: the oracle asserts exactly one `update` definition matching the declared `module_level=False` kind in `src/requests/cookies.py`, with no decorators, before emitting gold.
-4. **Evaluator audit** via the structured localization audit procedure: Pass 1 (positive + negative `location.txt` variants through the real `file_regex_disk` evaluator) and Pass 2 (end-to-end `eval.evaluate()` with synthesized trace).
-5. **Pilot panel** (post-locking): 5 models × 3 seeds; top-tier model must reach ≥ 2/3; per-tier pass-rate correlation matrix < 0.85 between any two samples in the same tier.
-
-## Setup
-
-The per-run fixture is a pinned copy of `psf/requests`. The agent writes a single deliverable — `location.txt` — at the root of the per-run workspace. No other files may be modified (enforced indirectly by `call_schema_valid` catching malformed `write`/`edit` args).
-
 ## Prompt
 
 > In this `requests` checkout, a `RequestsCookieJar` method merges cookies from another jar or dict into itself; the library's request preparation, session-level jar setup, and several internal cookielib facade methods all go through this single merging entry-point when a cookie source crosses trust boundaries.
@@ -108,10 +50,3 @@ The per-run fixture is a pinned copy of `psf/requests`. The agent writes a singl
 - Free-form explanation text — only `location.txt` is scored.
 - Which tools the agent uses to explore (`read`, `grep`, `glob`, `bash rg`, etc.) — any mix that produces the exact gold passes.
 - Whether the agent reasons about inheritance, lifecycle, or mixin resolution order — only the artifact matters.
-
-## Note on methodology
-
-This sample is part of the v3c family — a natural-language, structured-output localization task. It is a deliberate divergence from both `arXiv:2604.05013` (semantic file-level localization, too ambiguous) and the pre-v3c criterion-anchored design (mechanical but too easy — trivially solved by a single `rg -l -w`). The natural-language prompt stresses reading comprehension; the dotted-qualname discipline forces a search → read → write pipeline that still exercises opencode's tool-use surface (the agent must resolve which function each call site belongs to, which a single-shot `rg` cannot answer). Ground-truth determinism is preserved by the five-layer verification protocol above.
-
-If the submodule pin changes, re-run the deriver and update the gold, the regex, and the SHA-256 here.
-

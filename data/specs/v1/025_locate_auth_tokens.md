@@ -16,62 +16,6 @@ tools
 
 `requests` — psf/requests, pinned via `data/v1_repos.json`. The agent operates in a per-run copy of the submodule checkout at `projects/v1/requests/`.
 
-## Difficulty tier
-
-**medium**. See the v1 localization tier-diversity matrix for the full tier coverage across all 10 v3c structured samples.
-
-## Structural signature
-
-```
-{
-  "template": "T1",
-  "scope_kind": "two_files",
-  "anchor_kind": "module_level",
-  "answer_entries": 3,
-  "answer_files": 2,
-  "unique_trait": "callers_scattered_across_subclass_and_mixin"
-}
-```
-
-No other v3c sample in this tier shares this exact signature. See the `convert_22-30_v3c_tiered` plan for the diversity argument.
-
-## Design
-
-Template **T1** (anchor + direct callers). The agent must identify
-
-1. the anchor function (semantic description), and
-2. every function under the given scope whose body contains a direct call resolving by name to the anchor.
-
-Anchor: `src/requests/utils.py::get_netrc_auth` (`module-level`).
-
-Scope: `['src/requests/utils.py', 'src/requests/sessions.py']`.
-
-Answer shape: 3 entries across 2 file(s). Unique structural trait: `callers_scattered_across_subclass_and_mixin`.
-
-## Ground truth (gold answer)
-
-Derived mechanically by the corresponding derivation workflow against pin `79f4df84cf77`. 3 entries, already in lexicographic order:
-
-```text
-src/requests/sessions.py::Session.prepare_request
-src/requests/sessions.py::SessionRedirectMixin.rebuild_auth
-src/requests/utils.py::get_netrc_auth
-```
-
-SHA-256 of the gold string (with trailing newline): `bc70c41dbf87c097ef989e6f661ff42ccc246444f6c8c4dc1ac0d50476ccec22`.
-
-## Five-layer verification
-
-1. **AST derivation** via the shared localization-oracle procedure (`T1` template). Every `FunctionDef` / `AsyncFunctionDef` in scope is walked; `ast.Call` nodes whose `func.id` or `func.attr` matches the anchor/target name produce the "direct call" relation.
-2. **`rg` cross-check**: every AST-discovered call line must appear in `rg -n -w --with-filename <name> <scope_files>` output. Catches dynamic/meta-programming patterns or AST/rg drift.
-3. **Anchor-kind assertion**: the oracle asserts exactly one `get_netrc_auth` definition matching the declared `module_level=True` kind in `src/requests/utils.py`, with no decorators, before emitting gold.
-4. **Evaluator audit** via the structured localization audit procedure: Pass 1 (positive + negative `location.txt` variants through the real `file_regex_disk` evaluator) and Pass 2 (end-to-end `eval.evaluate()` with synthesized trace).
-5. **Pilot panel** (post-locking): 5 models × 3 seeds; top-tier model must reach ≥ 2/3; per-tier pass-rate correlation matrix < 0.85 between any two samples in the same tier.
-
-## Setup
-
-The per-run fixture is a pinned copy of `psf/requests`. The agent writes a single deliverable — `location.txt` — at the root of the per-run workspace. No other files may be modified (enforced indirectly by `call_schema_valid` catching malformed `write`/`edit` args).
-
 ## Prompt
 
 > In this `requests` checkout, a utility helper looks up credentials for a URL from the user's `~/.netrc` file and returns a `(user, password)` tuple when a matching entry exists.
@@ -106,10 +50,3 @@ The per-run fixture is a pinned copy of `psf/requests`. The agent writes a singl
 - Free-form explanation text — only `location.txt` is scored.
 - Which tools the agent uses to explore (`read`, `grep`, `glob`, `bash rg`, etc.) — any mix that produces the exact gold passes.
 - Whether the agent reasons about inheritance, lifecycle, or mixin resolution order — only the artifact matters.
-
-## Note on methodology
-
-This sample is part of the v3c family — a natural-language, structured-output localization task. It is a deliberate divergence from both `arXiv:2604.05013` (semantic file-level localization, too ambiguous) and the pre-v3c criterion-anchored design (mechanical but too easy — trivially solved by a single `rg -l -w`). The natural-language prompt stresses reading comprehension; the dotted-qualname discipline forces a search → read → write pipeline that still exercises opencode's tool-use surface (the agent must resolve which function each call site belongs to, which a single-shot `rg` cannot answer). Ground-truth determinism is preserved by the five-layer verification protocol above.
-
-If the submodule pin changes, re-run the deriver and update the gold, the regex, and the SHA-256 here.
-

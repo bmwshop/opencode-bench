@@ -16,67 +16,6 @@ tools
 
 `requests` — psf/requests, pinned via `data/v1_repos.json`. The agent operates in a per-run copy of the submodule checkout at `projects/v1/requests/`.
 
-## Difficulty tier
-
-**hard**. See the v1 localization tier-diversity matrix for the full tier coverage across all 10 v3c structured samples.
-
-## Structural signature
-
-```
-{
-  "template": "T2",
-  "scope_kind": "any_file",
-  "target_kind": "instance_methods",
-  "answer_entries": 8,
-  "answer_files": 4,
-  "unique_trait": "attribute_call_resolution_at_scale"
-}
-```
-
-No other v3c sample in this tier shares this exact signature. See the `convert_22-30_v3c_tiered` plan for the diversity argument.
-
-## Design
-
-Template **T2** (callers of a set). The agent must identify every function anywhere under the given scope whose body contains a direct call resolving by name to any of the given target names. Two conventions applied by the oracle and stated explicitly in the prompt:
-
-- **Nested-def attribution**: a call site inside a nested `def` counts toward the enclosing function too, and the nested def is itself a separate entry (so both `outer` and `outer.inner` can appear in one answer).
-- **Exclusion by name**: a function whose own unqualified name equals any target name is excluded, regardless of enclosing class or module (so a target `close` excludes every function literally named `close`, even on unrelated classes).
-
-Targets: ['iter_content', 'iter_lines', 'raise_for_status', 'close'] (kind: `instance_methods`).
-
-Scope: `src/requests/`.
-
-Answer shape: 8 entries across 4 file(s). Unique structural trait: `attribute_call_resolution_at_scale`.
-
-## Ground truth (gold answer)
-
-Derived mechanically by the corresponding derivation workflow against pin `79f4df84cf77`. 8 entries, already in lexicographic order:
-
-```text
-src/requests/auth.py::HTTPDigestAuth.handle_401
-src/requests/models.py::Response.__exit__
-src/requests/models.py::Response.__iter__
-src/requests/models.py::Response.content
-src/requests/models.py::Response.ok
-src/requests/sessions.py::Session.__exit__
-src/requests/sessions.py::SessionRedirectMixin.resolve_redirects
-src/requests/utils.py::extract_zipped_paths
-```
-
-SHA-256 of the gold string (with trailing newline): `e895fb55f0899d78526e817f30f171626b164cc7f3869f66590b69e1eff9e236`.
-
-## Five-layer verification
-
-1. **AST derivation** via the shared localization-oracle procedure (`T2` template). Every `FunctionDef` / `AsyncFunctionDef` in scope is walked; `ast.Call` nodes whose `func.id` or `func.attr` matches the anchor/target name produce the "direct call" relation.
-2. **`rg` cross-check**: every AST-discovered call line must appear in `rg -n -w --with-filename <name> <scope_files>` output. Catches dynamic/meta-programming patterns or AST/rg drift.
-3. **Per-target cross-check**: a separate `rg` pass is run for each target name in `['iter_content', 'iter_lines', 'raise_for_status', 'close']`; every per-target AST call site must appear in its rg output.
-4. **Evaluator audit** via the structured localization audit procedure: Pass 1 (positive + negative `location.txt` variants through the real `file_regex_disk` evaluator) and Pass 2 (end-to-end `eval.evaluate()` with synthesized trace).
-5. **Pilot panel** (post-locking): 5 models × 3 seeds; top-tier model must reach ≥ 2/3; per-tier pass-rate correlation matrix < 0.85 between any two samples in the same tier.
-
-## Setup
-
-The per-run fixture is a pinned copy of `psf/requests`. The agent writes a single deliverable — `location.txt` — at the root of the per-run workspace. No other files may be modified (enforced indirectly by `call_schema_valid` catching malformed `write`/`edit` args).
-
 ## Prompt
 
 > In this `requests` checkout, a `Response` object exposes four instance methods for consuming, inspecting, or finalizing a streaming response body: `iter_content` (yields raw chunks), `iter_lines` (yields newline-delimited text chunks), `raise_for_status` (raises when the HTTP status is 4xx/5xx), and `close` (releases the underlying connection).
@@ -112,10 +51,3 @@ The per-run fixture is a pinned copy of `psf/requests`. The agent writes a singl
 - Free-form explanation text — only `location.txt` is scored.
 - Which tools the agent uses to explore (`read`, `grep`, `glob`, `bash rg`, etc.) — any mix that produces the exact gold passes.
 - Whether the agent reasons about inheritance, lifecycle, or mixin resolution order — only the artifact matters.
-
-## Note on methodology
-
-This sample is part of the v3c family — a natural-language, structured-output localization task. It is a deliberate divergence from both `arXiv:2604.05013` (semantic file-level localization, too ambiguous) and the pre-v3c criterion-anchored design (mechanical but too easy — trivially solved by a single `rg -l -w`). The natural-language prompt stresses reading comprehension; the dotted-qualname discipline forces a search → read → write pipeline that still exercises opencode's tool-use surface (the agent must resolve which function each call site belongs to, which a single-shot `rg` cannot answer). Ground-truth determinism is preserved by the five-layer verification protocol above.
-
-If the submodule pin changes, re-run the deriver and update the gold, the regex, and the SHA-256 here.
-

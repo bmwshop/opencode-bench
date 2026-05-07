@@ -4,13 +4,6 @@
 
 skill (delivery: `.opencode/skills/<name>/SKILL.md`)
 
-## Structural signature
-
-- template: **style-api**
-- scope_kind: **single-skill**
-- answer_shape: **file-content-match**
-- unique_trait: api-style handler conventions on requests
-
 ## Repo
 
 `requests` (pinned via `data/v1_repos.json`).
@@ -60,17 +53,3 @@ All three rules apply together. Apply them to any handler file you create.
 | 4 | `file_regex` | function uses the prescribed handle_ prefix |
 | 5 | `file_regex` | file has the prescribed marker comment |
 | 6 | `call_schema_valid` | all tool calls match opencode schemas |
-
-## Note on methodology
-
-This sample is part of v1's SKILL family (#401-#430). The SKILL.md content is a
-workspace overlay applied at session start by `run.py`; opencode auto-injects the
-skill catalog (name + description + filesystem location) into the system prompt
-each turn (see `session/system.ts:65-77` and `skill/index.ts:262-278`). The
-catalog is **not** injected into subagents whose permission set has `skill` in
-the deny list (notably `explore`), so the family expects all `skill name=X`
-invocations at the parent agent layer.
-
-## Authoring notes
-
-Style tier-A on requests. Skill prescribes API-handler conventions; user creates a new handler. Triple distinct from #404 by template.

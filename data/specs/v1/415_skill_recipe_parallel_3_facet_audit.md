@@ -4,13 +4,6 @@
 
 skill (delivery: `.opencode/skills/<name>/SKILL.md`)
 
-## Structural signature
-
-- template: **recipe-parallel-dispatch-3**
-- scope_kind: **single-skill**
-- answer_shape: **graph-shape-and-artifact**
-- unique_trait: parallel 3-facet audit recipe delivered via SKILL.md (sister of #301)
-
 ## Repo
 
 `autoresearch` (pinned via `data/v1_repos.json`).
@@ -82,21 +75,3 @@ the final `write`.
 | 6 | `file_regex` | EMBEDDING_LR value reported |
 | 7 | `file_regex` | VOCAB_SIZE value reported |
 | 8 | `call_schema_valid` | all tool calls match opencode schemas |
-
-## Comparison
-
-This sample's parent is **#301** in the prescriptive orchestration family. Per-model delta `pass_rate(parent) - pass_rate(this)` isolates the SKILL-mediation efficacy signal: same recipe, two delivery channels.
-
-## Note on methodology
-
-This sample is part of v1's SKILL family (#401-#430). The SKILL.md content is a
-workspace overlay applied at session start by `run.py`; opencode auto-injects the
-skill catalog (name + description + filesystem location) into the system prompt
-each turn (see `session/system.ts:65-77` and `skill/index.ts:262-278`). The
-catalog is **not** injected into subagents whose permission set has `skill` in
-the deny list (notably `explore`), so the family expects all `skill name=X`
-invocations at the parent agent layer.
-
-## Authoring notes
-
-Tier C sister of #301. Same recipe (3 parallel explore-subagents -> aggregated report), but delivered via SKILL.md. User prompt is generic 'audit this repo'; the prescribed parallel-3-shape lives in the skill body.

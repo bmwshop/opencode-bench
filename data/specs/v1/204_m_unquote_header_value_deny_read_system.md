@@ -8,13 +8,6 @@ tool_restriction
 
 This is a tool-restriction MUTANT of v1 #54 `edit_unquote_header_value_none_returns_empty` (`code_editing`). The mutant inherits the parent's prompt and underlying task verifier; only the workspace overlay (and a few extra opencode-side compliance checks) differ.
 
-## Mutation
-
-- **kind**: `deny_read_system`
-- **mechanism**: `opencode.json `permission``
-
-Delivered through opencode's runtime permission layer (`opencode.json` `permission` block). Denied tools are hard-blocked: the model cannot call them at all -- attempts will be rejected by opencode before reaching the tool dispatcher.
-
 ## Workspace overlay
 
 The agent's per-run workspace is the parent's pinned repo copy with the following additional file(s) layered on top:
@@ -60,15 +53,3 @@ The prompt is the parent's prompt verbatim (no addendum). The mutation is delive
 | 1 | `exec_assert` | function `unquote_header_value` in `src/requests/utils.py` satisfies all 6 behavioral assertions (regression + new-behavior) |
 | 2 | `call_schema_valid` | all tool calls match opencode schemas |
 | 3 | `no_tool_name_recursive` | native read tool is denied; agent must `bash cat` files before constructing the edit |
-
-## Why this mutant
-
-Tests whether the agent uses `bash cat` (or alternative shell-based file inspection) when the native read tool is denied. A genuine pivot is required because most edits require knowing the file's current content.
-
-## Comparison points (panel-time)
-
-The parent (`#54` `edit_unquote_header_value_none_returns_empty`) runs without any restriction. At panel time, the **delta** `parent_pass_rate - mutant_pass_rate` per model is the opencode-attributable signal: it isolates how much the *restriction itself* (and how opencode plumbs it) affected the same task on the same parent.
-
-## Notes
-
-- Restriction-honored verifier (e.g. `no_tool_name_recursive`) is the marker that the denied tool was actually absent from the trace. If opencode silently allows a denied tool, that verifier fires and the mutant fails -- which is itself a useful signal about opencode's enforcement layer.

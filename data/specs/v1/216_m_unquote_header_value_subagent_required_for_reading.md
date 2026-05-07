@@ -8,13 +8,6 @@ tool_restriction
 
 This is a tool-restriction MUTANT of v1 #54 `edit_unquote_header_value_none_returns_empty` (`code_editing`). The mutant inherits the parent's prompt and underlying task verifier; only the workspace overlay (and a few extra opencode-side compliance checks) differ.
 
-## Mutation
-
-- **kind**: `agents_md_subagent_required`
-- **mechanism**: `AGENTS.md`
-
-Delivered through the workspace's `AGENTS.md` instruction file. The denied tools remain *visible* in the model's tool list -- the restriction is instruction-based, so the verifier `no_tool_name_recursive` tests adherence rather than runtime blocking.
-
 ## Workspace overlay
 
 The agent's per-run workspace is the parent's pinned repo copy with the following additional file(s) layered on top:
@@ -59,15 +52,3 @@ The prompt is the parent's prompt verbatim (no addendum). The mutation is delive
 | 3 | `no_tool_name` | parent must not call read/grep/glob directly; all reading goes through a subagent |
 | 4 | `any_tool_name_recursive` | a subagent must actually read at least one file (recursive sees subagent layer) |
 | 5 | `any_tool_name` | parent must dispatch at least one task subagent |
-
-## Why this mutant
-
-AGENTS.md instructs the parent to delegate file reading to a subagent via the `task` tool. Tests subagent dispatch + consumption-of-subagent-output behavior under explicit delegation requirements.
-
-## Comparison points (panel-time)
-
-The parent (`#54` `edit_unquote_header_value_none_returns_empty`) runs without any restriction. At panel time, the **delta** `parent_pass_rate - mutant_pass_rate` per model is the opencode-attributable signal: it isolates how much the *restriction itself* (and how opencode plumbs it) affected the same task on the same parent.
-
-## Notes
-
-- Restriction-honored verifier (e.g. `no_tool_name_recursive`) is the marker that the denied tool was actually absent from the trace. If opencode silently allows a denied tool, that verifier fires and the mutant fails -- which is itself a useful signal about opencode's enforcement layer.

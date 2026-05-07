@@ -8,13 +8,6 @@ tool_restriction
 
 This is a tool-restriction MUTANT of v1 #26 `locate_hook_dispatch_tokens` (`code_localization`). The mutant inherits the parent's prompt and underlying task verifier; only the workspace overlay (and a few extra opencode-side compliance checks) differ.
 
-## Mutation
-
-- **kind**: `deny_full_system`
-- **mechanism**: `opencode.json `permission``
-
-Delivered through opencode's runtime permission layer (`opencode.json` `permission` block). Denied tools are hard-blocked: the model cannot call them at all -- attempts will be rejected by opencode before reaching the tool dispatcher.
-
 ## Workspace overlay
 
 The agent's per-run workspace is the parent's pinned repo copy with the following additional file(s) layered on top:
@@ -57,15 +50,3 @@ The prompt is the parent's prompt verbatim (no addendum). The mutation is delive
 | 2 | `call_schema_valid` | _(no description)_ |
 | 3 | `no_tool_name_recursive` | deny-full bash-only system on a localization parent; only bash is allowed |
 | 4 | `any_tool_name_recursive` | agent must use bash to search and create location.txt |
-
-## Why this mutant
-
-Classic bash-only configuration: only `bash` is allowed; all other tools are denied. The agent must use shell commands for every operation.
-
-## Comparison points (panel-time)
-
-The parent (`#26` `locate_hook_dispatch_tokens`) runs without any restriction. At panel time, the **delta** `parent_pass_rate - mutant_pass_rate` per model is the opencode-attributable signal: it isolates how much the *restriction itself* (and how opencode plumbs it) affected the same task on the same parent.
-
-## Notes
-
-- Restriction-honored verifier (e.g. `no_tool_name_recursive`) is the marker that the denied tool was actually absent from the trace. If opencode silently allows a denied tool, that verifier fires and the mutant fails -- which is itself a useful signal about opencode's enforcement layer.

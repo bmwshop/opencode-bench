@@ -4,13 +4,6 @@
 
 skill (delivery: `.opencode/skills/<name>/SKILL.md`)
 
-## Structural signature
-
-- template: **composition-2-independent**
-- scope_kind: **multi-skill-invocation**
-- answer_shape: **graph-shape-and-artifact**
-- unique_trait: two independent skills; both must be loaded; outputs are unrelated
-
 ## Repo
 
 `autoresearch` (pinned via `data/v1_repos.json`).
@@ -101,17 +94,3 @@ fails the convention. Apply them to any file you create.
 | 5 | `file_regex` | helpers.py uses _az_ naming |
 | 6 | `file_regex` | helpers.py has AZ_HELPER marker |
 | 7 | `call_schema_valid` | all tool calls match opencode schemas |
-
-## Note on methodology
-
-This sample is part of v1's SKILL family (#401-#430). The SKILL.md content is a
-workspace overlay applied at session start by `run.py`; opencode auto-injects the
-skill catalog (name + description + filesystem location) into the system prompt
-each turn (see `session/system.ts:65-77` and `skill/index.ts:262-278`). The
-catalog is **not** injected into subagents whose permission set has `skill` in
-the deny list (notably `explore`), so the family expects all `skill name=X`
-invocations at the parent agent layer.
-
-## Authoring notes
-
-Two-skill independent composition. Both skills must be loaded; their outputs are uncoupled. Tests whether a model can hold two distinct skill recipes in working memory.

@@ -4,10 +4,6 @@
 
 orchestration
 
-## Pattern
-
-`merge` (prescriptive)
-
 ## Repo
 
 `autoresearch` (pinned via `data/v1_repos.json`).
@@ -38,12 +34,3 @@ orchestration
 | 5 | `file_regex` | prepare.py reports not found |
 | 6 | `file_regex` | parent reconciles to canonical_value 0.2 |
 | 7 | `call_schema_valid` | all tool calls match opencode schemas |
-
-## Why this sample
-
-Tests subagent dispatch + reconciliation: multiple subagents return overlapping or related facts; the parent must merge them into a single deliverable.
-
-## Notes
-
-- Part of the v1 prescriptive orchestration batch (#301-#310). See `/Users/drekesh/.cursor/plans/v1_prescriptive_orchestration.plan.md` for the design.
-- The graph shape and the artifact content are both verified. A model that produces a correct artifact via a non-prescribed shape (e.g., 2 task calls instead of 3) fails the prescribed-shape verifier.

@@ -4,13 +4,6 @@
 
 skill (delivery: `.opencode/skills/<name>/SKILL.md`)
 
-## Structural signature
-
-- template: **discovery-no-match**
-- scope_kind: **multi-skill-workspace**
-- answer_shape: **tool-presence-or-absence**
-- unique_trait: three skills installed; NONE match the user task; model should solve without skills
-
 ## Repo
 
 `requests` (pinned via `data/v1_repos.json`).
@@ -78,17 +71,3 @@ it does not summarize, review, or analyze file contents.
 | 3 | `any_tool_name` | model produced the purpose.md artifact |
 | 4 | `file_regex` | purpose.md is non-empty |
 | 5 | `call_schema_valid` | all tool calls match opencode schemas |
-
-## Note on methodology
-
-This sample is part of v1's SKILL family (#401-#430). The SKILL.md content is a
-workspace overlay applied at session start by `run.py`; opencode auto-injects the
-skill catalog (name + description + filesystem location) into the system prompt
-each turn (see `session/system.ts:65-77` and `skill/index.ts:262-278`). The
-catalog is **not** injected into subagents whose permission set has `skill` in
-the deny list (notably `explore`), so the family expects all `skill name=X`
-invocations at the parent agent layer.
-
-## Authoring notes
-
-Negative discovery: 3 skills, NONE match the user task (all are code-backed for narrow analytical jobs; the task is generic file summarization). Tests selectivity floor: does the model resist eagerly loading a skill just because the catalog mentions some? Failure mode: model loads validate-train hoping it does general validation. Note this sample's expected_skill_invocations entries all use must_not_invoke; G5 will require the no_tool_param_value_recursive guards in the manifest.

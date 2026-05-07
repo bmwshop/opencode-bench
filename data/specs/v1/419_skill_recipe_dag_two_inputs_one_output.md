@@ -4,13 +4,6 @@
 
 skill (delivery: `.opencode/skills/<name>/SKILL.md`)
 
-## Structural signature
-
-- template: **recipe-dag-2to1**
-- scope_kind: **single-skill**
-- answer_shape: **graph-shape-and-artifact**
-- unique_trait: two parallel reads -> single combined output via SKILL.md (sister of #305)
-
 ## Repo
 
 `autoresearch` (pinned via `data/v1_repos.json`).
@@ -65,21 +58,3 @@ only the subagents inspect files.
 | 4 | `file_regex` | EMBEDDING_LR = 0.6 |
 | 5 | `file_regex` | VOCAB_SIZE = 8192 |
 | 6 | `call_schema_valid` | all tool calls match opencode schemas |
-
-## Comparison
-
-This sample's parent is **#305** in the prescriptive orchestration family. Per-model delta `pass_rate(parent) - pass_rate(this)` isolates the SKILL-mediation efficacy signal: same recipe, two delivery channels.
-
-## Note on methodology
-
-This sample is part of v1's SKILL family (#401-#430). The SKILL.md content is a
-workspace overlay applied at session start by `run.py`; opencode auto-injects the
-skill catalog (name + description + filesystem location) into the system prompt
-each turn (see `session/system.ts:65-77` and `skill/index.ts:262-278`). The
-catalog is **not** injected into subagents whose permission set has `skill` in
-the deny list (notably `explore`), so the family expects all `skill name=X`
-invocations at the parent agent layer.
-
-## Authoring notes
-
-Tier C sister of #305. Two-input-one-output DAG; skill prescribes parallel dispatch and the combined.py format.

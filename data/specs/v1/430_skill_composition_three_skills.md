@@ -4,13 +4,6 @@
 
 skill (delivery: `.opencode/skills/<name>/SKILL.md`)
 
-## Structural signature
-
-- template: **composition-3-skills**
-- scope_kind: **multi-skill-invocation**
-- answer_shape: **graph-shape-and-artifact**
-- unique_trait: three skills; aggregated output combines all three
-
 ## Repo
 
 `autoresearch` (pinned via `data/v1_repos.json`).
@@ -164,17 +157,3 @@ prefix (e.g. `utils.py`, not `src/requests/utils.py`).
 | 8 | `file_regex` | validation token referenced |
 | 9 | `file_regex` | import count referenced |
 | 10 | `call_schema_valid` | all tool calls match opencode schemas |
-
-## Note on methodology
-
-This sample is part of v1's SKILL family (#401-#430). The SKILL.md content is a
-workspace overlay applied at session start by `run.py`; opencode auto-injects the
-skill catalog (name + description + filesystem location) into the system prompt
-each turn (see `session/system.ts:65-77` and `skill/index.ts:262-278`). The
-catalog is **not** injected into subagents whose permission set has `skill` in
-the deny list (notably `explore`), so the family expects all `skill name=X`
-invocations at the parent agent layer.
-
-## Authoring notes
-
-Three-skill composition. Stress test for skill-load chaining and aggregation. Most demanding sample in the family.

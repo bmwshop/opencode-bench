@@ -16,63 +16,6 @@ tools
 
 `requests` — psf/requests, pinned via `data/v1_repos.json`. The agent operates in a per-run copy of the submodule checkout at `projects/v1/requests/`.
 
-## Difficulty tier
-
-**medium**. See the v1 localization tier-diversity matrix for the full tier coverage across all 10 v3c structured samples.
-
-## Structural signature
-
-```
-{
-  "template": "T1",
-  "scope_kind": "two_files",
-  "anchor_kind": "mixin_method",
-  "answer_entries": 4,
-  "answer_files": 2,
-  "unique_trait": "mixin_hook_registration_with_cross_file_auth_caller"
-}
-```
-
-No other v3c sample in this tier shares this exact signature. See the `convert_22-30_v3c_tiered` plan for the diversity argument.
-
-## Design
-
-Template **T1** (anchor + direct callers). The agent must identify
-
-1. the anchor function (semantic description), and
-2. every function under the given scope whose body contains a direct call resolving by name to the anchor.
-
-Anchor: `src/requests/models.py::register_hook` (`method`).
-
-Scope: `['src/requests/auth.py', 'src/requests/models.py']`.
-
-Answer shape: 4 entries across 2 file(s). Unique structural trait: `mixin_hook_registration_with_cross_file_auth_caller`.
-
-## Ground truth (gold answer)
-
-Derived mechanically by the corresponding derivation workflow against pin `79f4df84cf77`. 4 entries, already in lexicographic order:
-
-```text
-src/requests/auth.py::HTTPDigestAuth.__call__
-src/requests/models.py::PreparedRequest.prepare_hooks
-src/requests/models.py::Request.__init__
-src/requests/models.py::RequestHooksMixin.register_hook
-```
-
-SHA-256 of the gold string (with trailing newline): `83ae6cbf7457d463646461fc1fd1528195091a373d73606843e97f788a3fbf22`.
-
-## Five-layer verification
-
-1. **AST derivation** via the shared localization-oracle procedure (`T1` template). Every `FunctionDef` / `AsyncFunctionDef` in scope is walked; `ast.Call` nodes whose `func.id` or `func.attr` matches the anchor/target name produce the "direct call" relation.
-2. **`rg` cross-check**: every AST-discovered call line must appear in `rg -n -w --with-filename <name> <scope_files>` output. Catches dynamic/meta-programming patterns or AST/rg drift.
-3. **Anchor-kind assertion**: the oracle asserts exactly one `register_hook` definition matching the declared `module_level=False` kind in `src/requests/models.py`, with no decorators, before emitting gold.
-4. **Evaluator audit** via the structured localization audit procedure: Pass 1 (positive + negative `location.txt` variants through the real `file_regex_disk` evaluator) and Pass 2 (end-to-end `eval.evaluate()` with synthesized trace).
-5. **Pilot panel** (post-locking): 5 models × 3 seeds; top-tier model must reach ≥ 2/3; per-tier pass-rate correlation matrix < 0.85 between any two samples in the same tier.
-
-## Setup
-
-The per-run fixture is a pinned copy of `psf/requests`. The agent writes a single deliverable — `location.txt` — at the root of the per-run workspace. No other files may be modified (enforced indirectly by `call_schema_valid` catching malformed `write`/`edit` args).
-
 ## Prompt
 
 > In this `requests` checkout, a mixin class in `src/requests/models.py` exposes a method that appends a user-callback to the request's hook registry; its own `register_hook`/`deregister_hook` pair, the `Request` subclass's constructor, and an `HTTPDigestAuth` init helper all rely on that single registration entry-point.
@@ -107,10 +50,3 @@ The per-run fixture is a pinned copy of `psf/requests`. The agent writes a singl
 - Free-form explanation text — only `location.txt` is scored.
 - Which tools the agent uses to explore (`read`, `grep`, `glob`, `bash rg`, etc.) — any mix that produces the exact gold passes.
 - Whether the agent reasons about inheritance, lifecycle, or mixin resolution order — only the artifact matters.
-
-## Note on methodology
-
-This sample is part of the v3c family — a natural-language, structured-output localization task. It is a deliberate divergence from both `arXiv:2604.05013` (semantic file-level localization, too ambiguous) and the pre-v3c criterion-anchored design (mechanical but too easy — trivially solved by a single `rg -l -w`). The natural-language prompt stresses reading comprehension; the dotted-qualname discipline forces a search → read → write pipeline that still exercises opencode's tool-use surface (the agent must resolve which function each call site belongs to, which a single-shot `rg` cannot answer). Ground-truth determinism is preserved by the five-layer verification protocol above.
-
-If the submodule pin changes, re-run the deriver and update the gold, the regex, and the SHA-256 here.
-

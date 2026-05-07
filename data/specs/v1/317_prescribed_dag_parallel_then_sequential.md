@@ -4,10 +4,6 @@
 
 orchestration
 
-## Pattern
-
-`dag_join` (prescriptive)
-
 ## Repo
 
 `autoresearch` (pinned via `data/v1_repos.json`).
@@ -44,12 +40,3 @@ orchestration
 | 8 | `file_regex` | MAX_SEQ_LEN = 2048 |
 | 9 | `file_regex` | line_count is an integer |
 | 10 | `call_schema_valid` | all tool calls match opencode schemas |
-
-## Why this sample
-
-Tests parallel reads of independent inputs converging into a single output artifact. Combines parallel dispatch with output aggregation.
-
-## Notes
-
-- Part of the v1 prescriptive orchestration batch (#301-#310). See `/Users/drekesh/.cursor/plans/v1_prescriptive_orchestration.plan.md` for the design.
-- The graph shape and the artifact content are both verified. A model that produces a correct artifact via a non-prescribed shape (e.g., 2 task calls instead of 3) fails the prescribed-shape verifier.

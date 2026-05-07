@@ -4,10 +4,6 @@
 
 orchestration
 
-## Pattern
-
-`iteration` (prescriptive)
-
 ## Repo
 
 `requests` (pinned via `data/v1_repos.json`).
@@ -46,12 +42,3 @@ orchestration
 | 8 | `file_regex` | iter_slices count = 0 |
 | 9 | `file_regex` | sessions.py total lines reported |
 | 10 | `call_schema_valid` | all tool calls match opencode schemas |
-
-## Why this sample
-
-Tests bounded for-each-over-prescribed-list behavior. The model must issue exactly N calls (one per item), in the specified order, then aggregate.
-
-## Notes
-
-- Part of the v1 prescriptive orchestration batch (#301-#310). See `/Users/drekesh/.cursor/plans/v1_prescriptive_orchestration.plan.md` for the design.
-- The graph shape and the artifact content are both verified. A model that produces a correct artifact via a non-prescribed shape (e.g., 2 task calls instead of 3) fails the prescribed-shape verifier.

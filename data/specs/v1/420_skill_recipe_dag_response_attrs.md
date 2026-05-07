@@ -4,13 +4,6 @@
 
 skill (delivery: `.opencode/skills/<name>/SKILL.md`)
 
-## Structural signature
-
-- template: **recipe-dag-overlap**
-- scope_kind: **single-skill**
-- answer_shape: **graph-shape-and-artifact**
-- unique_trait: two parallel reads -> overlap analysis via SKILL.md (sister of #306)
-
 ## Repo
 
 `requests` (pinned via `data/v1_repos.json`).
@@ -74,21 +67,3 @@ the subagents inspect files.
 | 6 | `file_regex` | report has overlap section |
 | 7 | `file_regex` | status_code attr listed |
 | 8 | `call_schema_valid` | all tool calls match opencode schemas |
-
-## Comparison
-
-This sample's parent is **#306** in the prescriptive orchestration family. Per-model delta `pass_rate(parent) - pass_rate(this)` isolates the SKILL-mediation efficacy signal: same recipe, two delivery channels.
-
-## Note on methodology
-
-This sample is part of v1's SKILL family (#401-#430). The SKILL.md content is a
-workspace overlay applied at session start by `run.py`; opencode auto-injects the
-skill catalog (name + description + filesystem location) into the system prompt
-each turn (see `session/system.ts:65-77` and `skill/index.ts:262-278`). The
-catalog is **not** injected into subagents whose permission set has `skill` in
-the deny list (notably `explore`), so the family expects all `skill name=X`
-invocations at the parent agent layer.
-
-## Authoring notes
-
-Tier C sister of #306. Two parallel reads + an overlap-analysis aggregation. Skill prescribes the sectioned output format.

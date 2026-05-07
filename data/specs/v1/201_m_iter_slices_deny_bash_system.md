@@ -8,13 +8,6 @@ tool_restriction
 
 This is a tool-restriction MUTANT of v1 #51 `edit_iter_slices_require_positive` (`code_editing`). The mutant inherits the parent's prompt and underlying task verifier; only the workspace overlay (and a few extra opencode-side compliance checks) differ.
 
-## Mutation
-
-- **kind**: `deny_bash_system`
-- **mechanism**: `opencode.json `permission``
-
-Delivered through opencode's runtime permission layer (`opencode.json` `permission` block). Denied tools are hard-blocked: the model cannot call them at all -- attempts will be rejected by opencode before reaching the tool dispatcher.
-
 ## Workspace overlay
 
 The agent's per-run workspace is the parent's pinned repo copy with the following additional file(s) layered on top:
@@ -61,15 +54,3 @@ The prompt is the parent's prompt verbatim (no addendum). The mutation is delive
 | 1 | `exec_assert` | function `iter_slices` in `src/requests/utils.py` satisfies all 6 behavioral assertions (regression + new-behavior) |
 | 2 | `call_schema_valid` | all tool calls match opencode schemas |
 | 3 | `no_tool_name_recursive` | bash is denied at the system level; agent must use native edit/grep/glob/read |
-
-## Why this mutant
-
-Tests whether the agent can solve the task using only native tools when shell access is hard-blocked. Different tasks have different bash dependence -- this measures it directly.
-
-## Comparison points (panel-time)
-
-The parent (`#51` `edit_iter_slices_require_positive`) runs without any restriction. At panel time, the **delta** `parent_pass_rate - mutant_pass_rate` per model is the opencode-attributable signal: it isolates how much the *restriction itself* (and how opencode plumbs it) affected the same task on the same parent.
-
-## Notes
-
-- Restriction-honored verifier (e.g. `no_tool_name_recursive`) is the marker that the denied tool was actually absent from the trace. If opencode silently allows a denied tool, that verifier fires and the mutant fails -- which is itself a useful signal about opencode's enforcement layer.

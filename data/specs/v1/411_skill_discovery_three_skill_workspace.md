@@ -4,13 +4,6 @@
 
 skill (delivery: `.opencode/skills/<name>/SKILL.md`)
 
-## Structural signature
-
-- template: **discovery-3-skills**
-- scope_kind: **multi-skill-workspace**
-- answer_shape: **tool-presence-or-absence**
-- unique_trait: three skills installed; one matches by name + description
-
 ## Repo
 
 `requests` (pinned via `data/v1_repos.json`).
@@ -101,17 +94,3 @@ to general code review.
 | 3 | `any_tool_name` | model produced the review artifact |
 | 4 | `file_regex` | review.md has the skill-prescribed heading |
 | 5 | `call_schema_valid` | all tool calls match opencode schemas |
-
-## Note on methodology
-
-This sample is part of v1's SKILL family (#401-#430). The SKILL.md content is a
-workspace overlay applied at session start by `run.py`; opencode auto-injects the
-skill catalog (name + description + filesystem location) into the system prompt
-each turn (see `session/system.ts:65-77` and `skill/index.ts:262-278`). The
-catalog is **not** injected into subagents whose permission set has `skill` in
-the deny list (notably `explore`), so the family expects all `skill name=X`
-invocations at the parent agent layer.
-
-## Authoring notes
-
-3-skill discovery: review-flow + dependency-audit + validate-train. Task matches review-flow by both name resemblance and description. Slightly harder than #410 because models with weak description-attention may load the wrong skill more often; passing requires correct skill match, no penalty for loading distractors too (that's tier D).
