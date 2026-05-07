@@ -5,10 +5,22 @@ A benchmark suite for evaluating LLM compatibility with the [opencode](https://g
 ## Prerequisites
 
 - Python 3.10+
+- `uv` installed and available in `PATH`
 - `opencode` CLI installed and available in `PATH`
 - A configured model provider (the model under test)
-- `pip install -r requirements.txt` (currently just `jsonschema`, used by the
+- `uv sync` (installs benchmark deps; currently just `jsonschema`, used by the
   `call_schema_valid` check)
+
+### Install opencode
+
+`opencode-bench` does not install `opencode` automatically.
+
+1. Follow the official install instructions in the [opencode repository](https://github.com/nichochar/opencode).
+2. Verify the CLI is available on `PATH`:
+
+```bash
+opencode --version
+```
 
 > **v1 fixtures auto-hydrate.** v1 samples target real pinned open-source repos.
 > `run.py` calls `scripts/hydrate_v1_repos.py` automatically before running v1
@@ -27,8 +39,8 @@ python eval.py
 # Run all v1 samples against real pinned repos
 python run.py
 
-# Run a single category (e.g. code_review) for a smoke test
-python run.py --category code_review
+# Run a single category (e.g. code_editing) for a smoke test
+python run.py --category code_editing
 
 # Evaluate results (auto-detects the latest run)
 python eval.py
