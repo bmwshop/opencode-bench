@@ -27,11 +27,8 @@ python eval.py
 # Run all v1 samples against real pinned repos
 python run.py
 
-# Run a single public category for a smoke test
-python run.py --category code_editing
-
-# Run the full v1 corpus (includes hidden review-judgment slice)
-python run.py --category all
+# Run a single category (e.g. code_review) for a smoke test
+python run.py --category code_review
 
 # Evaluate results (auto-detects the latest run)
 python eval.py
@@ -41,7 +38,7 @@ python eval.py
 
 The bench currently ships a single tier:
 
-- **v1** — 160 tasks against real pinned open-source repos, vendored as git submodules under [projects/v1/](projects/v1/). By default `python run.py` executes the 150-sample public eval set; pass `--category all` to include the full corpus. Each repo is declared once in [data/v1_repos.json](data/v1_repos.json) with its upstream URL and exact pinned SHA. Current repos:
+- **v1** — tasks against real pinned open-source repos, vendored as git submodules under [projects/v1/](projects/v1/). By default `python run.py` executes the public eval set; pass `--category all` to include the full corpus. Each repo is declared once in [data/v1_repos.json](data/v1_repos.json) with its upstream URL and exact pinned SHA. Current repos:
   - `requests` — [psf/requests](https://github.com/psf/requests)
   - `httpx` — [encode/httpx](https://github.com/encode/httpx)
   - `click` — [pallets/click](https://github.com/pallets/click)
@@ -88,7 +85,7 @@ Each run creates an isolated directory with:
 The canonical `projects/` tree is never modified at runtime, so it is safe to run multiple models (or the same model multiple times) in parallel.
 
 ```bash
-python run.py                                              # default eval set; auto-allocated workspace, kept after run
+python run.py                                              # all v1 samples; auto-allocated workspace, kept after run
 python run.py --workspace .                                # legacy layout: use repo-local ./projects, ./runs, ./captures
 python run.py --workspace /scratch/oc-shared               # reuse a hydrated workspace across multiple model evals
 python run.py --clean-workspace                            # rm -rf the auto-allocated workspace at exit
@@ -217,7 +214,7 @@ python eval.py --refresh-schemas                           # re-extract data/too
 python eval.py --no-cleanup-projects                       # keep workspaces; needed for future re-scoring
 ```
 
-By default `eval.py` deletes each per-sample workspace at `runs/.../projects/{NNN}/` after scoring (saves disk; a 150-sample default sweep × 3 seeds generates ~75 GB of project copies). Pass `--no-cleanup-projects` to retain them — required if you intend to re-score the run later, since the file-graded evaluators (`exec_assert`, `exec_function`, `file_regex_disk`) read source files directly from the workspace. Trace JSONL, subagent sidecars, `captures/`, `scores.json`, and `meta.json` are always kept regardless.
+By default `eval.py` deletes each per-sample workspace at `runs/.../projects/{NNN}/` after scoring (saves disk; repeated multi-seed sweeps can easily consume tens of GB of project copies). Pass `--no-cleanup-projects` to retain them — required if you intend to re-score the run later, since the file-graded evaluators (`exec_assert`, `exec_function`, `file_regex_disk`) read source files directly from the workspace. Trace JSONL, subagent sidecars, `captures/`, `scores.json`, and `meta.json` are always kept regardless.
 
 When using `--format json`, the output includes a `"run"` object with the model name, date, and timestamp from `meta.json`, making each score file self-describing.
 
@@ -323,7 +320,7 @@ data/
   v1_repos.json          # v1 repo declarations (slug -> url, pin, submodule_path)
   v1_editing_criteria.json    # source-of-truth manifest for v1 code_editing samples
   v1_localization_criteria.json # source-of-truth manifest for v1 code_localization samples
-  v1_review_criteria.json     # source-of-truth manifest for internal review-judgment samples
+  v1_review_criteria.json     # source-of-truth manifest for v1 code_review samples
   v1_orchestration_criteria.json # source-of-truth manifest for v1 orchestration samples
   v1_skill_criteria.json      # source-of-truth manifest for v1 skill samples
   v1_mutant_criteria.json     # source-of-truth manifest for v1 tool_restriction samples
@@ -375,17 +372,16 @@ captures/                # staging dir for switchyard output (git-ignored)
 
 ## Sample Categories
 
-### v1 default eval set (150 samples)
+### v1
 
 | Category | n | What it tests |
 |---|---|---|
 | `code_editing` | 30 | Localized behavioral change to a real Python function across `requests` / `httpx` / `click` / `autoresearch`. Easy/medium/hard tiers vary by leak (function name) + scope (single- vs multi-file). Graded by `exec_assert` against an assertion checklist. |
 | `code_localization` | 30 | Find every function matching a behavior description and write `location.txt` with `file::QualifiedName` lines (lex order, anchored regex). Graded by `file_regex_disk`. |
+| `code_review` | 10 | Yes/no PR judgment in plan mode. Model emits `<review>...</review>` + literal `YES`/`NO`. Graded by `text_contains` + `no_tool_name` (forbids edit/write/bash). |
 | `orchestration` | 30 | Prescribed multi-step workflows — parallel dispatch, sequential chain, DAG join, merge, iteration. Graded by topology checks (`parallel_dispatch_count`, `tool_call_count`, `tool_call_sequence`, etc.) + artifact checks. |
 | `skill` | 30 | Load and follow custom `SKILL.md` files. 5 internal tiers (load+follow / discovery / behavioral delta / selectivity / composition). Graded by `any_tool_param_value_recursive` + `file_regex`. |
 | `tool_restriction` | 30 | Mutants of editing/localization/review samples with tool denials (`no write`, `no grep+glob`, `bash-only`, `subagent-required`). Three injection channels: system prompt, `AGENTS.md`, custom-agent persona. Graded by `no_tool_name_recursive` + parent's grader. |
-
-The full v1 corpus remains 160 samples. The 10 internal review-judgment tasks are hidden from default selection and can be included with `--category all` or `--include-code-review`.
 
 For per-archetype training-data templates that match these categories, see [data/archetypes/v1/](data/archetypes/v1/).
 
