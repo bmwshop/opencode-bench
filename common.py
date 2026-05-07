@@ -11,7 +11,7 @@ SAMPLES_V1 = ROOT / "data" / "samples_v1.jsonl"
 # Mutable-state roots, captured at module import. Each can be overridden via
 # env var. run.py sets all three before importing common.py so its
 # auto-allocated workspace propagates here; pre-set env vars (e.g. from
-# run_cluster.py inside a container) are honored unchanged. Falling through to
+# wrapper scripts or container runtimes) are honored unchanged. Falling through to
 # ROOT / "{projects,runs,captures}" only happens when common.py is imported
 # from a script that doesn't go through run.py's early workspace bind (e.g.
 # scripts/audit_*.py invoked directly).

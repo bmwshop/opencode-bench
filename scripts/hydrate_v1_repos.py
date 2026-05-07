@@ -2,7 +2,7 @@
 """
 Materialize pinned v1 repos into projects/v1/* as clean git checkouts.
 
-Use this inside a staged cluster container when `projects/v1/*` contains plain
+Use this in staged/minimal environments when `projects/v1/*` contains plain
 files copied from git submodules but not the submodules' own `.git` metadata.
 `run.py` validates v1 fixtures with `git rev-parse HEAD`, so the staged tree
 must be repaired into real repos before v1 samples can run.

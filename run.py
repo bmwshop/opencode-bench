@@ -13,7 +13,7 @@ Each invocation writes to {WORKSPACE}/runs/{version}/{model_slug}/{timestamp}/ w
 
 WORKSPACE selection (in precedence order):
     1. Any of OPENCODE_BENCH_{PROJECTS,RUNS,CAPTURES} pre-set in env
-       -> user-managed (e.g. run_cluster.py inside a container).
+       -> user-managed (e.g. from a wrapper script or container runtime).
     2. --workspace PATH
        -> user-managed; never auto-cleaned. `--workspace .` reproduces
        the legacy repo-local layout (./projects, ./runs, ./captures).
@@ -352,9 +352,8 @@ def _inject_vllm_config(cwd, provider, model_id, server_url, api_key="EMPTY",
                         max_output_tokens=DEFAULT_MAX_OUTPUT_TOKENS):
     """Inject a full vLLM provider config into a project's opencode.json.
 
-    Mirrors the logic in run_cluster.py's build_config_inject_cmd but operates
-    in-process. Registers the npm adapter, model entry, and baseURL so that
-    opencode can resolve provider/model at runtime, and fills in
+    Registers the npm adapter, model entry, and baseURL so that opencode can
+    resolve provider/model at runtime, and fills in
     ``limit.{context, output}`` using ``max_model_len`` from the server's
     ``/v1/models`` endpoint (falling back to ``FALLBACK_CONTEXT_TOKENS``).
     """
@@ -769,7 +768,7 @@ def _check_v1_pins(samples):
                   f"declare it in data/v1_repos.json")
             sys.exit(1)
         # Use PROJECTS rather than ROOT so OPENCODE_BENCH_PROJECTS overrides
-        # are respected (run_isolated wrappers, run_cluster.py, --workspace).
+        # are respected (wrapper scripts and --workspace mode).
         sub_path = PROJECTS / "v1" / repo
         if not (sub_path / ".git").exists() and not (sub_path.is_dir() and any(sub_path.iterdir())):
             print(f"ERROR: v1 fixture {sub_path!s} not initialized\n"
@@ -943,7 +942,7 @@ def main():
         sys.exit(1)
 
     # Workspace banner. _WORKSPACE is set by _bind_workspace_early(); it's
-    # None when OPENCODE_BENCH_* was pre-set in env (run_cluster.py path).
+    # None when OPENCODE_BENCH_* was pre-set in the environment.
     if _WORKSPACE is not None:
         kind = "auto-allocated" if not args.workspace else "user-supplied"
         suffix = " (will rm at exit)" if _AUTO_CLEAN else " (kept after exit)"

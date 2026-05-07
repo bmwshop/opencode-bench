@@ -20,6 +20,10 @@ A benchmark suite for evaluating LLM compatibility with the [opencode](https://g
 ## Quick Start
 
 ```bash
+# Local smoke test (single sample)
+python run.py --id 1
+python eval.py
+
 # Run all v1 samples against real pinned repos
 python run.py
 
@@ -29,10 +33,6 @@ python run.py --category code_review
 # Evaluate results (auto-detects the latest run)
 python eval.py
 ```
-
-## Running on a Cluster
-
-To run the benchmark on a Slurm cluster with a GPU-hosted vLLM server, see [CLUSTER_RUN.md](CLUSTER_RUN.md). The cluster launcher handles vLLM sidecar hosting, Node.js/opencode installation, and result persistence to cluster storage via NeMo-Skills.
 
 ## Benchmark Versions
 
@@ -121,8 +121,8 @@ payloads). Pick whichever mode fits your workflow:
 The three `OPENCODE_BENCH_PROJECTS`, `OPENCODE_BENCH_RUNS`,
 `OPENCODE_BENCH_CAPTURES` env vars override the corresponding paths
 individually. When any of them is pre-set, `run.py` honors it and skips both
-auto-allocation and auto-cleanup. This is how [`run_cluster.py`](run_cluster.py)
-points runs at the mounted `/runs` volume inside Slurm containers.
+auto-allocation and auto-cleanup. This is useful for custom wrappers or
+containerized setups that need explicit mount paths.
 
 ### Hydration
 
@@ -133,8 +133,8 @@ before running v1 samples — it clones each repo into the active workspace and
 checks out the pinned SHA. Already-correct checkouts report `OK` and skip
 (safe to call repeatedly).
 
-Manual invocation is occasionally useful, e.g. inside a cluster container
-where submodule `.git` metadata wasn't staged with the code:
+Manual invocation is occasionally useful, e.g. in a staged/minimal source tree
+where submodule `.git` metadata wasn't preserved:
 
 ```bash
 python scripts/hydrate_v1_repos.py             # all repos
@@ -156,8 +156,7 @@ Two independent dimensions:
   its own per-sample workspace copy, so disk contention is zero. Default 1.
 - **N parallel `run.py` invocations** — fire up to N processes simultaneously;
   each auto-allocates its own `/tmp/oc-bench-XXXXXX/` workspace. Zero shared
-  mutable state, no wrapper script needed. `run_cluster.py` uses the same
-  isolation model inside Slurm containers.
+  mutable state, no wrapper script needed.
 
 ```bash
 # In-process parallelism: 8 samples at a time, one workspace.
@@ -184,15 +183,14 @@ Point auto-allocation at a mounted volume instead:
 # As a CLI flag
 python run.py --workspace-root /scratch --id 21 --model X
 
-# As an env var (set once, e.g. in a Dockerfile or by run_cluster.py)
+# As an env var (set once, e.g. in a Dockerfile or shell profile)
 OPENCODE_BENCH_WORKSPACE_ROOT=/scratch python run.py ...
 ```
 
 Precedence: `--workspace-root` > `OPENCODE_BENCH_WORKSPACE_ROOT` > `$TMPDIR` >
 `/tmp`. Only consulted when `run.py` auto-allocates; ignored when
 `--workspace PATH` or any of the `OPENCODE_BENCH_*` path overrides are
-already set. See [CLUSTER_RUN.md](CLUSTER_RUN.md) for the full Slurm/cluster
-story.
+already set.
 
 ## Evaluating Results
 

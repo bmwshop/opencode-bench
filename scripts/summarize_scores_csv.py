@@ -172,7 +172,7 @@ def parse_args() -> argparse.Namespace:
         action="store_false",
         default=True,
         help=(
-            "Do not merge result families with run_cluster.py parallel-copy "
+            "Do not merge result families with parallel-copy "
             "suffixes like '-00' or '-001' when grouping by family."
         ),
     )
