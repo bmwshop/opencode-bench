@@ -318,20 +318,11 @@ python run.py --proxy http://localhost:4000/v1 --capture-dir /tmp/switchyard-out
 data/
   samples_v1.jsonl       # v1 test definitions (real-repo tasks)
   v1_repos.json          # v1 repo declarations (slug -> url, pin, submodule_path)
-  v1_editing_criteria.json    # source-of-truth manifest for v1 code_editing samples
-  v1_localization_criteria.json # source-of-truth manifest for v1 code_localization samples
-  v1_review_criteria.json     # source-of-truth manifest for v1 code_review samples
-  v1_orchestration_criteria.json # source-of-truth manifest for v1 orchestration samples
-  v1_skill_criteria.json      # source-of-truth manifest for v1 skill samples
-  v1_mutant_criteria.json     # source-of-truth manifest for v1 tool_restriction samples
   tool_schemas.json      # opencode tool schemas (for call_schema_valid)
-  archetypes/v1/         # 15 training-data archetype specs (one .md per category)
   specs/                 # per-sample documentation (capability, pass/fail criteria)
     v1/
       021_locate_cookie_tokens.md
       091_pr_review_iter_slices_yes.md
-  scripts/               # sample-prep pipeline (deriver/audit/regen/oracle scripts
-                         #   used to MAKE the samples; not invoked at eval time)
 run.py                   # runner — executes samples via opencode CLI
 eval.py                  # evaluator — scores traces against checks
 common.py                # shared constants, sample loader, path helpers
@@ -382,8 +373,6 @@ captures/                # staging dir for switchyard output (git-ignored)
 | `orchestration` | 30 | Prescribed multi-step workflows — parallel dispatch, sequential chain, DAG join, merge, iteration. Graded by topology checks (`parallel_dispatch_count`, `tool_call_count`, `tool_call_sequence`, etc.) + artifact checks. |
 | `skill` | 30 | Load and follow custom `SKILL.md` files. 5 internal tiers (load+follow / discovery / behavioral delta / selectivity / composition). Graded by `any_tool_param_value_recursive` + `file_regex`. |
 | `tool_restriction` | 30 | Mutants of editing/localization/review samples with tool denials (`no write`, `no grep+glob`, `bash-only`, `subagent-required`). Three injection channels: system prompt, `AGENTS.md`, custom-agent persona. Graded by `no_tool_name_recursive` + parent's grader. |
-
-For per-archetype training-data templates that match these categories, see [data/archetypes/v1/](data/archetypes/v1/).
 
 ## Per-Sample Documentation
 

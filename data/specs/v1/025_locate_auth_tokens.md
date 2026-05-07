@@ -18,7 +18,7 @@ tools
 
 ## Difficulty tier
 
-**medium**. See `data/v1_localization_criteria.json` for the full tier-diversity matrix covering all 10 v3c structured samples.
+**medium**. See the v1 localization tier-diversity matrix for the full tier coverage across all 10 v3c structured samples.
 
 ## Structural signature
 
@@ -50,7 +50,7 @@ Answer shape: 3 entries across 2 file(s). Unique structural trait: `callers_scat
 
 ## Ground truth (gold answer)
 
-Derived mechanically by [data/scripts/derive_025_ground_truth.py](../../scripts/derive_025_ground_truth.py) against pin `79f4df84cf77`. 3 entries, already in lexicographic order:
+Derived mechanically by the corresponding derivation workflow against pin `79f4df84cf77`. 3 entries, already in lexicographic order:
 
 ```text
 src/requests/sessions.py::Session.prepare_request
@@ -62,10 +62,10 @@ SHA-256 of the gold string (with trailing newline): `bc70c41dbf87c097ef989e6f661
 
 ## Five-layer verification
 
-1. **AST derivation** via the shared [data/scripts/localization_oracle.py](../../scripts/localization_oracle.py) (`T1` template). Every `FunctionDef` / `AsyncFunctionDef` in scope is walked; `ast.Call` nodes whose `func.id` or `func.attr` matches the anchor/target name produce the "direct call" relation.
+1. **AST derivation** via the shared localization-oracle procedure (`T1` template). Every `FunctionDef` / `AsyncFunctionDef` in scope is walked; `ast.Call` nodes whose `func.id` or `func.attr` matches the anchor/target name produce the "direct call" relation.
 2. **`rg` cross-check**: every AST-discovered call line must appear in `rg -n -w --with-filename <name> <scope_files>` output. Catches dynamic/meta-programming patterns or AST/rg drift.
 3. **Anchor-kind assertion**: the oracle asserts exactly one `get_netrc_auth` definition matching the declared `module_level=True` kind in `src/requests/utils.py`, with no decorators, before emitting gold.
-4. **Evaluator audit** via [data/scripts/audit_localization_structured.py](../../scripts/audit_localization_structured.py): Pass 1 (positive + negative `location.txt` variants through the real `file_regex_disk` evaluator) and Pass 2 (end-to-end `eval.evaluate()` with synthesized trace).
+4. **Evaluator audit** via the structured localization audit procedure: Pass 1 (positive + negative `location.txt` variants through the real `file_regex_disk` evaluator) and Pass 2 (end-to-end `eval.evaluate()` with synthesized trace).
 5. **Pilot panel** (post-locking): 5 models × 3 seeds; top-tier model must reach ≥ 2/3; per-tier pass-rate correlation matrix < 0.85 between any two samples in the same tier.
 
 ## Setup

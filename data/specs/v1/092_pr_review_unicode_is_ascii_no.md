@@ -22,7 +22,7 @@ structured `<judgment>YES|NO</judgment>` plus a `<review>` summary.
 
 This sample reuses material from the `code_editing` source manifest (no new bugs authored):
 
-- source_manifest: `data/v1_editing_criteria.json`
+- source_manifest: v1 editing criteria manifest
 - source_id: **#52** (edit_unicode_is_ascii_accept_bytes)
 - variant: **mutants[0]**
 - gold label: **NO**
@@ -125,7 +125,7 @@ Mechanical proof that label = `NO` is correct: apply the mutants[0] patch from s
 - `label=YES` -> exec_assert PASSES (all asserts in source.asserts evaluate True)
 - `label=NO` -> exec_assert FAILS at least one assert
 
-Verified mechanically by `python3 data/scripts/audit_review.py --id 92` (Pass 1).
+Verified mechanically by the review audit procedure (Pass 1).
 
 ## Shortest path
 
@@ -149,10 +149,10 @@ Verified mechanically by `python3 data/scripts/audit_review.py --id 92` (Pass 1)
 
 This sample is the paper-faithful `review_judgment` atomic skill (Ma et al. arXiv:2604.05013), implemented via cross-reference to the `code_editing` source manifest. The PR diff is constructed mechanically; the gold label is mechanically derived from `exec_assert` against the source's truth table. The agent's role is to JUDGE, not to PATCH.
 
-If the source manifest changes, re-run `data/scripts/regen_review.py` and `data/scripts/audit_review.py`.
+If the source manifest changes, re-run the review regeneration and audit procedure.
 
 ## Lock-in hash
 
-SHA-256 of `(source_manifest, source_id, variant, label, issue_text)` JSON-serialized with sorted keys. Drift in any of these fields changes the hash. Cross-referenced in [data/scripts/docs/v1_review_lock_in.md](../../scripts/docs/v1_review_lock_in.md).
+SHA-256 of `(source_manifest, source_id, variant, label, issue_text)` JSON-serialized with sorted keys. Drift in any of these fields changes the hash. Cross-referenced in the v1 review lock-in record.
 
 `93ac9b5c99d661dce64b6cd5cb1765b63b3ae6c890f806457818169bf60a5a02`
