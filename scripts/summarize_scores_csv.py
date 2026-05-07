@@ -30,7 +30,7 @@ from typing import Any, Iterable
 
 
 DEFAULT_RESULTS_ROOT = Path(
-    "/lustre/fsw/portfolios/llmservice/users/drekesh/opencode-bench-results"
+    "runs"
 )
 DEFAULT_OUTPUT = Path("summary.csv")
 

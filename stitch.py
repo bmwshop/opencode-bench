@@ -12,9 +12,9 @@ Output goes to runs/{version}/{slug}/{ts}/stitched/ with one JSON file per sampl
 
 Usage:
     python stitch.py                         # stitch latest run (default set excludes hidden review slice)
-    python stitch.py --model nvidia/nvidia/nemotron-3-super-120b-a12b
-    python stitch.py --model nvidia/nvidia/nemotron-3-super-120b-a12b --id 1
-    python stitch.py --model nvidia/nvidia/nemotron-3-super-120b-a12b --pass-only
+    python stitch.py --model openai/gpt-4.1-mini
+    python stitch.py --model openai/gpt-4.1-mini --id 1
+    python stitch.py --model openai/gpt-4.1-mini --pass-only
 """
 
 import json

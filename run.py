@@ -821,8 +821,8 @@ def main():
     parser.add_argument(
         "--model",
         "-m",
-        default="nvidia/nvidia/nemotron-3-nano-30b-a3b",
-        help="Model in provider/model format (default: nvidia/nvidia/nemotron-3-nano-30b-a3b)",
+        default="openai/gpt-4.1-mini",
+        help="Model in provider/model format (default: openai/gpt-4.1-mini)",
     )
     parser.add_argument(
         "--proxy",
@@ -853,7 +853,7 @@ def main():
     parser.add_argument(
         "--capture-dir",
         default=None,
-        help="Staging directory where switchyard writes captures. "
+        help="Staging directory where the proxy writes captures. "
              "New files are moved to runs/{version}/{slug}/{timestamp}/captures/ "
              "after the run. Defaults to captures/ at the repo root.",
     )
@@ -1066,7 +1066,7 @@ def main():
     if args.vllm:
         provider = args.model.split("/")[0]
     elif args.proxy and not provider:
-        provider = args.model.split("/")[0] if args.model else "nvidia"
+        provider = args.model.split("/")[0] if args.model else "openai"
 
     # model_id is the part after the provider prefix (e.g. "Qwen2.5-32B-Instruct"
     # from "vllm/Qwen2.5-32B-Instruct")

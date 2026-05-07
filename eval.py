@@ -9,8 +9,8 @@ future tiers (v1.5, v2, ...) plug in via common.SAMPLES_FILES + the
 Usage:
     python eval.py                        # evaluate latest run (default set excludes hidden review slice)
     python eval.py --version v1           # force v1 scope
-    python eval.py --model nvidia/nemotron          # latest run for model
-    python eval.py --model nvidia/nemotron --run 2026-04-12T18-30-00
+    python eval.py --model openai/gpt-4.1-mini      # latest run for model
+    python eval.py --model openai/gpt-4.1-mini --run 2026-04-12T18-30-00
     python eval.py --list                 # show all available runs
     python eval.py --id 1                 # evaluate one sample
     python eval.py --id 1 --id 2          # evaluate multiple samples

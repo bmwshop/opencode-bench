@@ -36,8 +36,8 @@ sys.path.insert(0, str(ROOT))
 from common import opencode_meta, resolve_opencode_cmd  # noqa: E402
 
 DEFAULT_DEST = ROOT / "data" / "tool_schemas.json"
-DEFAULT_PROVIDER = "nvidia"
-DEFAULT_MODEL = "nvidia/nemotron-3-nano-30b-a3b"
+DEFAULT_PROVIDER = "openai"
+DEFAULT_MODEL = "openai/gpt-4.1-mini"
 LISTEN_RE = re.compile(r"listening on https?://[^:]+:(\d+)")
 
 

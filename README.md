@@ -180,7 +180,7 @@ for i in 1 2 3 4 5 6 7 8; do
 done; wait
 ```
 
-A caveat for `--proxy` users: when combined with `-j > 1`, the switchyard
+A caveat for `--proxy` users: when combined with `-j > 1`, the
 timestamp fallback used by `stitch.py` has a 3-second window, so attribution
 for zero-tool-call samples may be unreliable. `run.py` prints a warning but
 does not block.
@@ -211,10 +211,10 @@ already set.
 ```bash
 python eval.py                                             # evaluate latest run (auto-detects version from meta.json)
 python eval.py --version v1                                # override to force v1 scope
-python eval.py --model nvidia/nemotron                     # evaluate latest run for a model
-python eval.py --model nvidia/nemotron --run 2026-04-12T18-30-00  # evaluate exact run
+python eval.py --model openai/gpt-4.1-mini                # evaluate latest run for a model
+python eval.py --model openai/gpt-4.1-mini --run 2026-04-12T18-30-00  # evaluate exact run
 python eval.py --list                                      # list all available runs
-python eval.py --list --model nvidia/nemotron              # list runs for a model
+python eval.py --list --model openai/gpt-4.1-mini         # list runs for a model
 python eval.py --id 1                                      # evaluate one sample
 python eval.py --id 1 --id 2                               # evaluate multiple samples
 python eval.py --category tool_schema                      # evaluate one category
@@ -288,40 +288,40 @@ Both scores are reported per-category and overall.
 
 ## Proxy Mode (optional)
 
-The benchmark works without a proxy -- `run.py` talks to your configured model provider directly. Optionally, you can route traffic through [nemo-switchyard](https://gitlab-master.nvidia.com/aire/agents/nemo-switchyard) to capture the full API payloads (system prompt, tool schemas, messages) that opencode sends to the provider.
+The benchmark works without a proxy -- `run.py` talks to your configured model provider directly. Optionally, you can route traffic through an OpenAI-compatible proxy to capture the full API payloads (system prompt, tool schemas, messages) that opencode sends to the provider.
 
 ### Terminal 1: Start the proxy
 
 ```bash
-cd /path/to/nemo-switchyard
+cd /path/to/proxy
 source .venv/bin/activate
 
 export OPENAI_API_KEY="<your provider API key>"
 
-nemo-switchyard opencode \
+your-proxy opencode \
   --port 4000 \
-  --base-url https://integrate.api.nvidia.com/v1 \
+  --base-url https://api.your-provider.example/v1 \
   --rl-log-dir /path/to/opencode-bench/captures
 ```
 
 ### Terminal 2: Run the benchmark through the proxy
 
 ```bash
-python run.py --proxy http://localhost:4000/v1 --model nvidia/nvidia/nemotron-3-super-120b-a12b
+python run.py --proxy http://localhost:4000/v1 --model openai/gpt-4.1-mini
 ```
 
 The `--proxy` flag dynamically injects a `provider.{id}.options.baseURL` override into each sample's workspace `opencode.json` before running. Because each sample executes in a fresh copy of the canonical fixture under `runs/v{version}/{slug}/{timestamp}/projects/{id:03d}/`, the canonical `projects/` tree is never touched and the override lives only inside the run directory.
 
-By default, the provider ID is inferred from the first segment of `--model` (e.g. `nvidia`). Override it explicitly with `--proxy-provider`:
+By default, the provider ID is inferred from the first segment of `--model` (e.g. `openai`). Override it explicitly with `--proxy-provider`:
 
 ```bash
 python run.py --proxy http://localhost:4000/v1 --proxy-provider anthropic --model anthropic/claude-opus-4-6
 ```
 
-When `--proxy` is set, `run.py` automatically moves new capture files from the switchyard staging directory into `runs/v{version}/{model_slug}/{timestamp}/captures/`. By default it looks for new `.json` files in `captures/` at the repo root (the `--rl-log-dir` passed to switchyard). Override with `--capture-dir` if switchyard writes elsewhere:
+When `--proxy` is set, `run.py` automatically moves new capture files from the proxy staging directory into `runs/v{version}/{model_slug}/{timestamp}/captures/`. By default it looks for new `.json` files in `captures/` at the repo root (the `--rl-log-dir` passed to your proxy). Override with `--capture-dir` if your proxy writes elsewhere:
 
 ```bash
-python run.py --proxy http://localhost:4000/v1 --capture-dir /tmp/switchyard-output --model nvidia/nvidia/nemotron-3-super-120b-a12b
+python run.py --proxy http://localhost:4000/v1 --capture-dir /tmp/proxy-output --model openai/gpt-4.1-mini
 ```
 
 ## Project Structure
@@ -357,7 +357,7 @@ evaluators/              # check implementations (auto-registered)
   orchestration/         # tool ordering and parallelism checks
 runs/                    # everything produced by a run, organized by version / model / timestamp (git-ignored)
   v{version}/            #   today only v1/; future tiers (v1.5, v2, ...) plug in here
-    {model_slug}/        #     e.g. nvidia_nemotron/
+    {model_slug}/        #     e.g. openai_gpt-4.1-mini/
       {timestamp}/       #       e.g. 2026-04-12T18-30-00/
         meta.json        #         run metadata (model, date, version, v1_repo_pins, args, etc.)
         scores.json      #         machine-readable scores (produced by eval.py)
@@ -370,7 +370,7 @@ runs/                    # everything produced by a run, organized by version / 
           ...
         captures/        #         proxy payloads (when --proxy is used)
         stitched/        #         stitched multi-turn traces (produced by stitch.py)
-captures/                # staging dir for switchyard output (git-ignored)
+captures/                # staging dir for proxy output (git-ignored)
 ```
 
 ## Sample Categories

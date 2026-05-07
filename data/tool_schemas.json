@@ -4,8 +4,8 @@
   "opencode_cmd": "opencode",
   "opencode_cwd": null,
   "opencode_executable": "/opt/homebrew/bin/opencode",
-  "provider": "nvidia",
-  "model": "nvidia/nemotron-3-nano-30b-a3b",
+  "provider": "openai",
+  "model": "openai/gpt-4.1-mini",
   "extracted_at": "2026-04-20T22:50:36+00:00",
   "tools": {
     "invalid": {
