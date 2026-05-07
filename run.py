@@ -33,7 +33,7 @@ re-hydrated into WORKSPACE/projects/ on every invocation (idempotent
 skip when already pinned correctly).
 
 Usage:
-    python run.py                    # all v1 samples, fresh /tmp workspace, kept after run
+    python run.py                    # default v1 set (excludes hidden review slice), fresh /tmp workspace
     python run.py --workspace .      # legacy: repo-local ./projects + ./runs + ./captures
     python run.py --workspace /scratch/my-run    # reuse a hydrated dir
     python run.py --clean-workspace             # auto-rm the /tmp workspace at exit
@@ -798,9 +798,15 @@ def main():
         "--category",
         action="append",
         help="Run all samples in a category. May be passed multiple times to "
-             "select a union of categories. When omitted, every category in "
-             "the selected --version runs. Pass `--category all` as an "
-             "explicit no-op equivalent to omitting the flag.",
+             "select a union of categories. When omitted, the default eval set "
+             "(all categories except hidden review-judgment rows) runs. Pass "
+             "`--category all` or `--include-code-review` to include review rows.",
+    )
+    parser.add_argument(
+        "--include-code-review",
+        action="store_true",
+        help="Include hidden review-judgment rows when no --category filter is "
+             "provided. Has no effect when --category is set explicitly.",
     )
     parser.add_argument(
         "--version",
@@ -960,13 +966,15 @@ def main():
         for _sig in (signal.SIGINT, signal.SIGTERM):
             signal.signal(_sig, lambda *_: (_rm_workspace(), sys.exit(130)))
 
-    # Default behaviour: with no --id and no --category, run every sample in
-    # the selected --version (default v1). The legacy "default to
+    # Default behaviour: with no --id and no --category, run the default eval
+    # set for the selected --version (default v1): every category except the
+    # hidden review-judgment rows. The legacy "default to
     # code_localization on v1" behaviour was relaxed -- `--version` flag is
     # now treated identically whether explicit or implicit.
-    # `--category all` remains accepted as an explicit no-op for back-compat.
+    # `--category all` remains accepted for full-corpus back-compat.
     if args.category and "all" in args.category:
         args.category = None
+        args.include_code_review = True
 
     if args.vllm and args.proxy:
         print("ERROR: --vllm and --proxy are mutually exclusive")

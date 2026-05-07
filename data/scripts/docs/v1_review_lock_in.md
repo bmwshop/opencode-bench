@@ -1,6 +1,6 @@
 # v1 code-review lock-in record (#91-#100, paper-faithful rebuild)
 
-This is the freeze artifact for the **paper-faithful** `code_review` category, rebuilt from scratch per Ma et al. arXiv:2604.05013 Appendix E. The agent acts as a code reviewer (NOT a patch author): given a PR description + PR diff, it explores the repo in plan mode (read-only) and emits a structured `<judgment>YES|NO</judgment>` plus a `<review>` summary.
+This is the freeze artifact for the **paper-faithful** `review_judgment` category, rebuilt from scratch per Ma et al. arXiv:2604.05013 Appendix E. The agent acts as a code reviewer (NOT a patch author): given a PR description + PR diff, it explores the repo in plan mode (read-only) and emits a structured `<judgment>YES|NO</judgment>` plus a `<review>` summary.
 
 The single source of truth is [data/scripts/json/v1_review_criteria.json](../json/v1_review_criteria.json), which references [data/scripts/json/v1_editing_criteria.json](../json/v1_editing_criteria.json) entries `#51`-`#60` for the underlying bugs and patches. No new bugs are authored in this category.
 
@@ -52,7 +52,7 @@ Pinned to `requests` submodule pin `79f4df84cf77a2fee873809821dfbd786de05b97`.
 
 ## Diversity gates
 
-Lighter than the previous code_review category since variation here is structural (label, source) rather than semantic (bug class):
+Lighter than the previous review_judgment category since variation here is structural (label, source) rather than semantic (bug class):
 
 - G1 distinct source IDs across all 10 samples — PASS (10 distinct: #51-#60 each appear once)
 - G2 5 YES + 5 NO label balance — PASS
@@ -189,7 +189,7 @@ Adding `#91`-`#100` to the bench raises the plan-mode footprint considerably:
 | 2 plan-mode samples (`#1`, `#2`) out of 50 v1 samples | 12 plan-mode samples (`#1`, `#2`, `#91`-`#100`) out of 60 v1 samples |
 | 4% of v1 surface | 20% of v1 surface |
 
-The `code_review` category alone now covers structured-judgment + plan-mode adherence + read-only deliberation across 10 samples, which is the opencode skill `#1` and `#2` originally hinted at but couldn't measure at scale.
+The `review_judgment` category alone now covers structured-judgment + plan-mode adherence + read-only deliberation across 10 samples, which is the opencode skill `#1` and `#2` originally hinted at but couldn't measure at scale.
 
 ## Cross-references
 

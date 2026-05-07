@@ -11,7 +11,7 @@ using the callID linkage:
 Output goes to runs/{version}/{slug}/{ts}/stitched/ with one JSON file per sample.
 
 Usage:
-    python stitch.py                         # stitch latest run
+    python stitch.py                         # stitch latest run (default set excludes hidden review slice)
     python stitch.py --model nvidia/nvidia/nemotron-3-super-120b-a12b
     python stitch.py --model nvidia/nvidia/nemotron-3-super-120b-a12b --id 1
     python stitch.py --model nvidia/nvidia/nemotron-3-super-120b-a12b --pass-only
@@ -207,7 +207,19 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", "-m", help="Model in provider/model format (default: latest run)")
     parser.add_argument("--id", action="append", help="Stitch specific sample(s) by ID")
-    parser.add_argument("--category", action="append", help="Stitch samples in a category")
+    parser.add_argument(
+        "--category",
+        action="append",
+        help="Stitch samples in a category. When omitted, stitch.py uses the "
+             "default set (all categories except hidden review-judgment rows). "
+             "Pass `--category all` or `--include-code-review` to include review rows.",
+    )
+    parser.add_argument(
+        "--include-code-review",
+        action="store_true",
+        help="Include hidden review-judgment rows when no --category filter is "
+             "provided. Has no effect when --category is set explicitly.",
+    )
     parser.add_argument("--pass-only", action="store_true", help="Only emit strictly-passing samples")
     parser.add_argument("--run", help="Specific run timestamp (default: latest)")
     parser.add_argument(
@@ -219,6 +231,10 @@ def main():
         help="Benchmark version to stitch. Defaults to the run's version from meta.json.",
     )
     args = parser.parse_args()
+
+    if args.category and "all" in args.category:
+        args.category = None
+        args.include_code_review = True
 
     run_dir = resolve_run(args.model, args.run, version=args.version)
     if not run_dir:

@@ -6,7 +6,7 @@ tool_restriction
 
 ## Parent
 
-This is a tool-restriction MUTANT of v1 #91 `pr_review_iter_slices_yes` (`code_review`). The mutant inherits the parent's prompt and underlying task verifier; only the workspace overlay (and a few extra opencode-side compliance checks) differ.
+This is a tool-restriction MUTANT of v1 #91 `pr_review_iter_slices_yes` (`review_judgment`). The mutant inherits the parent's prompt and underlying task verifier; only the workspace overlay (and a few extra opencode-side compliance checks) differ.
 
 ## Mutation
 

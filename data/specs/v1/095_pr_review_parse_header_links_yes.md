@@ -2,7 +2,7 @@
 
 ## Category
 
-code_review
+review_judgment
 
 ## Contract
 
@@ -145,7 +145,7 @@ Verified mechanically by `python3 data/scripts/audit_review.py --id 95` (Pass 1)
 
 ## Note on methodology
 
-This sample is the paper-faithful `code_review` atomic skill (Ma et al. arXiv:2604.05013), implemented via cross-reference to the `code_editing` source manifest. The PR diff is constructed mechanically; the gold label is mechanically derived from `exec_assert` against the source's truth table. The agent's role is to JUDGE, not to PATCH.
+This sample is the paper-faithful `review_judgment` atomic skill (Ma et al. arXiv:2604.05013), implemented via cross-reference to the `code_editing` source manifest. The PR diff is constructed mechanically; the gold label is mechanically derived from `exec_assert` against the source's truth table. The agent's role is to JUDGE, not to PATCH.
 
 If the source manifest changes, re-run `data/scripts/regen_review.py` and `data/scripts/audit_review.py`.
 

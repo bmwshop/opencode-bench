@@ -23,7 +23,7 @@ data/archetypes/v1/
 ├── 09-parallel_tool_use.md
 ├── 10-tool_restriction_prompt.md
 ├── 11-tool_restriction_permissions.md
-├── 12-pr_review_judgment.md             (new — closes code_review eval gap)
+├── 12-pr_review_judgment.md             (new — closes review_judgment eval gap)
 ├── 13-tool_restriction_rerouting.md     (new — closes tool-restriction rerouting gap)
 ├── 14-structured_artifact_output.md     (new — closes localization format gap)
 └── 15-multi_skill_composition.md        (new — closes multi-skill Tier D/E gap)
@@ -37,7 +37,7 @@ When trained models are scored against the v1 benchmark, three categories show v
 
 | benchmark category | observed strict (weaker models) | symptom |
 |---|---|---|
-| `code_review` | ≈ 0% | model produces structured findings instead of literal `YES`/`NO` + `<review>` block |
+| `review_judgment` | ≈ 0% | model produces structured findings instead of literal `YES`/`NO` + `<review>` block |
 | `tool_restriction` | ≈ 20% | model respects allowed tools, fails to *reroute* when natural tool is denied |
 | `code_localization` | ≈ 20–30% | model finds the right files, fails to emit the strictly-formatted `location.txt` artifact |
 

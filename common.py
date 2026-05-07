@@ -332,8 +332,13 @@ def load(args):
         args.version  - string in `SUPPORTED_VERSIONS`, or None for no filter.
         args.id       - list of sample ids (as strings).
         args.category - list of category strings.
+        args.include_code_review - include hidden review rows when no category
+            filter is provided.
     """
     want_version = getattr(args, "version", None)
+    want_ids = getattr(args, "id", None)
+    want_category = getattr(args, "category", None)
+    include_code_review = getattr(args, "include_code_review", False)
     for sample_version, path in SAMPLES_FILES:
         if want_version and sample_version != want_version:
             continue
@@ -346,8 +351,14 @@ def load(args):
                     continue
                 sample = json.loads(line)
                 sample.setdefault("version", sample_version)
-                if args.id and str(sample["id"]) not in args.id:
+                if want_ids and str(sample["id"]) not in want_ids:
                     continue
-                if args.category and sample["category"] not in args.category:
+                if want_category and sample["category"] not in want_category:
+                    continue
+                if (
+                    not want_category
+                    and not include_code_review
+                    and sample.get("category") == "code_review"
+                ):
                     continue
                 yield sample

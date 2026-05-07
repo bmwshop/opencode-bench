@@ -1,6 +1,6 @@
 # v1 code-review diversity grid (`#91`-`#100`, paper-faithful)
 
-This is the diversity view for the paper-faithful `code_review` category. The samples implement Ma et al. arXiv:2604.05013 Appendix E: PR-judgment in plan mode, with cross-referenced source material from the existing `code_editing` manifest.
+This is the diversity view for the paper-faithful `review_judgment` category. The samples implement Ma et al. arXiv:2604.05013 Appendix E: PR-judgment in plan mode, with cross-referenced source material from the existing `code_editing` manifest.
 
 Pinned to submodule pin `79f4df84cf77a2fee873809821dfbd786de05b97`.
 
@@ -68,7 +68,7 @@ Each authored mutant introduces a plausible-looking but incorrect fix:
 
 ## Comment-style note
 
-Unlike the previous `code_review` design (comment-to-fix, mislabeled), this paper-faithful version doesn't use a "comment_style" axis — the prompt is a paper-prescribed PR-review template (Appendix E), not a hand-authored reviewer voice. All 10 samples share the same prompt frame, differing only in `issue_text` and `<pr_code>`.
+Unlike the previous `review_judgment` design (comment-to-fix, mislabeled), this paper-faithful version doesn't use a "comment_style" axis — the prompt is a paper-prescribed PR-review template (Appendix E), not a hand-authored reviewer voice. All 10 samples share the same prompt frame, differing only in `issue_text` and `<pr_code>`.
 
 ## Phase-2 checkpoint
 

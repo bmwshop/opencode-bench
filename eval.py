@@ -7,7 +7,7 @@ future tiers (v1.5, v2, ...) plug in via common.SAMPLES_FILES + the
 --version argparse choices.
 
 Usage:
-    python eval.py                        # evaluate latest run (auto-detects version)
+    python eval.py                        # evaluate latest run (default set excludes hidden review slice)
     python eval.py --version v1           # force v1 scope
     python eval.py --model nvidia/nemotron          # latest run for model
     python eval.py --model nvidia/nemotron --run 2026-04-12T18-30-00
@@ -689,7 +689,19 @@ def print_list(model_filter=None, version=None):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--id", action="append", help="Evaluate specific sample(s) by ID")
-    parser.add_argument("--category", action="append", help="Evaluate all samples in a category")
+    parser.add_argument(
+        "--category",
+        action="append",
+        help="Evaluate all samples in a category. When omitted, eval.py uses "
+             "the default set (all categories except hidden review-judgment rows). "
+             "Pass `--category all` or `--include-code-review` to include review rows.",
+    )
+    parser.add_argument(
+        "--include-code-review",
+        action="store_true",
+        help="Include hidden review-judgment rows when no --category filter is "
+             "provided. Has no effect when --category is set explicitly.",
+    )
     parser.add_argument(
         "--version",
         # Today only "v1" is supported; extend by appending future tiers
@@ -735,6 +747,10 @@ def main():
     if args.run and not args.model:
         print("ERROR: --run requires --model to identify which model's run to use")
         sys.exit(1)
+
+    if args.category and "all" in args.category:
+        args.category = None
+        args.include_code_review = True
 
     run_dir = resolve_run(model=args.model, run=args.run, version=args.version)
     if not run_dir:
